@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo -->
+  <rect width="512" height="512" rx="100" fill="#3B82F6"/>
+
+  <!-- Balde -->
+  <rect x="176" y="220" width="160" height="130" rx="12" fill="white" opacity="0.95"/>
+  <rect x="176" y="220" width="160" height="30" rx="12" fill="#BFDBFE"/>
+  <rect x="176" y="234" width="160" height="16" fill="#BFDBFE"/>
+
+  <!-- Asa del balde -->
+  <path d="M210 220 Q256 170 302 220" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+  <!-- Agua/burbujas en el balde -->
+  <circle cx="220" cy="295" r="10" fill="#3B82F6" opacity="0.4"/>
+  <circle cx="256" cy="285" r="14" fill="#3B82F6" opacity="0.4"/>
+  <circle cx="292" cy="295" r="10" fill="#3B82F6" opacity="0.4"/>
+
+  <!-- Trapeador / mop palo -->
+  <rect x="248" y="120" width="16" height="110" rx="8" fill="white" opacity="0.9"/>
+
+  <!-- Cabeza del trapeador -->
+  <rect x="200" y="152" width="112" height="18" rx="9" fill="white"/>
+  <line x1="212" y1="170" x2="205" y2="210" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  <line x1="228" y1="170" x2="224" y2="215" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  <line x1="244" y1="170" x2="243" y2="217" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  <line x1="260" y1="170" x2="262" y2="217" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  <line x1="276" y1="170" x2="280" y2="215" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  <line x1="292" y1="170" x2="299" y2="210" stroke="white" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Burbujas decorativas -->
+  <circle cx="370" cy="140" r="18" fill="white" opacity="0.2"/>
+  <circle cx="395" cy="170" r="10" fill="white" opacity="0.15"/>
+  <circle cx="140" cy="160" r="14" fill="white" opacity="0.2"/>
+  <circle cx="120" cy="190" r="8" fill="white" opacity="0.15"/>
+</svg>
