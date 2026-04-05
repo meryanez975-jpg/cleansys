@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 
-// Mapeo turno cleansys → turno menusoft
+// Mapeo turno cleansys → turnos menusoft
 const TURNO_MAP = {
-  'mañana': 'diurno',
-  'noche': 'nocturno',
+  'mañana': ['mañana', 'diurno'],
+  'noche':  ['tarde', 'noche'],
 }
 
 export function usePersonalComidas(turno) {
@@ -14,12 +14,12 @@ export function usePersonalComidas(turno) {
   useEffect(() => {
     async function fetchPersonal() {
       setLoading(true)
-      const turnoSupabase = TURNO_MAP[turno] || turno
+      const turnos = TURNO_MAP[turno] || [turno]
       const { data, error } = await supabase
         .from('com_personal')
         .select('id, nombre, sector, turno')
         .eq('activo', true)
-        .eq('turno', turnoSupabase)
+        .in('turno', turnos)
         .order('nombre')
 
       if (!error && data) {
