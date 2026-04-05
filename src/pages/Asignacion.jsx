@@ -327,6 +327,35 @@ export default function Asignacion() {
           </div>
         </div>
 
+        {/* Tarjetas de turno */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          {[
+            { t: 'mañana', emoji: '☀️', label: 'Mañana', hora: '7am – 4pm', color: 'var(--manana-badge)', bg: 'var(--manana-bg)' },
+            { t: 'noche',  emoji: '🌙', label: 'Noche',  hora: '2pm – 11pm', color: 'var(--noche-badge)',  bg: 'var(--noche-bg)'  },
+          ].map(({ t, emoji, label, hora, color, bg }) => {
+            const sel = selTurnoForm === t
+            return (
+              <button
+                key={t}
+                onClick={() => { setSelTurnoForm(t); setSelPersonal('') }}
+                style={{
+                  flex: 1, padding: '14px 10px',
+                  border: `2px solid ${sel ? color : 'var(--border)'}`,
+                  borderRadius: 12, cursor: 'pointer',
+                  background: sel ? bg : 'var(--bg-card)',
+                  textAlign: 'center',
+                  boxShadow: sel ? `0 2px 8px ${color}33` : 'var(--shadow)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ fontSize: 28, marginBottom: 4 }}>{emoji}</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: sel ? color : 'var(--text)' }}>{label}</div>
+                <div style={{ fontSize: 11, color: sel ? color : 'var(--text-muted)', marginTop: 2 }}>{hora}</div>
+              </button>
+            )
+          })}
+        </div>
+
         {/* Calendario */}
         <div style={{
           background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -425,40 +454,6 @@ export default function Asignacion() {
             <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 16 }}>
               📅 {textoRango}
             </p>
-
-            {/* Turno */}
-            <div className="input-group">
-              <label className="input-label">Turno</label>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {[
-                  { t: 'mañana', emoji: '☀️', label: 'Mañana', hora: '7am – 4pm', color: 'var(--manana-badge)', bg: 'var(--manana-bg)' },
-                  { t: 'noche',  emoji: '🌙', label: 'Noche',  hora: '2pm – 11pm', color: 'var(--noche-badge)',  bg: 'var(--noche-bg)'  },
-                ].map(({ t, emoji, label, hora, color, bg }) => {
-                  const sel = selTurnoForm === t
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => { setSelTurnoForm(t); setSelPersonal('') }}
-                      style={{
-                        flex: 1,
-                        padding: '14px 10px',
-                        border: `2px solid ${sel ? color : 'var(--border)'}`,
-                        borderRadius: 12,
-                        cursor: 'pointer',
-                        background: sel ? bg : 'var(--bg)',
-                        textAlign: 'center',
-                        boxShadow: sel ? `0 2px 8px ${color}33` : 'none',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ fontSize: 28, marginBottom: 4 }}>{emoji}</div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: sel ? color : 'var(--text)' }}>{label}</div>
-                      <div style={{ fontSize: 11, color: sel ? color : 'var(--text-muted)', marginTop: 2 }}>{hora}</div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
 
             {/* Día de la semana */}
             <div className="input-group">
