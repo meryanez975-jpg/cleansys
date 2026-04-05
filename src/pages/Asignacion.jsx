@@ -435,17 +435,6 @@ export default function Asignacion() {
           )}
         </div>
 
-        {/* Aviso sin personal */}
-        {personal.length === 0 && (
-          <div style={{
-            background: 'var(--warning-light)', border: '1px solid var(--warning)',
-            borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: 16,
-            fontSize: 13, color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <span>⚠️</span>
-            <span>No hay personal cargado. Presioná 👥 para agregar personas.</span>
-          </div>
-        )}
 
         {/* Formulario nueva asignación */}
         {showForm && (
