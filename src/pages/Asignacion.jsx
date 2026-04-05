@@ -272,6 +272,7 @@ export default function Asignacion() {
   const [guardadoOk, setGuardadoOk]     = useState(false)
   const [hayCambios, setHayCambios]     = useState(false)
   const [refetchKey, setRefetchKey]     = useState(0)
+  const [showPostGuardado, setShowPostGuardado] = useState(false)
 
   const { navegarConGuardia, showConfirm, confirmar, cancelar } = useGuardiaNavegacion(hayCambios)
 
@@ -360,13 +361,10 @@ export default function Asignacion() {
       setErrForm('La persona ya está asignada en todos los días del rango')
     } else {
       setHayCambios(false)
-      setGuardadoOk(true)
-      setTimeout(() => setGuardadoOk(false), 3000)
-      setShowForm(false)
       setSelPersonal('')
       setSelZona('')
       setSelDiaSemana(null)
-      setSelTurnoForm('mañana')
+      setShowPostGuardado(true)
     }
     setGuardando(false)
   }
@@ -631,6 +629,45 @@ export default function Asignacion() {
       )}
 
       {showConfirm && <ModalConfirmSalida onConfirmar={confirmar} onCancelar={cancelar} />}
+
+      {showPostGuardado && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(30,58,95,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 500, padding: 24,
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: 16, padding: '28px 24px',
+            width: '100%', maxWidth: 320,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <p style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', marginBottom: 6 }}>
+              ¡Asignación guardada!
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+              ¿Qué querés hacer ahora?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={() => setShowPostGuardado(false)}
+              >
+                ➕ Seguir agregando
+              </button>
+              <button
+                className="btn btn-ghost btn-block"
+                onClick={() => { setShowPostGuardado(false); navigate('/semana') }}
+              >
+                📅 Ver semana
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showZonas && (
         <ZonaModal zonas={zonas} onCrear={crearZona} onEditar={editarZona} onEliminar={desactivarZona} onClose={() => setShowZonas(false)} />
