@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePersonal } from '../hooks/usePersonal'
+import { usePersonalComidas } from '../hooks/usePersonalComidas'
 import { useZonas } from '../hooks/useZonas'
 import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
@@ -190,6 +191,7 @@ export default function Asignacion() {
   const fecha     = isoDelDia(mes, diaActivo)
 
   const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
+  const { personal: personalTurno, loading: loadingPersonal } = usePersonalComidas(selTurnoForm)
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
   const { asignaciones, eliminarAsignacion, refetch: refetchAsig } = useAsignaciones(fecha)
   const { getRegistroPorAsignacion, refetch: refetchReg } = useRegistros(fecha)
@@ -431,7 +433,7 @@ export default function Asignacion() {
                 {['mañana', 'noche'].map(t => (
                   <button
                     key={t}
-                    onClick={() => setSelTurnoForm(t)}
+                    onClick={() => { setSelTurnoForm(t); setSelPersonal('') }}
                     style={{
                       flex: 1, padding: '10px', border: '2px solid',
                       borderColor: selTurnoForm === t ? (t === 'mañana' ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--border)',
@@ -490,14 +492,22 @@ export default function Asignacion() {
             {/* Persona */}
             <div className="input-group">
               <label className="input-label">Persona</label>
-              <select className="input" value={selPersonal} onChange={e => { setSelPersonal(e.target.value); setErrForm('') }}>
-                <option value="">— Seleccionar —</option>
-                {personal.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}{p.sector ? ` (${p.sector})` : ''}
-                  </option>
-                ))}
-              </select>
+              {loadingPersonal ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Cargando personal...</p>
+              ) : personalTurno.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--warning)', padding: '8px 0' }}>
+                  ⚠️ No hay personal con turno {selTurnoForm === 'mañana' ? 'diurno' : 'nocturno'} en el sistema
+                </p>
+              ) : (
+                <select className="input" value={selPersonal} onChange={e => { setSelPersonal(e.target.value); setErrForm('') }}>
+                  <option value="">— Seleccionar —</option>
+                  {personalTurno.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}{p.sector ? ` (${p.sector})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Zona */}
