@@ -437,7 +437,7 @@ export default function Asignacion() {
 
 
         {/* Formulario nueva asignación */}
-        {showForm && (
+        {showForm && inicio !== null && (
           <div className="card" style={{ marginBottom: 16 }}>
             <p style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Nueva asignación</p>
             <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 16 }}>
@@ -485,24 +485,49 @@ export default function Asignacion() {
               </p>
             </div>
 
-            {/* Persona */}
+            {/* Personal */}
             <div className="input-group">
-              <label className="input-label">Persona</label>
+              <label className="input-label">Personal</label>
               {loadingPersonal ? (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Cargando personal...</p>
               ) : personalTurno.length === 0 ? (
                 <p style={{ fontSize: 13, color: 'var(--warning)', padding: '8px 0' }}>
-                  ⚠️ No hay personal con turno {selTurnoForm === 'mañana' ? 'diurno' : 'nocturno'} en el sistema
+                  ⚠️ No hay personal con ese turno en el sistema
                 </p>
               ) : (
-                <select className="input" value={selPersonal} onChange={e => { setSelPersonal(e.target.value); setErrForm('') }}>
-                  <option value="">— Seleccionar —</option>
-                  {personalTurno.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre}{p.sector ? ` (${p.sector})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {personalTurno.map((p, i) => {
+                    const colores = [
+                      { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+                      { bg: '#dcfce7', color: '#15803d', border: '#86efac' },
+                      { bg: '#fce7f3', color: '#be185d', border: '#f9a8d4' },
+                      { bg: '#fef9c3', color: '#a16207', border: '#fde047' },
+                      { bg: '#ede9fe', color: '#6d28d9', border: '#c4b5fd' },
+                      { bg: '#ffedd5', color: '#c2410c', border: '#fdba74' },
+                      { bg: '#cffafe', color: '#0e7490', border: '#67e8f9' },
+                    ]
+                    const c = colores[i % colores.length]
+                    const sel = selPersonal === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => { setSelPersonal(sel ? '' : p.id); setErrForm('') }}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: 20,
+                          border: `2px solid ${sel ? c.color : c.border}`,
+                          background: sel ? c.color : c.bg,
+                          color: sel ? '#fff' : c.color,
+                          fontWeight: 600, fontSize: 13,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {p.nombre}
+                      </button>
+                    )
+                  })}
+                </div>
               )}
             </div>
 
