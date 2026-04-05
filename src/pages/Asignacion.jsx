@@ -429,22 +429,34 @@ export default function Asignacion() {
             {/* Turno */}
             <div className="input-group">
               <label className="input-label">Turno</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['mañana', 'noche'].map(t => (
-                  <button
-                    key={t}
-                    onClick={() => { setSelTurnoForm(t); setSelPersonal('') }}
-                    style={{
-                      flex: 1, padding: '10px', border: '2px solid',
-                      borderColor: selTurnoForm === t ? (t === 'mañana' ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--border)',
-                      borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                      background: selTurnoForm === t ? (t === 'mañana' ? 'var(--manana-bg)' : 'var(--noche-bg)') : 'var(--bg)',
-                      color: selTurnoForm === t ? (t === 'mañana' ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--text-muted)',
-                    }}
-                  >
-                    {t === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[
+                  { t: 'mañana', emoji: '☀️', label: 'Mañana', hora: '7am – 4pm', color: 'var(--manana-badge)', bg: 'var(--manana-bg)' },
+                  { t: 'noche',  emoji: '🌙', label: 'Noche',  hora: '2pm – 11pm', color: 'var(--noche-badge)',  bg: 'var(--noche-bg)'  },
+                ].map(({ t, emoji, label, hora, color, bg }) => {
+                  const sel = selTurnoForm === t
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => { setSelTurnoForm(t); setSelPersonal('') }}
+                      style={{
+                        flex: 1,
+                        padding: '14px 10px',
+                        border: `2px solid ${sel ? color : 'var(--border)'}`,
+                        borderRadius: 12,
+                        cursor: 'pointer',
+                        background: sel ? bg : 'var(--bg)',
+                        textAlign: 'center',
+                        boxShadow: sel ? `0 2px 8px ${color}33` : 'none',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <div style={{ fontSize: 28, marginBottom: 4 }}>{emoji}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: sel ? color : 'var(--text)' }}>{label}</div>
+                      <div style={{ fontSize: 11, color: sel ? color : 'var(--text-muted)', marginTop: 2 }}>{hora}</div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
