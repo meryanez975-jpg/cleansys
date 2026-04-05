@@ -115,13 +115,6 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
           </p>
 
           <MenuItem
-            icono="👥"
-            texto="Personal"
-            sub="Ver, editar y eliminar empleados"
-            onClick={() => ir('/personal')}
-          />
-
-          <MenuItem
             icono="🏢"
             texto="Zonas de limpieza"
             sub="Agregar, editar y eliminar zonas"
