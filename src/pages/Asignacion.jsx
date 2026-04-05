@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePersonal } from '../hooks/usePersonal'
@@ -64,6 +64,95 @@ function formatFechaCorta(iso) {
 function formatHora(isoStr) {
   if (!isoStr) return null
   return new Date(isoStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+}
+
+// ── Dropdown con colores ──────────────────────────────────────────
+function SelectColor({ placeholder, opciones, valor, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const seleccionado = opciones.find(o => o.value === valor)
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', padding: '10px 14px',
+          border: `2px solid ${seleccionado ? seleccionado.color : 'var(--border)'}`,
+          borderRadius: 10, cursor: 'pointer',
+          background: seleccionado ? seleccionado.bg : 'var(--bg-card)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          transition: 'all 0.15s',
+        }}
+      >
+        <span style={{ fontWeight: 600, fontSize: 14, color: seleccionado ? seleccionado.color : 'var(--text-muted)' }}>
+          {seleccionado ? seleccionado.label : placeholder}
+        </span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          zIndex: 100, overflow: 'hidden',
+        }}>
+          {opciones.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => { onChange(o.value); setOpen(false) }}
+              style={{
+                width: '100%', padding: '10px 14px',
+                border: 'none', cursor: 'pointer',
+                background: valor === o.value ? o.bg : 'transparent',
+                display: 'flex', alignItems: 'center', gap: 10,
+                textAlign: 'left', transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = o.bg}
+              onMouseLeave={e => e.currentTarget.style.background = valor === o.value ? o.bg : 'transparent'}
+            >
+              <span style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: o.color, flexShrink: 0,
+              }} />
+              <span style={{ fontWeight: 600, fontSize: 13, color: o.color }}>{o.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const PALETA = [
+  { bg: '#dbeafe', color: '#1d4ed8' },
+  { bg: '#dcfce7', color: '#15803d' },
+  { bg: '#fce7f3', color: '#be185d' },
+  { bg: '#fef9c3', color: '#a16207' },
+  { bg: '#ede9fe', color: '#6d28d9' },
+  { bg: '#ffedd5', color: '#c2410c' },
+  { bg: '#cffafe', color: '#0e7490' },
+  { bg: '#f0fdf4', color: '#166534' },
+]
+
+const COLORES_DIAS = {
+  1: { bg: '#dbeafe', color: '#1d4ed8' },
+  2: { bg: '#dcfce7', color: '#15803d' },
+  3: { bg: '#fce7f3', color: '#be185d' },
+  4: { bg: '#fef9c3', color: '#a16207' },
+  5: { bg: '#ede9fe', color: '#6d28d9' },
+  6: { bg: '#ffedd5', color: '#c2410c' },
+  0: { bg: '#cffafe', color: '#0e7490' },
 }
 
 // ── Calendario con rango ──────────────────────────────────────────
@@ -447,22 +536,21 @@ export default function Asignacion() {
             {/* Día de la semana */}
             <div className="input-group">
               <label className="input-label">Día de la semana</label>
-              <select
-                className="input"
-                value={selDiaSemana ?? ''}
-                onChange={e => { setSelDiaSemana(e.target.value === '' ? null : Number(e.target.value)); setErrForm('') }}
-              >
-                <option value="">— Todos los días del período ({fechasRango.length} días) —</option>
-                {DIAS_SEMANA.map(({ label, jsDay }) => {
-                  const count = fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay).length
-                  return count > 0 ? (
-                    <option key={jsDay} value={jsDay}>{label} (×{count})</option>
-                  ) : null
-                })}
-              </select>
-              {selDiaSemana !== null && fechasParaAsignar.length === 0 && (
-                <p style={{ fontSize: 11, color: 'var(--warning)', marginTop: 4 }}>Ese día no existe en el rango</p>
-              )}
+              <SelectColor
+                placeholder={`Todos los días (${fechasRango.length} días)`}
+                valor={selDiaSemana === null ? '' : String(selDiaSemana)}
+                onChange={v => { setSelDiaSemana(v === '' ? null : Number(v)); setErrForm('') }}
+                opciones={[
+                  { value: '', label: `Todos los días (${fechasRango.length} días)`, ...PALETA[0] },
+                  ...DIAS_SEMANA
+                    .filter(({ jsDay }) => fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay).length > 0)
+                    .map(({ label, jsDay }) => ({
+                      value: String(jsDay),
+                      label,
+                      ...COLORES_DIAS[jsDay],
+                    }))
+                ]}
+              />
             </div>
 
             {/* Personal */}
@@ -475,29 +563,32 @@ export default function Asignacion() {
                   ⚠️ No hay personal con ese turno en el sistema
                 </p>
               ) : (
-                <select
-                  className="input"
-                  value={selPersonal}
-                  onChange={e => { setSelPersonal(e.target.value); setErrForm('') }}
-                  style={{ color: selPersonal ? 'var(--primary-dark)' : undefined, fontWeight: selPersonal ? 600 : 400 }}
-                >
-                  <option value="">— Seleccionar personal —</option>
-                  {personalTurno.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre}{p.sector ? ` · ${p.sector}` : ''}
-                    </option>
-                  ))}
-                </select>
+                <SelectColor
+                  placeholder="Seleccionar personal"
+                  valor={selPersonal}
+                  onChange={v => { setSelPersonal(v); setErrForm('') }}
+                  opciones={personalTurno.map((p, i) => ({
+                    value: p.id,
+                    label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
+                    ...PALETA[i % PALETA.length],
+                  }))}
+                />
               )}
             </div>
 
             {/* Zona */}
             <div className="input-group">
               <label className="input-label">Zona de limpieza</label>
-              <select className="input" value={selZona} onChange={e => { setSelZona(e.target.value); setErrForm('') }}>
-                <option value="">— Seleccionar zona —</option>
-                {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-              </select>
+              <SelectColor
+                placeholder="Seleccionar zona"
+                valor={selZona}
+                onChange={v => { setSelZona(v); setErrForm('') }}
+                opciones={zonas.map((z, i) => ({
+                  value: z.id,
+                  label: z.nombre,
+                  ...PALETA[(i + 2) % PALETA.length],
+                }))}
+              />
             </div>
 
             {errForm && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{errForm}</p>}
