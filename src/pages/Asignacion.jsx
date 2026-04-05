@@ -437,7 +437,7 @@ export default function Asignacion() {
 
 
         {/* Formulario nueva asignación */}
-        {showForm && inicio !== null && (
+        {showForm && (
           <div className="card" style={{ marginBottom: 16 }}>
             <p style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Nueva asignación</p>
             <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 16 }}>
@@ -446,43 +446,23 @@ export default function Asignacion() {
 
             {/* Día de la semana */}
             <div className="input-group">
-              <label className="input-label">¿Qué día de la semana limpia?</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+              <label className="input-label">Día de la semana</label>
+              <select
+                className="input"
+                value={selDiaSemana ?? ''}
+                onChange={e => { setSelDiaSemana(e.target.value === '' ? null : Number(e.target.value)); setErrForm('') }}
+              >
+                <option value="">— Todos los días del período ({fechasRango.length} días) —</option>
                 {DIAS_SEMANA.map(({ label, jsDay }) => {
-                  const sel = selDiaSemana === jsDay
-                  // contar cuántas fechas del rango caen en este día
                   const count = fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay).length
-                  return (
-                    <button
-                      key={jsDay}
-                      onClick={() => { setSelDiaSemana(sel ? null : jsDay); setErrForm('') }}
-                      style={{
-                        padding: '8px 2px',
-                        border: '2px solid',
-                        borderColor: sel ? 'var(--primary)' : 'var(--border)',
-                        borderRadius: 8, cursor: 'pointer',
-                        background: sel ? 'var(--primary)' : count > 0 ? 'var(--primary-xlight)' : 'var(--bg)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                      }}
-                    >
-                      <span style={{ fontSize: 11, fontWeight: 700, color: sel ? '#fff' : 'var(--text)' }}>{label}</span>
-                      {count > 0 && (
-                        <span style={{ fontSize: 10, color: sel ? 'rgba(255,255,255,0.8)' : 'var(--primary)', fontWeight: 600 }}>
-                          ×{count}
-                        </span>
-                      )}
-                    </button>
-                  )
+                  return count > 0 ? (
+                    <option key={jsDay} value={jsDay}>{label} (×{count})</option>
+                  ) : null
                 })}
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-                {selDiaSemana === null
-                  ? `Todos los días del período (${fechasRango.length} días)`
-                  : fechasParaAsignar.length === 0
-                    ? 'Ese día no existe en el rango seleccionado'
-                    : `Se asignarán ${fechasParaAsignar.length} ${DIAS_SEMANA.find(d => d.jsDay === selDiaSemana)?.label}: ${fechasParaAsignar.slice(0, 4).map(f => new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })).join(', ')}${fechasParaAsignar.length > 4 ? '…' : ''}`
-                }
-              </p>
+              </select>
+              {selDiaSemana !== null && fechasParaAsignar.length === 0 && (
+                <p style={{ fontSize: 11, color: 'var(--warning)', marginTop: 4 }}>Ese día no existe en el rango</p>
+              )}
             </div>
 
             {/* Personal */}
@@ -495,39 +475,19 @@ export default function Asignacion() {
                   ⚠️ No hay personal con ese turno en el sistema
                 </p>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {personalTurno.map((p, i) => {
-                    const colores = [
-                      { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
-                      { bg: '#dcfce7', color: '#15803d', border: '#86efac' },
-                      { bg: '#fce7f3', color: '#be185d', border: '#f9a8d4' },
-                      { bg: '#fef9c3', color: '#a16207', border: '#fde047' },
-                      { bg: '#ede9fe', color: '#6d28d9', border: '#c4b5fd' },
-                      { bg: '#ffedd5', color: '#c2410c', border: '#fdba74' },
-                      { bg: '#cffafe', color: '#0e7490', border: '#67e8f9' },
-                    ]
-                    const c = colores[i % colores.length]
-                    const sel = selPersonal === p.id
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => { setSelPersonal(sel ? '' : p.id); setErrForm('') }}
-                        style={{
-                          padding: '7px 14px',
-                          borderRadius: 20,
-                          border: `2px solid ${sel ? c.color : c.border}`,
-                          background: sel ? c.color : c.bg,
-                          color: sel ? '#fff' : c.color,
-                          fontWeight: 600, fontSize: 13,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {p.nombre}
-                      </button>
-                    )
-                  })}
-                </div>
+                <select
+                  className="input"
+                  value={selPersonal}
+                  onChange={e => { setSelPersonal(e.target.value); setErrForm('') }}
+                  style={{ color: selPersonal ? 'var(--primary-dark)' : undefined, fontWeight: selPersonal ? 600 : 400 }}
+                >
+                  <option value="">— Seleccionar personal —</option>
+                  {personalTurno.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}{p.sector ? ` · ${p.sector}` : ''}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 
