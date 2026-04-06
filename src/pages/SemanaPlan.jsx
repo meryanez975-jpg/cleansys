@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as store from '../data/store'
+import { supabase } from '../supabase/client'
 
 const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
@@ -22,10 +23,22 @@ export default function SemanaPlan() {
   const navigate = useNavigate()
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
-  const [cardAbierta, setCardAbierta] = useState(null) // 'semana' | 'limpieza' | 'sinTarea'
+  const [cardAbierta, setCardAbierta] = useState(null)
+  const [personalMap, setPersonalMap] = useState({}) // id → nombre
   const diasRef = useRef(null)
 
   useEffect(() => { setTick(t => t + 1) }, [])
+
+  useEffect(() => {
+    supabase.from('com_personal').select('id, nombre').eq('activo', true)
+      .then(({ data }) => {
+        if (data) {
+          const map = {}
+          data.forEach(p => { map[p.id] = p.nombre })
+          setPersonalMap(map)
+        }
+      })
+  }, [])
 
   const fechasSemana = Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
   const fechasISO    = fechasSemana.map(fechaISO)
@@ -36,15 +49,22 @@ export default function SemanaPlan() {
     try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] }
   })()
 
+  // resolver nombre: primero del mapa Supabase, luego del nombre guardado, luego del objeto personal
+  function getNombre(a) {
+    return personalMap[a.personal_id] || a.personalNombre || a.personal?.nombre || '—'
+  }
+
   const totalAsigs = asigs.length
 
   // personas únicas con tarea + conteo
   const personalConTarea = (() => {
     const mapa = {}
     asigs.forEach(a => {
-      if (!a.personal?.id) return
-      if (!mapa[a.personal.id]) mapa[a.personal.id] = { nombre: a.personal.nombre, count: 0 }
-      mapa[a.personal.id].count++
+      const id = a.personal_id
+      if (!id) return
+      const nombre = personalMap[id] || a.personalNombre || a.personal?.nombre || '—'
+      if (!mapa[id]) mapa[id] = { nombre, count: 0 }
+      mapa[id].count++
     })
     return Object.values(mapa).sort((a, b) => b.count - a.count)
   })()
@@ -111,14 +131,14 @@ export default function SemanaPlan() {
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>☀️ MAÑANA</p>
                       {manana.length === 0
                         ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
-                        : manana.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{a.personal?.nombre || '—'}</p>)
+                        : manana.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>)
                       }
                     </div>
                     <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', marginBottom: 3 }}>🌙 NOCHE</p>
                       {noche.length === 0
                         ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
-                        : noche.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{a.personal?.nombre || '—'}</p>)
+                        : noche.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>)
                       }
                     </div>
                   </div>
@@ -237,7 +257,7 @@ function MiniTarjeta({ titulo, items, bg, color }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {items.map(a => (
           <div key={a.id} style={{ display: 'flex', gap: 6, fontSize: 13, color: '#1e293b', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600 }}>{a.personal?.nombre || '—'}</span>
+            <span style={{ fontWeight: 600 }}>{a.personal?.nombre || a.personalNombre || '—'}</span>
             <span style={{ color: '#94a3b8' }}>→</span>
             <span>{a.zona?.nombre || '—'}</span>
             <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color, background: 'rgba(255,255,255,0.6)', borderRadius: 6, padding: '1px 6px' }}>
