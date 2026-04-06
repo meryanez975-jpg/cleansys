@@ -105,11 +105,8 @@ export default function SemanaPlan() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {personalConTarea.map((p, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '7px 10px' }}>
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '7px 10px' }}>
                     <span style={{ fontWeight: 600, fontSize: 14, color: '#14532d' }}>🧹 {p.nombre}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#15803d', background: '#bbf7d0', borderRadius: 6, padding: '2px 8px' }}>
-                      {p.count} vez{p.count !== 1 ? 'es' : ''}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -125,9 +122,8 @@ export default function SemanaPlan() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {sinTarea.map((p, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '7px 10px' }}>
-                    <span style={{ fontSize: 16 }}>💤</span>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: '#475569' }}>{p.nombre}</span>
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '7px 10px' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: '#475569' }}>💤 {p.nombre}</span>
                   </div>
                 ))}
               </div>
