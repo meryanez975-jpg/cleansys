@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as store from '../data/store'
 
-const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 function getLunesDeHoy() {
   const hoy = new Date()
-  const dia = hoy.getDay() // 0=dom, 1=lun ...
+  const dia = hoy.getDay()
   const diff = dia === 0 ? -6 : 1 - dia
   const lunes = new Date(hoy)
   lunes.setDate(hoy.getDate() + diff)
@@ -34,30 +33,20 @@ export default function SemanaPlan() {
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
 
-  // Refrescar al montar (por si se agregaron asignaciones en otra pantalla)
   useEffect(() => { setTick(t => t + 1) }, [])
 
   const fechasSemana = Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
   const fechasISO    = fechasSemana.map(fechaISO)
-  // tick fuerza re-lectura del localStorage
   const asigs        = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
   const hoyISO       = fechaISO(new Date())
 
-  function semanaAnterior() {
-    setLunesBase(d => addDays(d, -7))
-  }
-  function semanaSiguiente() {
-    setLunesBase(d => addDays(d, 7))
-  }
+  // registros de la semana
+  const regs = (() => {
+    try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] }
+  })()
 
   const totalAsigs = asigs.length
-  const totalCompletos = (() => {
-    try {
-      const regs = JSON.parse(localStorage.getItem('cleansys_registros') || '[]')
-      const idsAsig = asigs.map(a => a.id)
-      return regs.filter(r => idsAsig.includes(r.asignacion_id) && r.completado).length
-    } catch { return 0 }
-  })()
+  const totalCompletos = regs.filter(r => asigs.some(a => a.id === r.asignacion_id) && r.completado).length
 
   return (
     <div className="page">
@@ -80,7 +69,7 @@ export default function SemanaPlan() {
           boxShadow: 'var(--shadow)',
         }}>
           <button
-            onClick={semanaAnterior}
+            onClick={() => setLunesBase(d => addDays(d, -7))}
             style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
           >‹</button>
 
@@ -96,19 +85,22 @@ export default function SemanaPlan() {
           </div>
 
           <button
-            onClick={semanaSiguiente}
+            onClick={() => setLunesBase(d => addDays(d, 7))}
             style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
           >›</button>
         </div>
 
         {/* Días */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {fechasSemana.map((fecha, i) => {
-            const iso       = fechasISO[i]
-            const esHoy     = iso === hoyISO
-            const asigsDia  = asigs.filter(a => a.fecha === iso)
-            const manana    = asigsDia.filter(a => a.turno === 'mañana')
-            const noche     = asigsDia.filter(a => a.turno === 'noche')
+            const iso      = fechasISO[i]
+            const esHoy    = iso === hoyISO
+            const asigsDia = asigs.filter(a => a.fecha === iso)
+
+            // clasificar
+            const completados   = asigsDia.filter(a => regs.some(r => r.asignacion_id === a.id && r.completado))
+            const enProceso     = asigsDia.filter(a => regs.some(r => r.asignacion_id === a.id && r.hora_entrada && !r.completado))
+            const sinRegistrar  = asigsDia.filter(a => !regs.some(r => r.asignacion_id === a.id && r.hora_entrada))
 
             return (
               <div
@@ -117,7 +109,7 @@ export default function SemanaPlan() {
                 style={{
                   borderLeft: `4px solid ${esHoy ? 'var(--primary)' : 'var(--border)'}`,
                   padding: '14px 16px',
-                  opacity: asigsDia.length === 0 ? 0.6 : 1,
+                  opacity: asigsDia.length === 0 ? 0.55 : 1,
                 }}
               >
                 {/* Cabecera día */}
@@ -129,9 +121,7 @@ export default function SemanaPlan() {
                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                       {fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
                     </span>
-                    {esHoy && (
-                      <span className="badge badge-blue">Hoy</span>
-                    )}
+                    {esHoy && <span className="badge badge-blue">Hoy</span>}
                   </div>
                   {asigsDia.length > 0 && (
                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -144,12 +134,34 @@ export default function SemanaPlan() {
                   <p style={{ fontSize: 12, color: 'var(--text-light)' }}>Sin asignaciones</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {manana.length > 0 && (
-                      <TurnoBloque turno="mañana" items={manana} />
+
+                    {/* Tarjeta 1: Completados */}
+                    {completados.length > 0 && (
+                      <MiniTarjeta
+                        titulo="✅ Completados"
+                        items={completados}
+                        bg="#dcfce7" color="#15803d"
+                      />
                     )}
-                    {noche.length > 0 && (
-                      <TurnoBloque turno="noche" items={noche} />
+
+                    {/* Tarjeta 2: En proceso */}
+                    {enProceso.length > 0 && (
+                      <MiniTarjeta
+                        titulo="🟡 En proceso"
+                        items={enProceso}
+                        bg="#fef9c3" color="#a16207"
+                      />
                     )}
+
+                    {/* Tarjeta 3: Sin registrar */}
+                    {sinRegistrar.length > 0 && (
+                      <MiniTarjeta
+                        titulo="⬜ Sin registrar"
+                        items={sinRegistrar}
+                        bg="#f1f5f9" color="#64748b"
+                      />
+                    )}
+
                   </div>
                 )}
               </div>
@@ -161,26 +173,25 @@ export default function SemanaPlan() {
   )
 }
 
-function TurnoBloque({ turno, items }) {
-  const esManana = turno === 'mañana'
+function MiniTarjeta({ titulo, items, bg, color }) {
   return (
-    <div style={{
-      background: esManana ? 'var(--manana-bg)' : 'var(--noche-bg)',
-      borderRadius: 8, padding: '8px 12px',
-    }}>
-      <p style={{
-        fontSize: 11, fontWeight: 700,
-        color: esManana ? 'var(--manana-badge)' : 'var(--noche-badge)',
-        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
-      }}>
-        {esManana ? '☀️ Mañana' : '🌙 Noche'}
+    <div style={{ background: bg, borderRadius: 10, padding: '8px 12px' }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+        {titulo}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {items.map(a => (
-          <div key={a.id} style={{ display: 'flex', gap: 6, fontSize: 13, color: 'var(--text)' }}>
+          <div key={a.id} style={{ display: 'flex', gap: 6, fontSize: 13, color: '#1e293b', alignItems: 'center' }}>
             <span style={{ fontWeight: 600 }}>{a.personal?.nombre || '—'}</span>
-            <span style={{ color: 'var(--text-muted)' }}>→</span>
+            <span style={{ color: '#94a3b8' }}>→</span>
             <span>{a.zona?.nombre || '—'}</span>
+            <span style={{
+              marginLeft: 'auto', fontSize: 11, fontWeight: 600,
+              color, background: 'rgba(255,255,255,0.6)',
+              borderRadius: 6, padding: '1px 6px',
+            }}>
+              {a.turno === 'mañana' ? '☀️' : '🌙'}
+            </span>
           </div>
         ))}
       </div>

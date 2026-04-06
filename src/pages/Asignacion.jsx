@@ -593,7 +593,7 @@ export default function Asignacion() {
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleCrearAsignacion} disabled={guardando}>
-                {guardando ? 'Guardando...' : `Guardar (${fechasParaAsignar.length} día${fechasParaAsignar.length !== 1 ? 's' : ''})`}
+                {guardando ? 'Guardando...' : 'Guardar'}
               </button>
               <button className="btn btn-ghost" onClick={() => { setShowForm(false); setErrForm('') }}>Cancelar</button>
             </div>
