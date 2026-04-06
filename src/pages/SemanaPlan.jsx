@@ -128,14 +128,14 @@ export default function SemanaPlan() {
                   </p>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>☀️ MAÑANA</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>MAÑANA</p>
                       {manana.length === 0
                         ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
                         : manana.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>)
                       }
                     </div>
                     <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', marginBottom: 3 }}>🌙 NOCHE</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', marginBottom: 3 }}>NOCHE</p>
                       {noche.length === 0
                         ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
                         : noche.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>)
@@ -261,7 +261,7 @@ function MiniTarjeta({ titulo, items, bg, color }) {
             <span style={{ color: '#94a3b8' }}>→</span>
             <span>{a.zona?.nombre || '—'}</span>
             <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color, background: 'rgba(255,255,255,0.6)', borderRadius: 6, padding: '1px 6px' }}>
-              {a.turno === 'mañana' ? '☀️' : '🌙'}
+              {a.turno === 'mañana' ? 'M' : 'N'}
             </span>
           </div>
         ))}
