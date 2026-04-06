@@ -535,11 +535,11 @@ export default function Asignacion() {
             <div className="input-group">
               <label className="input-label">Día de la semana</label>
               <SelectColor
-                placeholder={`Todos los días (${fechasRango.length} días)`}
+                placeholder="Opción de la semana"
                 valor={selDiaSemana === null ? '' : String(selDiaSemana)}
                 onChange={v => { setSelDiaSemana(v === '' ? null : Number(v)); setErrForm('') }}
                 opciones={[
-                  { value: '', label: `Todos los días (${fechasRango.length} días)`, ...PALETA[0] },
+                  { value: '', label: 'Opción de la semana', ...PALETA[0] },
                   ...DIAS_SEMANA
                     .filter(({ jsDay }) => fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay).length > 0)
                     .map(({ label, jsDay }) => ({
