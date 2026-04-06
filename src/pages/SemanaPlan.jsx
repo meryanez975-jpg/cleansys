@@ -46,9 +46,15 @@ export default function SemanaPlan() {
   })()
 
   const totalAsigs = asigs.length
-  const totalCompletos  = regs.filter(r => asigs.some(a => a.id === r.asignacion_id) && r.completado).length
-  const totalEnProceso  = regs.filter(r => asigs.some(a => a.id === r.asignacion_id) && r.hora_entrada && !r.completado).length
-  const totalSinRegistrar = asigs.filter(a => !regs.some(r => r.asignacion_id === a.id && r.hora_entrada)).length
+
+  // personas únicas con tarea esta semana
+  const idsConTarea = [...new Set(asigs.map(a => a.personal?.id).filter(Boolean))]
+
+  // personas del sistema sin tarea esta semana
+  const todoElPersonal = (() => {
+    try { return JSON.parse(localStorage.getItem('cleansys_personal') || '[]') } catch { return [] }
+  })()
+  const sinTarea = todoElPersonal.filter(p => !idsConTarea.includes(p.id))
 
   return (
     <div className="page">
@@ -65,17 +71,17 @@ export default function SemanaPlan() {
 
         {/* 3 tarjetas resumen */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <div style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{totalCompletos}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>✅ Completados</p>
+          <div style={{ flex: 1, background: '#dbeafe', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana</p>
           </div>
-          <div style={{ flex: 1, background: '#fef9c3', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#a16207' }}>{totalEnProceso}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#a16207' }}>🟡 En proceso</p>
+          <div style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{idsConTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>🧹 En limpieza</p>
           </div>
           <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{totalSinRegistrar}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>⬜ Sin registrar</p>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas</p>
           </div>
         </div>
 
