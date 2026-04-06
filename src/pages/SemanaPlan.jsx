@@ -57,12 +57,7 @@ export default function SemanaPlan() {
   const sinTarea = todoElPersonal.filter(p => !idsConTarea.includes(p.id))
 
   function toggleCard(nombre) {
-    if (nombre === 'semana') {
-      setCardAbierta(null)
-      setTimeout(() => diasRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-    } else {
-      setCardAbierta(v => v === nombre ? null : nombre)
-    }
+    setCardAbierta(v => v === nombre ? null : nombre)
   }
 
   return (
@@ -81,9 +76,9 @@ export default function SemanaPlan() {
         {/* 3 tarjetas resumen */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           {/* Semana */}
-          <button onClick={() => toggleCard('semana')} style={{ flex: 1, background: '#dbeafe', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: 'none', cursor: 'pointer' }}>
+          <button onClick={() => toggleCard('semana')} style={{ flex: 1, background: cardAbierta === 'semana' ? '#bfdbfe' : '#dbeafe', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: cardAbierta === 'semana' ? '2px solid #1d4ed8' : '2px solid transparent', cursor: 'pointer' }}>
             <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana ↓</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana {cardAbierta === 'semana' ? '▲' : '▼'}</p>
           </button>
           {/* En limpieza */}
           <button onClick={() => toggleCard('limpieza')} style={{ flex: 1, background: cardAbierta === 'limpieza' ? '#bbf7d0' : '#dcfce7', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: cardAbierta === 'limpieza' ? '2px solid #15803d' : '2px solid transparent', cursor: 'pointer' }}>
@@ -96,6 +91,42 @@ export default function SemanaPlan() {
             <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas {cardAbierta === 'sinTarea' ? '▲' : '▼'}</p>
           </button>
         </div>
+
+        {/* Panel: Semana */}
+        {cardAbierta === 'semana' && (
+          <div style={{ background: '#dbeafe', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+            {fechasSemana.map((fecha, i) => {
+              const iso      = fechasISO[i]
+              const asigsDia = asigs.filter(a => a.fecha === iso)
+              const manana   = asigsDia.filter(a => a.turno === 'mañana')
+              const noche    = asigsDia.filter(a => a.turno === 'noche')
+              if (asigsDia.length === 0) return null
+              return (
+                <div key={iso} style={{ marginBottom: 10 }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: '#1e3a8a', marginBottom: 4 }}>
+                    {DIAS_FULL[i]} <span style={{ fontSize: 11, fontWeight: 400, color: '#3b82f6' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
+                  </p>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>☀️ MAÑANA</p>
+                      {manana.length === 0
+                        ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
+                        : manana.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{a.personal?.nombre || '—'}</p>)
+                      }
+                    </div>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', marginBottom: 3 }}>🌙 NOCHE</p>
+                      {noche.length === 0
+                        ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
+                        : noche.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{a.personal?.nombre || '—'}</p>)
+                      }
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Panel: En limpieza */}
         {cardAbierta === 'limpieza' && (
