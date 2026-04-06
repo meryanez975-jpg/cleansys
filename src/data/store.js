@@ -101,18 +101,19 @@ export function getAsignaciones(fecha) {
     .filter(a => a.fecha === fecha)
     .map(a => ({
       ...a,
-      personal: personal.find(p => p.id === a.personal_id) || null,
-      zona:     zonas.find(z => z.id === a.zona_id) || null,
+      personal: personal.find(p => p.id === a.personal_id)
+        || (a.personalNombre ? { id: a.personal_id, nombre: a.personalNombre, sector: a.personalSector || '' } : null),
+      zona: zonas.find(z => z.id === a.zona_id) || null,
     }))
 }
 
-export function addAsignacion(personal_id, zona_id, turno, fecha) {
+export function addAsignacion(personal_id, zona_id, turno, fecha, personalNombre = '', personalSector = '') {
   const all = leer('asignaciones')
   const existe = all.find(a =>
     a.personal_id === personal_id && a.fecha === fecha && a.turno === turno
   )
   if (existe) return { error: 'Esta persona ya está asignada en este turno' }
-  const nueva = { id: genId(), personal_id, zona_id, turno, fecha, creado_en: new Date().toISOString() }
+  const nueva = { id: genId(), personal_id, zona_id, turno, fecha, personalNombre, personalSector, creado_en: new Date().toISOString() }
   escribir('asignaciones', [...all, nueva])
   return { error: null }
 }
@@ -220,8 +221,9 @@ export function getAsignacionesPorFechas(fechas) {
     .filter(a => fechas.includes(a.fecha))
     .map(a => ({
       ...a,
-      personal: personal.find(p => p.id === a.personal_id) || null,
-      zona:     zonas.find(z => z.id === a.zona_id) || null,
+      personal: personal.find(p => p.id === a.personal_id)
+        || (a.personalNombre ? { id: a.personal_id, nombre: a.personalNombre, sector: a.personalSector || '' } : null),
+      zona: zonas.find(z => z.id === a.zona_id) || null,
     }))
 }
 

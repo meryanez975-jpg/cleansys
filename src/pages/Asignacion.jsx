@@ -352,8 +352,9 @@ export default function Asignacion() {
     }
     setGuardando(true)
     let errores = 0
+    const pSelec = personalTurno.find(p => p.id === selPersonal)
     for (const f of fechasParaAsignar) {
-      const { error } = store.addAsignacion(selPersonal, selZona, selTurnoForm, f)
+      const { error } = store.addAsignacion(selPersonal, selZona, selTurnoForm, f, pSelec?.nombre || '', pSelec?.sector || '')
       if (error) errores++
     }
     forceRefetch()
