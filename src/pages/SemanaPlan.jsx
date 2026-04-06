@@ -104,7 +104,7 @@ export default function SemanaPlan() {
               {fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {totalCompletos} completada{totalCompletos !== 1 ? 's' : ''}
+              {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {idsConTarea.length} persona{idsConTarea.length !== 1 ? 's' : ''}
             </p>
           </div>
 
