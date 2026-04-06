@@ -46,7 +46,9 @@ export default function SemanaPlan() {
   })()
 
   const totalAsigs = asigs.length
-  const totalCompletos = regs.filter(r => asigs.some(a => a.id === r.asignacion_id) && r.completado).length
+  const totalCompletos  = regs.filter(r => asigs.some(a => a.id === r.asignacion_id) && r.completado).length
+  const totalEnProceso  = regs.filter(r => asigs.some(a => a.id === r.asignacion_id) && r.hora_entrada && !r.completado).length
+  const totalSinRegistrar = asigs.filter(a => !regs.some(r => r.asignacion_id === a.id && r.hora_entrada)).length
 
   return (
     <div className="page">
@@ -58,6 +60,22 @@ export default function SemanaPlan() {
           <div style={{ flex: 1 }}>
             <p className="header-title">Semana de trabajo</p>
             <p className="header-sub">{formatMes(lunesBase)}</p>
+          </div>
+        </div>
+
+        {/* 3 tarjetas resumen */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{totalCompletos}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>✅ Completados</p>
+          </div>
+          <div style={{ flex: 1, background: '#fef9c3', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#a16207' }}>{totalEnProceso}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#a16207' }}>🟡 En proceso</p>
+          </div>
+          <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{totalSinRegistrar}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>⬜ Sin registrar</p>
           </div>
         </div>
 
