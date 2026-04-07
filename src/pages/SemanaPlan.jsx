@@ -26,7 +26,7 @@ export default function SemanaPlan() {
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
   const [filtroTurno, setFiltroTurno] = useState(null)
-  const [mostrarLimpieza, setMostrarLimpieza] = useState(false)
+  const [vista, setVista] = useState('semana') // 'semana' | 'limpieza' | 'sinTarea'
   const [editandoId, setEditandoId] = useState(null)
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
   const [zonas, setZonas] = useState([])
@@ -95,6 +95,8 @@ export default function SemanaPlan() {
     setTick(t => t + 1)
   }
 
+  const btnBase = { flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }
+
   return (
     <div className="page">
       <div className="container">
@@ -108,98 +110,38 @@ export default function SemanaPlan() {
           </div>
         </div>
 
-        {/* Resumen Semana / En limpieza / Sin tareas */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <div style={{ flex: 1, background: '#dbeafe', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana</p>
-          </div>
-          <button
-            onClick={() => setMostrarLimpieza(v => !v)}
-            style={{
-              flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer',
-              background: mostrarLimpieza ? '#15803d' : '#dcfce7',
-              boxShadow: mostrarLimpieza ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
-              transition: 'all 0.15s',
-            }}
-          >
-            <p style={{ fontSize: 22, fontWeight: 800, color: mostrarLimpieza ? '#fff' : '#15803d' }}>{personalConTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: mostrarLimpieza ? '#fff' : '#15803d' }}>🧹 En limpieza</p>
+        {/* 3 botones de navegación */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <button onClick={() => setVista('semana')} style={{
+            ...btnBase,
+            background: vista === 'semana' ? '#1d4ed8' : '#dbeafe',
+            boxShadow: vista === 'semana' ? '0 3px 10px rgba(29,78,216,0.35)' : 'none',
+          }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>{totalAsigs}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
           </button>
-          <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas</p>
-          </div>
+
+          <button onClick={() => setVista('limpieza')} style={{
+            ...btnBase,
+            background: vista === 'limpieza' ? '#15803d' : '#dcfce7',
+            boxShadow: vista === 'limpieza' ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
+          }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>{personalConTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 En limpieza</p>
+          </button>
+
+          <button onClick={() => setVista('sinTarea')} style={{
+            ...btnBase,
+            background: vista === 'sinTarea' ? '#475569' : '#f1f5f9',
+            boxShadow: vista === 'sinTarea' ? '0 3px 10px rgba(71,85,105,0.35)' : 'none',
+          }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>{sinTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>💤 Sin tareas</p>
+          </button>
         </div>
 
-        {/* Lista desplegable En limpieza */}
-        {mostrarLimpieza && (
-          <div style={{ marginBottom: 16 }}>
-            {personalConTarea.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
-                No hay personal asignado esta semana
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {personalConTarea.map((p, pi) => (
-                  <div key={pi} style={{ background: '#f0fdf4', borderRadius: 12, padding: '10px 12px', border: '1px solid #bbf7d0' }}>
-                    <p style={{ fontWeight: 700, fontSize: 13, color: '#14532d', marginBottom: 6 }}>🧹 {p.nombre}</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {p.asignaciones.map(a => (
-                        <div key={a.id}>
-                          {editandoId === a.id ? (
-                            <div style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', border: '1px solid #86efac' }}>
-                              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                                <select
-                                  value={editForm.turno}
-                                  onChange={e => setEditForm(f => ({ ...f, turno: e.target.value }))}
-                                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db' }}
-                                >
-                                  <option value="mañana">Mañana</option>
-                                  <option value="noche">Noche</option>
-                                </select>
-                                <select
-                                  value={editForm.zona_id}
-                                  onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
-                                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db' }}
-                                >
-                                  <option value="">Sin zona</option>
-                                  {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-                                </select>
-                              </div>
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Guardar</button>
-                                <button onClick={() => setEditandoId(null)} style={{ flex: 1, background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: 6, padding: '5px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ background: '#dcfce7', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
-                                  {DIAS_FULL[fechasISO.indexOf(a.fecha)] || a.fecha}
-                                </span>
-                                <span style={{ fontSize: 11, color: '#15803d', marginLeft: 8 }}>
-                                  {a.zona?.nombre || '—'} · {a.turno}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => abrirEdicion(a)} style={{ background: '#fff', border: '1px solid #86efac', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#15803d', fontWeight: 600 }}>✏️</button>
-                                <button onClick={() => eliminarAsig(a.id)} style={{ background: '#fff', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>✕</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Nav semana + filtros + días — se ocultan cuando está activo En limpieza */}
-        {!mostrarLimpieza && <>
+        {/* ── Vista: Semana ── */}
+        {vista === 'semana' && <>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -222,66 +164,48 @@ export default function SemanaPlan() {
               style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
           </div>
 
-          {/* Botones filtro Mañana / Noche */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button
-              onClick={() => setFiltroTurno(filtroTurno === 'mañana' ? null : 'mañana')}
-              style={{
-                flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
-                background: filtroTurno === 'mañana' ? '#d97706' : '#fef3c7',
-                boxShadow: filtroTurno === 'mañana' ? '0 3px 10px rgba(217,119,6,0.4)' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
+            <button onClick={() => setFiltroTurno(filtroTurno === 'mañana' ? null : 'mañana')} style={{
+              flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
+              background: filtroTurno === 'mañana' ? '#d97706' : '#fef3c7',
+              boxShadow: filtroTurno === 'mañana' ? '0 3px 10px rgba(217,119,6,0.4)' : 'none',
+              transition: 'all 0.15s',
+            }}>
               <p style={{ fontSize: 18, fontWeight: 800, color: filtroTurno === 'mañana' ? '#fff' : '#d97706' }}>{totalManana}</p>
               <p style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#fff' : '#92400e' }}>☀️ Mañana</p>
             </button>
-            <button
-              onClick={() => setFiltroTurno(filtroTurno === 'noche' ? null : 'noche')}
-              style={{
-                flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
-                background: filtroTurno === 'noche' ? '#6d28d9' : '#ede9fe',
-                boxShadow: filtroTurno === 'noche' ? '0 3px 10px rgba(109,40,217,0.4)' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
+            <button onClick={() => setFiltroTurno(filtroTurno === 'noche' ? null : 'noche')} style={{
+              flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
+              background: filtroTurno === 'noche' ? '#6d28d9' : '#ede9fe',
+              boxShadow: filtroTurno === 'noche' ? '0 3px 10px rgba(109,40,217,0.4)' : 'none',
+              transition: 'all 0.15s',
+            }}>
               <p style={{ fontSize: 18, fontWeight: 800, color: filtroTurno === 'noche' ? '#fff' : '#6d28d9' }}>{totalNoche}</p>
               <p style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'noche' ? '#fff' : '#4c1d95' }}>🌙 Noche</p>
             </button>
           </div>
 
-          {/* Días */}
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            Semana
-          </p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semana</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
             {fechasSemana.map((fecha, i) => {
               const iso      = fechasISO[i]
               const esHoy    = iso === hoyISO
               const asigsDia = asigs.filter(a => a.fecha === iso && (!filtroTurno || a.turno === filtroTurno))
-
               return (
                 <div key={iso} className="card" style={{
                   borderLeft: `4px solid ${esHoy ? 'var(--primary)' : 'var(--border)'}`,
-                  padding: '12px 14px',
-                  opacity: asigsDia.length === 0 ? 0.5 : 1,
+                  padding: '12px 14px', opacity: asigsDia.length === 0 ? 0.5 : 1,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: asigsDia.length > 0 ? 10 : 0 }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: esHoy ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_FULL[i]}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
                     {esHoy && <span className="badge badge-blue">Hoy</span>}
-                    {asigsDia.length === 0 && (
-                      <span style={{ fontSize: 11, color: 'var(--text-light)', marginLeft: 'auto' }}>Sin asignaciones</span>
-                    )}
+                    {asigsDia.length === 0 && <span style={{ fontSize: 11, color: 'var(--text-light)', marginLeft: 'auto' }}>Sin asignaciones</span>}
                   </div>
-
                   {asigsDia.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {asigsDia.map(a => (
-                        <div key={a.id} style={{
-                          background: '#f8fafc', borderRadius: 6, padding: '6px 10px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        }}>
+                        <div key={a.id} style={{ background: '#f8fafc', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.zona?.nombre || '—'}</span>
                         </div>
@@ -293,6 +217,73 @@ export default function SemanaPlan() {
             })}
           </div>
         </>}
+
+        {/* ── Vista: En limpieza ── */}
+        {vista === 'limpieza' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {personalConTarea.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No hay personal asignado esta semana</p>
+            ) : personalConTarea.map((p, pi) => (
+              <div key={pi} style={{ background: '#f0fdf4', borderRadius: 12, padding: '10px 12px', border: '1px solid #bbf7d0' }}>
+                <p style={{ fontWeight: 700, fontSize: 13, color: '#14532d', marginBottom: 6 }}>🧹 {p.nombre}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {p.asignaciones.map(a => (
+                    <div key={a.id}>
+                      {editandoId === a.id ? (
+                        <div style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', border: '1px solid #86efac' }}>
+                          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                            <select value={editForm.turno} onChange={e => setEditForm(f => ({ ...f, turno: e.target.value }))}
+                              style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db' }}>
+                              <option value="mañana">Mañana</option>
+                              <option value="noche">Noche</option>
+                            </select>
+                            <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
+                              style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db' }}>
+                              <option value="">Sin zona</option>
+                              {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Guardar</button>
+                            <button onClick={() => setEditandoId(null)} style={{ flex: 1, background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: 6, padding: '5px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ background: '#dcfce7', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
+                              {DIAS_FULL[fechasISO.indexOf(a.fecha)] || a.fecha}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#15803d', marginLeft: 8 }}>
+                              {a.zona?.nombre || '—'} · {a.turno}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => abrirEdicion(a)} style={{ background: '#fff', border: '1px solid #86efac', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#15803d', fontWeight: 600 }}>✏️</button>
+                            <button onClick={() => eliminarAsig(a.id)} style={{ background: '#fff', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>✕</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Vista: Sin tareas ── */}
+        {vista === 'sinTarea' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {sinTarea.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Todo el personal tiene tareas asignadas</p>
+            ) : sinTarea.map((p, i) => (
+              <div key={i} className="card" style={{ padding: '12px 14px' }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#475569' }}>💤 {p.nombre}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>
