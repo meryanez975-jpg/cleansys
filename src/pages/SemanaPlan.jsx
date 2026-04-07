@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import * as store from '../data/store'
 import { supabase } from '../supabase/client'
 
-const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 function getLunesDeHoy() {
   const hoy = new Date()
@@ -23,8 +24,9 @@ export default function SemanaPlan() {
   const navigate = useNavigate()
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
-  const [cardAbierta, setCardAbierta] = useState(null)
-  const [personalMap, setPersonalMap] = useState({}) // id → nombre
+  const [vistaActual, setVistaActual] = useState(null) // null | 'semana' | 'limpieza' | 'sinTarea'
+  const [filtroTurno, setFiltroTurno] = useState('mañana')
+  const [personalMap, setPersonalMap] = useState({})
   const diasRef = useRef(null)
 
   useEffect(() => { setTick(t => t + 1) }, [])
@@ -49,37 +51,200 @@ export default function SemanaPlan() {
     try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] }
   })()
 
-  // resolver nombre: primero del mapa Supabase, luego del nombre guardado, luego del objeto personal
   function getNombre(a) {
     return personalMap[a.personal_id] || a.personalNombre || a.personal?.nombre || '—'
   }
 
   const totalAsigs = asigs.length
 
-  // personas únicas con tarea + conteo
   const personalConTarea = (() => {
     const mapa = {}
     asigs.forEach(a => {
       const id = a.personal_id
       if (!id) return
       const nombre = personalMap[id] || a.personalNombre || a.personal?.nombre || '—'
-      if (!mapa[id]) mapa[id] = { nombre, count: 0 }
-      mapa[id].count++
+      const diaIdx = fechasISO.indexOf(a.fecha)
+      const diaCorto = diaIdx >= 0 ? DIAS_CORTO[diaIdx] : '?'
+      if (!mapa[id]) mapa[id] = { nombre, dias: [] }
+      if (!mapa[id].dias.includes(diaCorto)) mapa[id].dias.push(diaCorto)
     })
-    return Object.values(mapa).sort((a, b) => b.count - a.count)
+    return Object.values(mapa).sort((a, b) => b.dias.length - a.dias.length)
   })()
 
-  // personas sin tarea
   const todoElPersonal = (() => {
     try { return JSON.parse(localStorage.getItem('cleansys_personal') || '[]') } catch { return [] }
   })()
   const idsConTarea = [...new Set(asigs.map(a => a.personal?.id).filter(Boolean))]
   const sinTarea = todoElPersonal.filter(p => !idsConTarea.includes(p.id))
 
-  function toggleCard(nombre) {
-    setCardAbierta(v => v === nombre ? null : nombre)
+  // ── Vista detalle: Semana ─────────────────────────────────────────
+  if (vistaActual === 'semana') {
+    return (
+      <div className="page">
+        <div className="container">
+          <div className="header">
+            <button className="header-back" onClick={() => setVistaActual(null)}>←</button>
+            <div style={{ flex: 1 }}>
+              <p className="header-title">Semana</p>
+              <p className="header-sub">{formatMes(lunesBase)}</p>
+            </div>
+          </div>
+
+          {/* Tarjetitas Mañana / Noche */}
+          {(() => {
+            const totalManana = asigs.filter(a => a.turno === 'mañana').length
+            const totalNoche  = asigs.filter(a => a.turno === 'noche').length
+            return (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                <button
+                  onClick={() => setFiltroTurno('mañana')}
+                  style={{
+                    flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center', cursor: 'pointer',
+                    border: filtroTurno === 'mañana' ? '2px solid #d97706' : '2px solid transparent',
+                    background: filtroTurno === 'mañana' ? '#d97706' : '#fef3c7',
+                    boxShadow: filtroTurno === 'mañana' ? '0 4px 12px rgba(217,119,6,0.35)' : 'var(--shadow)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <p style={{ fontSize: 26, marginBottom: 2 }}>☀️</p>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: filtroTurno === 'mañana' ? '#fff' : '#92400e' }}>{totalManana}</p>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: filtroTurno === 'mañana' ? '#fff' : '#92400e' }}>Mañana</p>
+                </button>
+                <button
+                  onClick={() => setFiltroTurno('noche')}
+                  style={{
+                    flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center', cursor: 'pointer',
+                    border: filtroTurno === 'noche' ? '2px solid #6d28d9' : '2px solid transparent',
+                    background: filtroTurno === 'noche' ? '#6d28d9' : '#ede9fe',
+                    boxShadow: filtroTurno === 'noche' ? '0 4px 12px rgba(109,40,217,0.35)' : 'var(--shadow)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <p style={{ fontSize: 26, marginBottom: 2 }}>🌙</p>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: filtroTurno === 'noche' ? '#fff' : '#4c1d95' }}>{totalNoche}</p>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: filtroTurno === 'noche' ? '#fff' : '#4c1d95' }}>Noche</p>
+                </button>
+              </div>
+            )
+          })()}
+
+          {/* Lista de días con el turno seleccionado */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {fechasSemana.map((fecha, i) => {
+              const iso      = fechasISO[i]
+              const asigsDia = asigs.filter(a => a.fecha === iso && a.turno === filtroTurno)
+              if (asigsDia.length === 0) return null
+              return (
+                <div key={iso} className="card" style={{ padding: '12px 14px' }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: filtroTurno === 'mañana' ? '#92400e' : '#4c1d95', marginBottom: 8 }}>
+                    {DIAS_FULL[i]}
+                    <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
+                      {fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {asigsDia.map(a => (
+                      <div key={a.id} style={{
+                        background: filtroTurno === 'mañana' ? '#fef9c3' : '#ede9fe',
+                        borderRadius: 8, padding: '8px 10px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{getNombre(a)}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600,
+                          color: filtroTurno === 'mañana' ? '#d97706' : '#6d28d9',
+                          background: 'rgba(255,255,255,0.7)', borderRadius: 6, padding: '2px 8px',
+                        }}>
+                          {a.zona?.nombre || '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            {fechasSemana.every((_, i) => asigs.filter(a => a.fecha === fechasISO[i] && a.turno === filtroTurno).length === 0) && (
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 20 }}>
+                Sin asignaciones de {filtroTurno} esta semana
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
+  // ── Vista detalle: En limpieza ────────────────────────────────────
+  if (vistaActual === 'limpieza') {
+    return (
+      <div className="page">
+        <div className="container">
+          <div className="header">
+            <button className="header-back" onClick={() => setVistaActual(null)}>←</button>
+            <div style={{ flex: 1 }}>
+              <p className="header-title">En limpieza</p>
+              <p className="header-sub">{formatMes(lunesBase)}</p>
+            </div>
+          </div>
+
+          {personalConTarea.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 30 }}>
+              No hay personal asignado esta semana
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {personalConTarea.map((p, i) => (
+                <div key={i} className="card" style={{
+                  padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#14532d' }}>🧹 {p.nombre}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: '#15803d',
+                    background: '#dcfce7', borderRadius: 8, padding: '3px 8px', letterSpacing: '0.03em',
+                  }}>
+                    {p.dias.join(' · ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Vista detalle: Sin tareas ─────────────────────────────────────
+  if (vistaActual === 'sinTarea') {
+    return (
+      <div className="page">
+        <div className="container">
+          <div className="header">
+            <button className="header-back" onClick={() => setVistaActual(null)}>←</button>
+            <div style={{ flex: 1 }}>
+              <p className="header-title">Sin tareas</p>
+              <p className="header-sub">{formatMes(lunesBase)}</p>
+            </div>
+          </div>
+
+          {sinTarea.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 30 }}>
+              Todo el personal tiene tareas asignadas
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sinTarea.map((p, i) => (
+                <div key={i} className="card" style={{ padding: '12px 14px' }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#475569' }}>💤 {p.nombre}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Vista principal ───────────────────────────────────────────────
   return (
     <div className="page">
       <div className="container">
@@ -93,94 +258,30 @@ export default function SemanaPlan() {
           </div>
         </div>
 
-        {/* 3 tarjetas resumen */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          {/* Semana */}
-          <button onClick={() => toggleCard('semana')} style={{ flex: 1, background: cardAbierta === 'semana' ? '#bfdbfe' : '#dbeafe', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: cardAbierta === 'semana' ? '2px solid #1d4ed8' : '2px solid transparent', cursor: 'pointer' }}>
+        {/* 3 tarjetas resumen — ahora navegan a vista propia */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <button
+            onClick={() => setVistaActual('semana')}
+            style={{ flex: 1, background: '#dbeafe', borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: '2px solid transparent', cursor: 'pointer' }}
+          >
             <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana {cardAbierta === 'semana' ? '▲' : '▼'}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana</p>
           </button>
-          {/* En limpieza */}
-          <button onClick={() => toggleCard('limpieza')} style={{ flex: 1, background: cardAbierta === 'limpieza' ? '#bbf7d0' : '#dcfce7', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: cardAbierta === 'limpieza' ? '2px solid #15803d' : '2px solid transparent', cursor: 'pointer' }}>
+          <button
+            onClick={() => setVistaActual('limpieza')}
+            style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: '2px solid transparent', cursor: 'pointer' }}
+          >
             <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{personalConTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>🧹 En limpieza {cardAbierta === 'limpieza' ? '▲' : '▼'}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>🧹 En limpieza</p>
           </button>
-          {/* Sin tareas */}
-          <button onClick={() => toggleCard('sinTarea')} style={{ flex: 1, background: cardAbierta === 'sinTarea' ? '#e2e8f0' : '#f1f5f9', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: cardAbierta === 'sinTarea' ? '2px solid #64748b' : '2px solid transparent', cursor: 'pointer' }}>
+          <button
+            onClick={() => setVistaActual('sinTarea')}
+            style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: '2px solid transparent', cursor: 'pointer' }}
+          >
             <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas {cardAbierta === 'sinTarea' ? '▲' : '▼'}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas</p>
           </button>
         </div>
-
-        {/* Panel: Semana */}
-        {cardAbierta === 'semana' && (
-          <div style={{ background: '#dbeafe', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
-            {fechasSemana.map((fecha, i) => {
-              const iso      = fechasISO[i]
-              const asigsDia = asigs.filter(a => a.fecha === iso)
-              const manana   = asigsDia.filter(a => a.turno === 'mañana')
-              const noche    = asigsDia.filter(a => a.turno === 'noche')
-              if (asigsDia.length === 0) return null
-              return (
-                <div key={iso} style={{ marginBottom: 10 }}>
-                  <p style={{ fontWeight: 700, fontSize: 13, color: '#1e3a8a', marginBottom: 4 }}>
-                    {DIAS_FULL[i]} <span style={{ fontSize: 11, fontWeight: 400, color: '#3b82f6' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
-                  </p>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>MAÑANA</p>
-                      {manana.length === 0
-                        ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
-                        : manana.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>)
-                      }
-                    </div>
-                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 10px' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', marginBottom: 3 }}>NOCHE</p>
-                      {noche.length === 0
-                        ? <p style={{ fontSize: 12, color: '#94a3b8' }}>—</p>
-                        : noche.map(a => <p key={a.id} style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>)
-                      }
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Panel: En limpieza */}
-        {cardAbierta === 'limpieza' && (
-          <div style={{ background: '#dcfce7', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
-            {personalConTarea.length === 0 ? (
-              <p style={{ fontSize: 13, color: '#15803d' }}>No hay personal asignado esta semana</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {personalConTarea.map((p, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '7px 10px' }}>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: '#14532d' }}>🧹 {p.nombre}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Panel: Sin tareas */}
-        {cardAbierta === 'sinTarea' && (
-          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
-            {sinTarea.length === 0 ? (
-              <p style={{ fontSize: 13, color: '#64748b' }}>Todo el personal tiene tareas asignadas</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {sinTarea.map((p, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '7px 10px' }}>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: '#475569' }}>💤 {p.nombre}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Nav semana */}
         <div style={{
@@ -211,9 +312,8 @@ export default function SemanaPlan() {
             const iso      = fechasISO[i]
             const esHoy    = iso === hoyISO
             const asigsDia = asigs.filter(a => a.fecha === iso)
-            const completados  = asigsDia.filter(a => regs.some(r => r.asignacion_id === a.id && r.completado))
-            const enProceso    = asigsDia.filter(a => regs.some(r => r.asignacion_id === a.id && r.hora_entrada && !r.completado))
-            const sinRegistrar = asigsDia.filter(a => !regs.some(r => r.asignacion_id === a.id && r.hora_entrada))
+            const turnoDelDia = filtroTurno
+            const asigsTurno  = asigsDia.filter(a => a.turno === turnoDelDia)
 
             return (
               <div key={iso} className="card" style={{
@@ -221,7 +321,8 @@ export default function SemanaPlan() {
                 padding: '14px 16px',
                 opacity: asigsDia.length === 0 ? 0.55 : 1,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: asigsDia.length > 0 ? 12 : 0 }}>
+                {/* Fecha */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 700, fontSize: 15, color: esHoy ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_FULL[i]}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
@@ -232,39 +333,59 @@ export default function SemanaPlan() {
                   )}
                 </div>
 
+                {/* Botones Mañana / Noche */}
+                {asigsDia.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    <button
+                      onClick={() => setFiltroTurno('mañana')}
+                      style={{
+                        flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        fontWeight: 700, fontSize: 12,
+                        background: turnoDelDia === 'mañana' ? '#d97706' : '#fef3c7',
+                        color: turnoDelDia === 'mañana' ? '#fff' : '#92400e',
+                        transition: 'all 0.15s',
+                      }}
+                    >☀️ Mañana</button>
+                    <button
+                      onClick={() => setFiltroTurno('noche')}
+                      style={{
+                        flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        fontWeight: 700, fontSize: 12,
+                        background: turnoDelDia === 'noche' ? '#6d28d9' : '#ede9fe',
+                        color: turnoDelDia === 'noche' ? '#fff' : '#4c1d95',
+                        transition: 'all 0.15s',
+                      }}
+                    >🌙 Noche</button>
+                  </div>
+                )}
+
+                {/* Contenido */}
                 {asigsDia.length === 0 ? (
                   <p style={{ fontSize: 12, color: 'var(--text-light)' }}>Sin asignaciones</p>
+                ) : asigsTurno.length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '6px 0' }}>
+                    Sin asignaciones de {turnoDelDia}
+                  </p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {completados.length > 0 && <MiniTarjeta titulo="✅ Completados" items={completados} bg="#dcfce7" color="#15803d" />}
-                    {enProceso.length > 0 && <MiniTarjeta titulo="🟡 En proceso" items={enProceso} bg="#fef9c3" color="#a16207" />}
-                    {sinRegistrar.length > 0 && <MiniTarjeta titulo="⬜ Sin registrar" items={sinRegistrar} bg="#f1f5f9" color="#64748b" />}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {asigsTurno.map(a => (
+                      <div key={a.id} style={{
+                        background: turnoDelDia === 'mañana' ? '#fef9c3' : '#ede9fe',
+                        borderRadius: 8, padding: '8px 10px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{getNombre(a)}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: turnoDelDia === 'mañana' ? '#d97706' : '#6d28d9', background: 'rgba(255,255,255,0.6)', borderRadius: 6, padding: '2px 8px' }}>
+                          {a.zona?.nombre || '—'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             )
           })}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function MiniTarjeta({ titulo, items, bg, color }) {
-  return (
-    <div style={{ background: bg, borderRadius: 10, padding: '8px 12px' }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{titulo}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {items.map(a => (
-          <div key={a.id} style={{ display: 'flex', gap: 6, fontSize: 13, color: '#1e293b', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600 }}>{a.personal?.nombre || a.personalNombre || '—'}</span>
-            <span style={{ color: '#94a3b8' }}>→</span>
-            <span>{a.zona?.nombre || '—'}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color, background: 'rgba(255,255,255,0.6)', borderRadius: 6, padding: '1px 6px' }}>
-              {a.turno === 'mañana' ? 'M' : 'N'}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   )
