@@ -85,31 +85,8 @@ export default function SemanaPlan() {
           </div>
         </div>
 
-        {/* Nav semana */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 12,
-          boxShadow: 'var(--shadow)',
-        }}>
-          <button onClick={() => setLunesBase(d => addDays(d, -7))}
-            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-              {fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-              {' — '}
-              {fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {personalConTarea.length} persona{personalConTarea.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <button onClick={() => setLunesBase(d => addDays(d, 7))}
-            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
-        </div>
-
         {/* Resumen Mañana / Noche */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <div style={{
             flex: 1, background: '#fef3c7', borderRadius: 12,
             padding: '12px 10px', textAlign: 'center',
@@ -131,6 +108,29 @@ export default function SemanaPlan() {
             <p style={{ fontSize: 20, fontWeight: 800, color: '#6d28d9' }}>{totalNoche}</p>
             <p style={{ fontSize: 11, fontWeight: 700, color: '#4c1d95' }}>Noche</p>
           </div>
+        </div>
+
+        {/* Nav semana */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 20,
+          boxShadow: 'var(--shadow)',
+        }}>
+          <button onClick={() => setLunesBase(d => addDays(d, -7))}
+            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+              {fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+              {' — '}
+              {fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {personalConTarea.length} persona{personalConTarea.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button onClick={() => setLunesBase(d => addDays(d, 7))}
+            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
         </div>
 
         {/* ── Días con columnas Mañana / Noche ── */}
