@@ -118,6 +118,11 @@ export function addAsignacion(personal_id, zona_id, turno, fecha, personalNombre
   return { error: null }
 }
 
+export function editAsignacion(id, datos) {
+  const all = leer('asignaciones')
+  escribir('asignaciones', all.map(a => a.id === id ? { ...a, ...datos } : a))
+}
+
 export function removeAsignacion(id) {
   escribir('asignaciones', leer('asignaciones').filter(a => a.id !== id))
   // borrar registro asociado

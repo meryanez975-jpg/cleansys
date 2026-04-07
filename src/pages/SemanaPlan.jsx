@@ -25,8 +25,11 @@ export default function SemanaPlan() {
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
-  const [filtroTurno, setFiltroTurno] = useState(null) // null | 'mañana' | 'noche'
-  const [vistaLimpieza, setVistaLimpieza] = useState(false)
+  const [filtroTurno, setFiltroTurno] = useState(null)
+  const [mostrarLimpieza, setMostrarLimpieza] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
+  const [zonas, setZonas] = useState([])
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -39,6 +42,7 @@ export default function SemanaPlan() {
           setPersonalMap(map)
         }
       })
+    setZonas(store.getZonas())
   }, [])
 
   const fechasSemana = Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
@@ -50,9 +54,9 @@ export default function SemanaPlan() {
     return personalMap[a.personal_id] || a.personalNombre || a.personal?.nombre || '—'
   }
 
-  const totalAsigs   = asigs.length
-  const totalManana  = asigs.filter(a => a.turno === 'mañana').length
-  const totalNoche   = asigs.filter(a => a.turno === 'noche').length
+  const totalAsigs  = asigs.length
+  const totalManana = asigs.filter(a => a.turno === 'mañana').length
+  const totalNoche  = asigs.filter(a => a.turno === 'noche').length
 
   const personalConTarea = (() => {
     const mapa = {}
@@ -62,8 +66,9 @@ export default function SemanaPlan() {
       const nombre = personalMap[id] || a.personalNombre || a.personal?.nombre || '—'
       const diaIdx = fechasISO.indexOf(a.fecha)
       const diaCorto = diaIdx >= 0 ? DIAS_CORTO[diaIdx] : '?'
-      if (!mapa[id]) mapa[id] = { nombre, dias: [] }
+      if (!mapa[id]) mapa[id] = { nombre, dias: [], asignaciones: [] }
       if (!mapa[id].dias.includes(diaCorto)) mapa[id].dias.push(diaCorto)
+      mapa[id].asignaciones.push(a)
     })
     return Object.values(mapa).sort((a, b) => b.dias.length - a.dias.length)
   })()
@@ -74,43 +79,20 @@ export default function SemanaPlan() {
   const idsConTarea = [...new Set(asigs.map(a => a.personal?.id).filter(Boolean))]
   const sinTarea = todoElPersonal.filter(p => !idsConTarea.includes(p.id))
 
-  // ── Vista En limpieza ────────────────────────────────────────────
-  if (vistaLimpieza) {
-    return (
-      <div className="page">
-        <div className="container">
-          <div className="header">
-            <button className="header-back" onClick={() => setVistaLimpieza(false)}>←</button>
-            <div style={{ flex: 1 }}>
-              <p className="header-title">En limpieza</p>
-              <p className="header-sub">{formatMes(lunesBase)}</p>
-            </div>
-          </div>
+  function abrirEdicion(a) {
+    setEditandoId(a.id)
+    setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '' })
+  }
 
-          {personalConTarea.length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 30 }}>
-              No hay personal asignado esta semana
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {personalConTarea.map((p, i) => (
-                <div key={i} className="card" style={{
-                  padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: '#14532d' }}>🧹 {p.nombre}</span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, color: '#15803d',
-                    background: '#dcfce7', borderRadius: 8, padding: '3px 8px',
-                  }}>
-                    {p.dias.join(' · ')}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )
+  function guardarEdicion(id) {
+    store.editAsignacion(id, { zona_id: editForm.zona_id, turno: editForm.turno })
+    setEditandoId(null)
+    setTick(t => t + 1)
+  }
+
+  function eliminarAsig(id) {
+    store.removeAsignacion(id)
+    setTick(t => t + 1)
   }
 
   return (
@@ -132,9 +114,17 @@ export default function SemanaPlan() {
             <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana</p>
           </div>
-          <button onClick={() => setVistaLimpieza(true)} style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer' }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{personalConTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>🧹 En limpieza</p>
+          <button
+            onClick={() => setMostrarLimpieza(v => !v)}
+            style={{
+              flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer',
+              background: mostrarLimpieza ? '#15803d' : '#dcfce7',
+              boxShadow: mostrarLimpieza ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            <p style={{ fontSize: 22, fontWeight: 800, color: mostrarLimpieza ? '#fff' : '#15803d' }}>{personalConTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: mostrarLimpieza ? '#fff' : '#15803d' }}>🧹 En limpieza</p>
           </button>
           <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
             <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
@@ -142,11 +132,77 @@ export default function SemanaPlan() {
           </div>
         </div>
 
+        {/* Lista desplegable En limpieza */}
+        {mostrarLimpieza && (
+          <div style={{ marginBottom: 16 }}>
+            {personalConTarea.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+                No hay personal asignado esta semana
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {personalConTarea.map((p, pi) => (
+                  <div key={pi} style={{ background: '#f0fdf4', borderRadius: 12, padding: '10px 12px', border: '1px solid #bbf7d0' }}>
+                    <p style={{ fontWeight: 700, fontSize: 13, color: '#14532d', marginBottom: 6 }}>🧹 {p.nombre}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {p.asignaciones.map(a => (
+                        <div key={a.id}>
+                          {editandoId === a.id ? (
+                            <div style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', border: '1px solid #86efac' }}>
+                              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                                <select
+                                  value={editForm.turno}
+                                  onChange={e => setEditForm(f => ({ ...f, turno: e.target.value }))}
+                                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db' }}
+                                >
+                                  <option value="mañana">Mañana</option>
+                                  <option value="noche">Noche</option>
+                                </select>
+                                <select
+                                  value={editForm.zona_id}
+                                  onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
+                                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db' }}
+                                >
+                                  <option value="">Sin zona</option>
+                                  {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                                </select>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Guardar</button>
+                                <button onClick={() => setEditandoId(null)} style={{ flex: 1, background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: 6, padding: '5px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ background: '#dcfce7', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
+                                  {DIAS_FULL[fechasISO.indexOf(a.fecha)] || a.fecha}
+                                </span>
+                                <span style={{ fontSize: 11, color: '#15803d', marginLeft: 8 }}>
+                                  {a.zona?.nombre || '—'} · {a.turno}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => abrirEdicion(a)} style={{ background: '#fff', border: '1px solid #86efac', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#15803d', fontWeight: 600 }}>✏️</button>
+                                <button onClick={() => eliminarAsig(a.id)} style={{ background: '#fff', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>✕</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Nav semana */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 20,
+          borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 12,
           boxShadow: 'var(--shadow)',
         }}>
           <button onClick={() => setLunesBase(d => addDays(d, -7))}
@@ -193,7 +249,7 @@ export default function SemanaPlan() {
           </button>
         </div>
 
-        {/* ── Días con columnas Mañana / Noche ── */}
+        {/* Días */}
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Semana
         </p>
@@ -235,7 +291,6 @@ export default function SemanaPlan() {
             )
           })}
         </div>
-
 
       </div>
     </div>
