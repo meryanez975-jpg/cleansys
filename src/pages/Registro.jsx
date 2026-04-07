@@ -60,8 +60,17 @@ export default function Registro() {
 
   const [empleadoId, setEmpleadoId]   = useState(null)
   const [busqueda, setBusqueda]       = useState('')
-  const [confirmando, setConfirmando] = useState(null)  // id de asignación o null
+  const [confirmando, setConfirmando] = useState(null)
   const [notas, setNotas]             = useState('')
+  const [imagen, setImagen]           = useState(null) // base64
+
+  function handleImagen(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setImagen(ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   const empleadoSeleccionado = personal.find(p => p.id === empleadoId)
 
@@ -222,6 +231,9 @@ export default function Registro() {
                         {reg.notas && (
                           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>📝 {reg.notas}</p>
                         )}
+                        {reg.imagen && (
+                          <img src={reg.imagen} alt="foto limpieza" style={{ width: '100%', borderRadius: 8, marginTop: 8, maxHeight: 180, objectFit: 'cover' }} />
+                        )}
                       </div>
 
                     ) : tieneEntrada ? (
@@ -247,15 +259,41 @@ export default function Registro() {
                               value={notas}
                               onChange={e => setNotas(e.target.value)}
                             />
+
+                            {/* Subir foto */}
+                            <label style={{
+                              display: 'flex', alignItems: 'center', gap: 10,
+                              padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+                              border: `2px dashed ${imagen ? '#15803d' : 'var(--border)'}`,
+                              background: imagen ? '#f0fdf4' : 'var(--bg)',
+                              transition: 'all 0.15s',
+                            }}>
+                              <span style={{ fontSize: 22 }}>{imagen ? '✅' : '📷'}</span>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: imagen ? '#15803d' : 'var(--text-muted)' }}>
+                                {imagen ? 'Foto adjuntada' : 'Adjuntar foto (opcional)'}
+                              </span>
+                              <input type="file" accept="image/*" capture="environment" onChange={handleImagen} style={{ display: 'none' }} />
+                            </label>
+
+                            {imagen && (
+                              <div style={{ position: 'relative' }}>
+                                <img src={imagen} alt="preview" style={{ width: '100%', borderRadius: 10, maxHeight: 200, objectFit: 'cover' }} />
+                                <button
+                                  onClick={() => setImagen(null)}
+                                  style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
+                                >✕</button>
+                              </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
                                 className="btn btn-success"
                                 style={{ flex: 1 }}
-                                onClick={() => { marcarSalida(a.id, notas); setConfirmando(null); setNotas('') }}
+                                onClick={() => { marcarSalida(a.id, notas, imagen); setConfirmando(null); setNotas(''); setImagen(null) }}
                               >
                                 ✓ Confirmar salida
                               </button>
-                              <button className="btn btn-ghost" onClick={() => { setConfirmando(null); setNotas('') }}>
+                              <button className="btn btn-ghost" onClick={() => { setConfirmando(null); setNotas(''); setImagen(null) }}>
                                 Cancelar
                               </button>
                             </div>

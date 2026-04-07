@@ -165,11 +165,11 @@ export function marcarEntrada(asignacion_id) {
   escribir('registros', [...all, nuevo])
 }
 
-export function marcarSalida(asignacion_id, notas = '') {
+export function marcarSalida(asignacion_id, notas = '', imagen = null) {
   const all = leer('registros')
   escribir('registros', all.map(r =>
     r.asignacion_id === asignacion_id
-      ? { ...r, hora_salida: new Date().toISOString(), completado: true, notas }
+      ? { ...r, hora_salida: new Date().toISOString(), completado: true, notas, imagen }
       : r
   ))
 }
