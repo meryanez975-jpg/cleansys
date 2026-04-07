@@ -551,16 +551,51 @@ export default function Asignacion() {
         {/* Formulario nueva asignación */}
         {showForm && (
           <div className="card" style={{ marginBottom: 16 }}>
-            <p style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Nueva asignación</p>
-            <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 16 }}>
-              📅 {textoRango}
-            </p>
+            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, color: 'var(--text)' }}>Nueva asignación</p>
+            <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 16 }}>📅 {textoRango}</p>
 
-            {/* Día de la semana */}
+            {/* 1. Personal — lo más importante */}
             <div className="input-group">
-              <label className="input-label">Día de la semana</label>
+              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-dark)' }}>👤 Persona</label>
+              {loadingPersonal ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Cargando personal...</p>
+              ) : personalTurno.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--warning)', padding: '8px 0' }}>⚠️ No hay personal con ese turno</p>
+              ) : (
+                <SelectColor
+                  placeholder="Seleccionar persona"
+                  valor={selPersonal}
+                  onChange={v => { setSelPersonal(v); setSelDiaSemana(null); setErrForm('') }}
+                  opciones={personalTurno.map((p, i) => ({
+                    value: p.id,
+                    label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
+                    ...PALETA[i % PALETA.length],
+                  }))}
+                />
+              )}
+
+              {/* Aviso de días ocupados para la persona seleccionada */}
+              {selPersonal && diasBloqueados.size > 0 && (
+                <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>
+                    ⚠️ Esta persona ya tiene asignación en:
+                  </p>
+                  <p style={{ fontSize: 12, color: '#ef4444' }}>
+                    {[...diasBloqueados]
+                      .filter(f => fechasRango.includes(f))
+                      .map(f => new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }))
+                      .join(', ')}
+                  </p>
+                  <p style={{ fontSize: 11, color: '#b91c1c', marginTop: 4 }}>Elegí un día diferente abajo 👇</p>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Día disponible */}
+            <div className="input-group">
+              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-dark)' }}>📆 Día que limpiará</label>
               <SelectColor
-                placeholder="Opción de la semana"
+                placeholder={selPersonal ? 'Elegir día disponible' : 'Primero seleccioná la persona'}
                 valor={selDiaSemana === null ? '' : String(selDiaSemana)}
                 onChange={v => { setSelDiaSemana(v === '' ? null : Number(v)); setErrForm('') }}
                 opciones={[
@@ -569,7 +604,6 @@ export default function Asignacion() {
                     .filter(({ jsDay }) => {
                       const fechasDelDia = fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay)
                       if (fechasDelDia.length === 0) return false
-                      // Solo mostrar días donde la persona tiene al menos una fecha libre
                       return fechasDelDia.some(f => !diasBloqueados.has(f))
                     })
                     .map(({ label, jsDay }) => ({
@@ -581,44 +615,9 @@ export default function Asignacion() {
               />
             </div>
 
-            {/* Personal */}
+            {/* 3. Zona */}
             <div className="input-group">
-              <label className="input-label">Personal</label>
-              {loadingPersonal ? (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Cargando personal...</p>
-              ) : personalTurno.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--warning)', padding: '8px 0' }}>
-                  ⚠️ No hay personal con ese turno en el sistema
-                </p>
-              ) : (
-                <>
-                  <SelectColor
-                    placeholder="Seleccionar personal"
-                    valor={selPersonal}
-                    onChange={v => { setSelPersonal(v); setErrForm('') }}
-                    opciones={personalTurno
-                      .filter(p => !yaAsignadosIds.includes(p.id))
-                      .map((p, i) => ({
-                        value: p.id,
-                        label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
-                        ...PALETA[i % PALETA.length],
-                      }))}
-                  />
-                  {yaAsignadosIds.length > 0 && inicio !== null && (
-                    <div style={{ marginTop: 8, padding: '8px 10px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 4 }}>Ya asignados en este rango:</p>
-                      {personalTurno.filter(p => yaAsignadosIds.includes(p.id)).map(p => (
-                        <p key={p.id} style={{ fontSize: 12, color: '#ef4444', marginBottom: 2 }}>✕ {p.nombre}</p>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Zona */}
-            <div className="input-group">
-              <label className="input-label">Zona de limpieza</label>
+              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-dark)' }}>🏢 Zona de limpieza</label>
               <SelectColor
                 placeholder="Seleccionar zona"
                 valor={selZona}
