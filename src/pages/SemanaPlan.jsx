@@ -258,39 +258,23 @@ export default function SemanaPlan() {
                               >🌙 Noche</button>
                             </div>
                           </div>
-                          {/* Zona: botones de colores */}
+                          {/* Zona: select desplegable */}
                           <div style={{ marginBottom: 10 }}>
                             <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                              {[{ id: '', nombre: 'Sin zona', bg: '#f1f5f9', bgAct: '#475569', txt: '#475569' },
-                                ...zonas.map((z, idx) => {
-                                  const paleta = [
-                                    { bg: '#fce7f3', bgAct: '#db2777', txt: '#9d174d' },
-                                    { bg: '#dcfce7', bgAct: '#16a34a', txt: '#14532d' },
-                                    { bg: '#fef9c3', bgAct: '#ca8a04', txt: '#854d0e' },
-                                    { bg: '#dbeafe', bgAct: '#2563eb', txt: '#1e40af' },
-                                    { bg: '#ffedd5', bgAct: '#ea580c', txt: '#9a3412' },
-                                    { bg: '#f0fdf4', bgAct: '#15803d', txt: '#14532d' },
-                                  ]
-                                  const c = paleta[idx % paleta.length]
-                                  return { ...z, ...c }
-                                })
-                              ].map(z => {
-                                const activo = editForm.zona_id === z.id
-                                return (
-                                  <button key={z.id} onClick={() => setEditForm(f => ({ ...f, zona_id: z.id }))}
-                                    style={{
-                                      padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                                      fontWeight: 700, fontSize: 12,
-                                      background: activo ? z.bgAct : z.bg,
-                                      color: activo ? '#fff' : z.txt,
-                                      boxShadow: activo ? `0 3px 8px ${z.bgAct}66` : 'none',
-                                      transition: 'all 0.15s',
-                                    }}
-                                  >{z.nombre}</button>
-                                )
-                              })}
-                            </div>
+                            <select
+                              value={editForm.zona_id}
+                              onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
+                              style={{
+                                width: '100%', fontSize: 13, padding: '9px 12px',
+                                borderRadius: 10, border: '2px solid #a78bfa',
+                                background: 'linear-gradient(135deg, #ede9fe, #fdf4ff)',
+                                color: '#5b21b6', fontWeight: 700, cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(167,139,250,0.25)',
+                              }}
+                            >
+                              <option value="">— Sin zona —</option>
+                              {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                            </select>
                           </div>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Guardar</button>
