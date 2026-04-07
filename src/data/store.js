@@ -98,7 +98,7 @@ export function getAsignaciones(fecha) {
   const personal = leer('personal')
   const zonas    = leer('zonas')
   return leer('asignaciones')
-    .filter(a => a.fecha === fecha)
+    .filter(a => a.fecha === fecha && a.activo !== false)
     .map(a => ({
       ...a,
       personal: personal.find(p => p.id === a.personal_id)
@@ -124,9 +124,10 @@ export function editAsignacion(id, datos) {
 }
 
 export function removeAsignacion(id) {
-  escribir('asignaciones', leer('asignaciones').filter(a => a.id !== id))
-  // borrar registro asociado
-  escribir('registros', leer('registros').filter(r => r.asignacion_id !== id))
+  // Soft-delete: marca como inactivo para conservar historial
+  escribir('asignaciones', leer('asignaciones').map(a =>
+    a.id === id ? { ...a, activo: false } : a
+  ))
 }
 
 // ── REGISTROS ─────────────────────────────────────
@@ -223,7 +224,7 @@ export function getAsignacionesPorFechas(fechas) {
   const personal = leer('personal')
   const zonas    = leer('zonas')
   return leer('asignaciones')
-    .filter(a => fechas.includes(a.fecha))
+    .filter(a => fechas.includes(a.fecha) && a.activo !== false)
     .map(a => ({
       ...a,
       personal: personal.find(p => p.id === a.personal_id)
