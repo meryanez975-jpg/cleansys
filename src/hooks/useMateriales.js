@@ -6,8 +6,8 @@ export function useMateriales() {
 
   const refetch = useCallback(() => setMateriales(store.getMateriales()), [])
 
-  function agregar(nombre, cantidad, unidad, fechaCompra, fechaReposicion) {
-    store.addMaterial(nombre, cantidad, unidad, fechaCompra, fechaReposicion)
+  function agregar(nombre, sector, cantidad, unidad, fechaCompra, fechaReposicion, foto) {
+    store.addMaterial(nombre, sector, cantidad, unidad, fechaCompra, fechaReposicion, foto)
     refetch()
   }
 
