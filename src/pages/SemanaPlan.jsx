@@ -73,11 +73,11 @@ export default function SemanaPlan() {
     return Object.values(mapa).sort((a, b) => b.dias.length - a.dias.length)
   })()
 
-  const todoElPersonal = (() => {
-    try { return JSON.parse(localStorage.getItem('cleansys_personal') || '[]') } catch { return [] }
-  })()
-  const idsConTarea = [...new Set(asigs.map(a => a.personal?.id).filter(Boolean))]
-  const sinTarea = todoElPersonal.filter(p => !idsConTarea.includes(p.id))
+  const idsConTarea = [...new Set(asigs.map(a => a.personal_id).filter(Boolean))]
+  const sinTarea = Object.entries(personalMap)
+    .filter(([id]) => !idsConTarea.includes(id))
+    .map(([id, nombre]) => ({ id, nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
 
   function abrirEdicion(a) {
     setEditandoId(a.id)
