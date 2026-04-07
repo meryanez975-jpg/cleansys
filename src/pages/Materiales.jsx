@@ -29,33 +29,43 @@ export default function Materiales() {
   const [showForm, setShowForm]         = useState(false)
   const [editando, setEditando]         = useState(null)
   const [nombre, setNombre]             = useState('')
+  const [sector, setSector]             = useState('')
   const [cantidad, setCantidad]         = useState('')
   const [unidad, setUnidad]             = useState('unidad')
   const [fechaCompra, setFechaCompra]   = useState(hoy())
   const [fechaRepos, setFechaRepos]     = useState('')
+  const [foto, setFoto]                 = useState(null) // base64
   const [error, setError]               = useState('')
 
   function abrirNuevo() {
     setEditando(null)
-    setNombre(''); setCantidad(''); setUnidad('unidad')
-    setFechaCompra(hoy()); setFechaRepos(''); setError('')
+    setNombre(''); setSector(''); setCantidad(''); setUnidad('unidad')
+    setFechaCompra(hoy()); setFechaRepos(''); setFoto(null); setError('')
     setShowForm(true)
   }
 
   function abrirEditar(m) {
     setEditando(m)
-    setNombre(m.nombre); setCantidad(String(m.cantidad)); setUnidad(m.unidad || 'unidad')
+    setNombre(m.nombre); setSector(m.sector || ''); setCantidad(String(m.cantidad)); setUnidad(m.unidad || 'unidad')
     setFechaCompra(m.fechaCompra || hoy()); setFechaRepos(m.fechaReposicion || '')
-    setError(''); setShowForm(true)
+    setFoto(m.foto || null); setError(''); setShowForm(true)
+  }
+
+  function handleFoto(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setFoto(ev.target.result)
+    reader.readAsDataURL(file)
   }
 
   function handleGuardarForm() {
     if (!nombre.trim()) { setError('Ingresá el nombre del material'); return }
     if (!cantidad) { setError('Ingresá la cantidad'); return }
     if (editando) {
-      editar(editando.id, { nombre: nombre.trim(), cantidad, unidad, fechaCompra, fechaReposicion: fechaRepos })
+      editar(editando.id, { nombre: nombre.trim(), sector: sector.trim(), cantidad, unidad, fechaCompra, fechaReposicion: fechaRepos, foto })
     } else {
-      agregar(nombre, cantidad, unidad, fechaCompra, fechaRepos)
+      agregar(nombre, sector, cantidad, unidad, fechaCompra, fechaRepos, foto)
     }
     setHayCambios(true)
     setGuardadoOk(false)
@@ -140,6 +150,11 @@ export default function Materiales() {
                         <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
                           {m.nombre}
                         </span>
+                        {m.sector && (
+                          <span style={{ fontSize: 11, fontWeight: 700, background: '#ede9fe', color: '#6d28d9', borderRadius: 999, padding: '2px 10px' }}>
+                            {m.sector}
+                          </span>
+                        )}
                         {estado && (
                           <span style={{
                             background: estado.bg,
@@ -171,6 +186,10 @@ export default function Materiales() {
                           </span>
                         )}
                       </div>
+
+                      {m.foto && (
+                        <img src={m.foto} alt="foto material" style={{ marginTop: 10, width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 12, flexShrink: 0 }}>
@@ -207,10 +226,21 @@ export default function Materiales() {
               <label className="input-label">Nombre</label>
               <input
                 className="input"
-                placeholder="Ej: Lavandina, Detergente..."
+                placeholder="Ej: Lavandina..."
                 value={nombre}
                 onChange={e => { setNombre(e.target.value); setError('') }}
                 autoFocus
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: '#6d28d9' }}>🏷️ Sector</label>
+              <input
+                className="input"
+                placeholder="Ej: Baño, Cocina, Tienda..."
+                value={sector}
+                onChange={e => setSector(e.target.value)}
+                style={{ fontSize: 15, fontWeight: sector ? 700 : 400, borderColor: sector ? '#a78bfa' : undefined }}
               />
             </div>
 
@@ -252,6 +282,41 @@ export default function Materiales() {
                 value={fechaRepos}
                 onChange={e => setFechaRepos(e.target.value)}
               />
+            </div>
+
+            {/* Foto */}
+            <div className="input-group">
+              <label className="input-label">Foto del material</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <label style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
+                  color: '#fff', borderRadius: 10, padding: '10px 0',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+                }}>
+                  📷 Cámara
+                  <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFoto} />
+                </label>
+                <label style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  background: '#f1f5f9', color: '#475569', borderRadius: 10, padding: '10px 0',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', border: '1.5px solid #e2e8f0',
+                }}>
+                  🖼 Galería
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFoto} />
+                </label>
+              </div>
+              {foto && (
+                <div style={{ position: 'relative', marginTop: 8 }}>
+                  <img src={foto} alt="preview" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
+                  <button onClick={() => setFoto(null)} style={{
+                    position: 'absolute', top: 6, right: 6,
+                    background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none',
+                    borderRadius: '50%', width: 26, height: 26, fontSize: 13,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>✕</button>
+                </div>
+              )}
             </div>
 
             {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
