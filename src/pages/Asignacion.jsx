@@ -285,6 +285,7 @@ export default function Asignacion() {
   const [hayCambios, setHayCambios]     = useState(false)
   const [refetchKey, setRefetchKey]     = useState(0)
   const [showPostGuardado, setShowPostGuardado] = useState(false)
+  const [foto, setFoto] = useState(null)
 
   const { navegarConGuardia, showConfirm, confirmar, cancelar } = useGuardiaNavegacion(hayCambios)
 
@@ -368,6 +369,14 @@ export default function Asignacion() {
     ? fechasRango
     : fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === selDiaSemana)
 
+  function handleFotoChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setFoto(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
   function handleCrearAsignacion() {
     if (!selPersonal || !selZona) { setErrForm('Seleccioná persona y zona'); return }
     if (selDiaSemana !== null && fechasParaAsignar.length === 0) {
@@ -378,7 +387,7 @@ export default function Asignacion() {
     let errores = 0
     const pSelec = personalTurno.find(p => p.id === selPersonal)
     for (const f of fechasParaAsignar) {
-      const { error } = store.addAsignacion(selPersonal, selZona, selTurnoForm, f, pSelec?.nombre || '', pSelec?.sector || '')
+      const { error } = store.addAsignacion(selPersonal, selZona, selTurnoForm, f, pSelec?.nombre || '', pSelec?.sector || '', foto)
       if (error) errores++
     }
     forceRefetch()
@@ -389,6 +398,7 @@ export default function Asignacion() {
       setSelPersonal('')
       setSelZona('')
       setSelDiaSemana(null)
+      setFoto(null)
       setShowPostGuardado(true)
     }
     setGuardando(false)
@@ -579,6 +589,72 @@ export default function Asignacion() {
                 />
               )}
 
+            </div>
+
+            {/* Sector de la persona seleccionada */}
+            {selPersonal && (() => {
+              const pSel = personalTurno.find(p => p.id === selPersonal)
+              if (!pSel?.sector) return null
+              return (
+                <div style={{
+                  marginTop: -4, marginBottom: 12, padding: '10px 14px',
+                  background: 'var(--primary-light)', borderRadius: 10,
+                  border: '1.5px solid var(--primary)',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <span style={{ fontSize: 20 }}>🏷️</span>
+                  <div>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary-dark)', margin: 0, letterSpacing: 1, textTransform: 'uppercase' }}>Sector</p>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary-dark)', margin: 0 }}>{pSel.sector}</p>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Foto */}
+            <div className="input-group">
+              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-dark)' }}>📷 Foto del área (opcional)</label>
+              <div style={{ display: 'flex', gap: 8, marginBottom: foto ? 10 : 0 }}>
+                <label style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '11px 8px', border: '2px dashed var(--border)', borderRadius: 10,
+                  cursor: 'pointer', background: 'var(--bg-card)', fontSize: 13, fontWeight: 700,
+                  color: 'var(--primary-dark)',
+                }}>
+                  📷 Tomar foto
+                  <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                    onChange={handleFotoChange} />
+                </label>
+                <label style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '11px 8px', border: '2px dashed var(--border)', borderRadius: 10,
+                  cursor: 'pointer', background: 'var(--bg-card)', fontSize: 13, fontWeight: 700,
+                  color: 'var(--primary-dark)',
+                }}>
+                  🖼️ Galería
+                  <input type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={handleFotoChange} />
+                </label>
+              </div>
+              {foto && (
+                <div style={{ position: 'relative' }}>
+                  <img src={foto} alt="preview" style={{
+                    width: '100%', maxHeight: 200, objectFit: 'cover',
+                    borderRadius: 10, border: '2px solid var(--border)', display: 'block',
+                  }} />
+                  <button
+                    type="button"
+                    onClick={() => setFoto(null)}
+                    style={{
+                      position: 'absolute', top: 8, right: 8,
+                      background: 'rgba(0,0,0,0.55)', color: '#fff',
+                      border: 'none', borderRadius: '50%', width: 28, height: 28,
+                      cursor: 'pointer', fontSize: 15, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+                    }}
+                  >✕</button>
+                </div>
+              )}
             </div>
 
             {/* 2. Día disponible */}

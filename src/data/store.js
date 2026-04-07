@@ -107,13 +107,13 @@ export function getAsignaciones(fecha) {
     }))
 }
 
-export function addAsignacion(personal_id, zona_id, turno, fecha, personalNombre = '', personalSector = '') {
+export function addAsignacion(personal_id, zona_id, turno, fecha, personalNombre = '', personalSector = '', foto = null) {
   const all = leer('asignaciones')
   const existe = all.find(a =>
     a.personal_id === personal_id && a.fecha === fecha && a.turno === turno
   )
   if (existe) return { error: 'Esta persona ya está asignada en este turno' }
-  const nueva = { id: genId(), personal_id, zona_id, turno, fecha, personalNombre, personalSector, creado_en: new Date().toISOString() }
+  const nueva = { id: genId(), personal_id, zona_id, turno, fecha, personalNombre, personalSector, foto, creado_en: new Date().toISOString() }
   escribir('asignaciones', [...all, nueva])
   return { error: null }
 }
@@ -183,10 +183,10 @@ export function getMateriales() {
   } catch { return [] }
 }
 
-export function addMaterial(nombre, cantidad, unidad, fechaCompra, fechaReposicion) {
+export function addMaterial(nombre, sector, cantidad, unidad, fechaCompra, fechaReposicion, foto = null) {
   const raw = localStorage.getItem('cleansys_materiales')
   const all = raw ? JSON.parse(raw) : []
-  const nuevo = { id: genId(), nombre: nombre.trim(), cantidad, unidad: unidad.trim(), fechaCompra, fechaReposicion, activo: true }
+  const nuevo = { id: genId(), nombre: nombre.trim(), sector: (sector || '').trim(), cantidad, unidad: unidad.trim(), fechaCompra, fechaReposicion, foto, activo: true }
   localStorage.setItem('cleansys_materiales', JSON.stringify([...all, nuevo]))
   return nuevo
 }
