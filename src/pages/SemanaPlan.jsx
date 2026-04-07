@@ -124,6 +124,18 @@ export default function SemanaPlan() {
             style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
         </div>
 
+        {/* Tarjetas Mañana / Noche */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <div style={{ flex: 1, background: '#fef3c7', borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#d97706' }}>{totalManana}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>☀️ Mañana</p>
+          </div>
+          <div style={{ flex: 1, background: '#ede9fe', borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#6d28d9' }}>{totalNoche}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#4c1d95' }}>🌙 Noche</p>
+          </div>
+        </div>
+
         {/* ── Días con columnas Mañana / Noche ── */}
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Semana
