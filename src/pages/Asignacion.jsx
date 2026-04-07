@@ -156,7 +156,7 @@ const COLORES_DIAS = {
 }
 
 // ── Calendario con rango ──────────────────────────────────────────
-function CalendarioMes({ mes, inicio, fin, onClick }) {
+function CalendarioMes({ mes, inicio, fin, onClick, diasBloqueados = new Set() }) {
   const total   = diasEnMes(mes)
   const offset  = offsetMes(mes)
   const hoyISO  = hoy()
@@ -165,7 +165,7 @@ function CalendarioMes({ mes, inicio, fin, onClick }) {
   const conAsig = (() => {
     try {
       const all = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-      return new Set(all.filter(a => a.fecha.startsWith(mes)).map(a => a.fecha))
+      return new Set(all.filter(a => a.fecha.startsWith(mes) && a.activo !== false).map(a => a.fecha))
     } catch { return new Set() }
   })()
 
@@ -191,18 +191,23 @@ function CalendarioMes({ mes, inicio, fin, onClick }) {
           {semana.map((d, ci) => {
             if (!d) return <div key={ci} />
             const iso       = isoDelDia(mes, d)
+            const bloqueado = diasBloqueados.has(iso)
             const esInicio  = d === desde && inicio !== null
             const esFin     = d === hasta && fin !== null
             const enRango   = inicio !== null && fin !== null && d > desde && d < hasta
             const esHoy     = iso === hoyISO
             const tieneA    = conAsig.has(iso)
-            const soloPend  = inicio !== null && fin === null && d === inicio // esperando 2do clic
+            const soloPend  = inicio !== null && fin === null && d === inicio
 
             let bg = 'transparent'
             let borderColor = 'transparent'
             let textColor = 'var(--text)'
 
-            if (esInicio || esFin) {
+            if (bloqueado) {
+              bg = '#fee2e2'
+              borderColor = '#fca5a5'
+              textColor = '#ef4444'
+            } else if (esInicio || esFin) {
               bg = 'var(--primary)'
               textColor = '#fff'
             } else if (enRango) {
@@ -218,24 +223,26 @@ function CalendarioMes({ mes, inicio, fin, onClick }) {
             return (
               <button
                 key={d}
-                onClick={() => onClick(d)}
+                onClick={() => !bloqueado && onClick(d)}
+                disabled={bloqueado}
                 style={{
                   border: `2px solid ${borderColor}`,
                   borderRadius: esInicio ? '8px 0 0 8px' : esFin ? '0 8px 8px 0' : enRango ? 0 : 8,
                   background: bg,
-                  cursor: 'pointer',
+                  cursor: bloqueado ? 'not-allowed' : 'pointer',
                   padding: '5px 2px 7px',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                   transition: 'background 0.1s',
+                  opacity: bloqueado ? 0.7 : 1,
                 }}
               >
                 <span style={{ fontSize: 13, fontWeight: (esInicio || esFin) ? 700 : 400, color: textColor }}>
-                  {d}
+                  {bloqueado ? '✕' : d}
                 </span>
                 <span style={{
                   width: 5, height: 5, borderRadius: '50%',
-                  background: tieneA
-                    ? ((esInicio || esFin) ? 'rgba(255,255,255,0.8)' : enRango ? 'var(--primary)' : 'var(--primary)')
+                  background: tieneA && !bloqueado
+                    ? ((esInicio || esFin) ? 'rgba(255,255,255,0.8)' : 'var(--primary)')
                     : 'transparent',
                   display: 'block',
                 }} />
@@ -299,6 +306,18 @@ export default function Asignacion() {
 
   // Para el form: personas ya asignadas en TODOS los días del rango en este turno
   const yaAsignadosIds = [...new Set(asignacionesRango.map(a => a.personal?.id).filter(Boolean))]
+
+  // Días bloqueados: fechas donde la persona seleccionada ya tiene asignación en este turno
+  const diasBloqueados = (() => {
+    if (!selPersonal) return new Set()
+    try {
+      const all = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+      return new Set(
+        all.filter(a => a.personal_id === selPersonal && a.turno === selTurnoForm && a.activo !== false)
+           .map(a => a.fecha)
+      )
+    } catch { return new Set() }
+  })()
 
   function forceRefetch() {
     setRefetchKey(k => k + 1)
@@ -485,7 +504,12 @@ export default function Asignacion() {
             >›</button>
           </div>
 
-          <CalendarioMes mes={mes} inicio={inicio} fin={fin} onClick={handleDiaClick} />
+          <CalendarioMes mes={mes} inicio={inicio} fin={fin} onClick={handleDiaClick} diasBloqueados={diasBloqueados} />
+          {selPersonal && diasBloqueados.size > 0 && (
+            <p style={{ fontSize: 11, color: '#ef4444', marginTop: 6, textAlign: 'center' }}>
+              ✕ Los días en rojo ya tienen asignación para esta persona
+            </p>
+          )}
 
           {/* Indicador de rango */}
           <div style={{
