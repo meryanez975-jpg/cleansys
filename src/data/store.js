@@ -233,6 +233,29 @@ export function getAsignacionesPorFechas(fechas) {
     }))
 }
 
+// ── CAMBIOS DE MATERIALES ─────────────────────────────────────────
+export function getCambiosMateriales() {
+  try {
+    const raw = localStorage.getItem('cleansys_cambios_materiales')
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch { return [] }
+}
+
+export function registrarCambioMaterial(material_id, materialNombre, notas = '') {
+  const all = getCambiosMateriales()
+  const nuevo = {
+    id: genId(),
+    material_id,
+    materialNombre,
+    fecha: new Date().toISOString().split('T')[0],
+    notas,
+    registrado_en: new Date().toISOString(),
+  }
+  localStorage.setItem('cleansys_cambios_materiales', JSON.stringify([nuevo, ...all]))
+  return nuevo
+}
+
 // ── SUPERVISORES ──────────────────────────────────
 export function verificarPin(pin) {
   return leer('supervisores').find(s => s.pin === pin && s.activo) || null
