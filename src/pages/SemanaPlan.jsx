@@ -85,28 +85,19 @@ export default function SemanaPlan() {
           </div>
         </div>
 
-        {/* Resumen Mañana / Noche */}
+        {/* Resumen Semana / En limpieza / Sin tareas */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <div style={{
-            flex: 1, background: '#fef3c7', borderRadius: 12,
-            padding: '12px 10px', textAlign: 'center',
-          }}>
-            <p style={{ fontSize: 20, fontWeight: 800, color: '#d97706' }}>{totalManana}</p>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Mañana</p>
+          <div style={{ flex: 1, background: '#dbeafe', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana</p>
           </div>
-          <div style={{
-            flex: 1, background: '#f1f5f9', borderRadius: 12,
-            padding: '12px 10px', textAlign: 'center',
-          }}>
-            <p style={{ fontSize: 20, fontWeight: 800, color: '#475569' }}>{totalAsigs}</p>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Total</p>
+          <div style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{personalConTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>🧹 En limpieza</p>
           </div>
-          <div style={{
-            flex: 1, background: '#ede9fe', borderRadius: 12,
-            padding: '12px 10px', textAlign: 'center',
-          }}>
-            <p style={{ fontSize: 20, fontWeight: 800, color: '#6d28d9' }}>{totalNoche}</p>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#4c1d95' }}>Noche</p>
+          <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas</p>
           </div>
         </div>
 
