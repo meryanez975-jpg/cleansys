@@ -574,21 +574,6 @@ export default function Asignacion() {
                 />
               )}
 
-              {/* Aviso de días ocupados para la persona seleccionada */}
-              {selPersonal && diasBloqueados.size > 0 && (
-                <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>
-                    ⚠️ Esta persona ya tiene asignación en:
-                  </p>
-                  <p style={{ fontSize: 12, color: '#ef4444' }}>
-                    {[...diasBloqueados]
-                      .filter(f => fechasRango.includes(f))
-                      .map(f => new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }))
-                      .join(', ')}
-                  </p>
-                  <p style={{ fontSize: 11, color: '#b91c1c', marginTop: 4 }}>Elegí un día diferente abajo 👇</p>
-                </div>
-              )}
             </div>
 
             {/* 2. Día disponible */}
@@ -613,6 +598,23 @@ export default function Asignacion() {
                     }))
                 ]}
               />
+              {/* Días ocupados en el rango */}
+              {selPersonal && (() => {
+                const diasOcupados = DIAS_SEMANA.filter(({ jsDay }) =>
+                  fechasRango.some(f => new Date(f + 'T12:00:00').getDay() === jsDay && diasBloqueados.has(f))
+                )
+                if (diasOcupados.length === 0) return null
+                return (
+                  <div style={{ marginTop: 6, padding: '6px 10px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626' }}>Ocupado:</span>
+                    {diasOcupados.map(({ label, jsDay }) => (
+                      <span key={jsDay} style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: '#ef4444', borderRadius: 6, padding: '2px 8px' }}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* 3. Zona */}
