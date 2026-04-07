@@ -142,11 +142,9 @@ export default function SemanaPlan() {
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
           {fechasSemana.map((fecha, i) => {
-            const iso       = fechasISO[i]
-            const esHoy     = iso === hoyISO
-            const asigsDia  = asigs.filter(a => a.fecha === iso)
-            const manana    = asigsDia.filter(a => a.turno === 'mañana')
-            const noche     = asigsDia.filter(a => a.turno === 'noche')
+            const iso      = fechasISO[i]
+            const esHoy    = iso === hoyISO
+            const asigsDia = asigs.filter(a => a.fecha === iso)
 
             return (
               <div key={iso} className="card" style={{
@@ -154,8 +152,7 @@ export default function SemanaPlan() {
                 padding: '12px 14px',
                 opacity: asigsDia.length === 0 ? 0.5 : 1,
               }}>
-                {/* Fecha del día */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: asigsDia.length > 0 ? 10 : 0 }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: esHoy ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_FULL[i]}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
                   {esHoy && <span className="badge badge-blue">Hoy</span>}
@@ -164,46 +161,17 @@ export default function SemanaPlan() {
                   )}
                 </div>
 
-                {/* Columnas Mañana | Noche */}
                 {asigsDia.length > 0 && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {/* Mañana */}
-                    <div style={{ flex: 1, background: '#fffbeb', borderRadius: 10, padding: '8px' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 6, textAlign: 'center' }}>Mañana</p>
-                      {manana.length === 0 ? (
-                        <p style={{ fontSize: 11, color: '#a8a29e', textAlign: 'center' }}>—</p>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {manana.map(a => (
-                            <div key={a.id} style={{
-                              background: '#fef9c3', borderRadius: 6, padding: '5px 8px',
-                            }}>
-                              <p style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>
-                              <p style={{ fontSize: 10, color: '#d97706' }}>{a.zona?.nombre || '—'}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Noche */}
-                    <div style={{ flex: 1, background: '#f5f3ff', borderRadius: 10, padding: '8px' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9', marginBottom: 6, textAlign: 'center' }}>Noche</p>
-                      {noche.length === 0 ? (
-                        <p style={{ fontSize: 11, color: '#a8a29e', textAlign: 'center' }}>—</p>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {noche.map(a => (
-                            <div key={a.id} style={{
-                              background: '#ede9fe', borderRadius: 6, padding: '5px 8px',
-                            }}>
-                              <p style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</p>
-                              <p style={{ fontSize: 10, color: '#6d28d9' }}>{a.zona?.nombre || '—'}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {asigsDia.map(a => (
+                      <div key={a.id} style={{
+                        background: '#f8fafc', borderRadius: 6, padding: '6px 10px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.zona?.nombre || '—'}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
