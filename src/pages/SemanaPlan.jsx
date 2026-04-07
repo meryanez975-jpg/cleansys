@@ -110,32 +110,35 @@ export default function SemanaPlan() {
 
   const btnBase = { flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }
   const semanaRef = useRef(null)
+  const zonasRefs = useRef({})
 
-  async function capturarSemana() {
-    if (!semanaRef.current) return
-    const canvas = await html2canvas(semanaRef.current, { backgroundColor: '#fff', scale: 2 })
+  const rangoTexto = `${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
 
-    // Intentar compartir (móvil) — sino descargar
+  async function compartirCaptura(ref, titulo, info) {
+    if (!ref) return
+    const canvas = await html2canvas(ref, { backgroundColor: '#fff', scale: 2 })
     canvas.toBlob(async blob => {
-      const file = new File([blob], `semana-${fechasISO[0]}.png`, { type: 'image/png' })
+      const nombreArchivo = `${titulo.replace(/\s+/g, '-')}-${fechasISO[0]}.png`
+      const file = new File([blob], nombreArchivo, { type: 'image/png' })
+      const texto = `📅 ${rangoTexto}\n${info}`
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: 'Semana de trabajo',
-            text: `Semana ${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`,
-          })
-        } catch (e) {
-          // usuario canceló o error — no hacer nada
-        }
+        try { await navigator.share({ files: [file], title: titulo, text: texto }) } catch {}
       } else {
-        // Fallback: descargar
         const link = document.createElement('a')
-        link.download = `semana-${fechasISO[0]}.png`
+        link.download = nombreArchivo
         link.href = URL.createObjectURL(blob)
         link.click()
       }
     }, 'image/png')
+  }
+
+  function capturarSemana() {
+    const turnoTexto = filtroTurno ? `Turno: ${filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}` : 'Todos los turnos'
+    compartirCaptura(semanaRef.current, 'Semana de trabajo', turnoTexto)
+  }
+
+  function capturarZona(zonaId, zonaNombre) {
+    compartirCaptura(zonasRefs.current[zonaId], `Zona ${zonaNombre}`, `🏢 Zona: ${zonaNombre}\n📅 ${rangoTexto}`)
   }
 
   return (
@@ -238,7 +241,7 @@ export default function SemanaPlan() {
               📸 Capturar
             </button>
           </div>
-          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
+          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28, background: '#fff', borderRadius: 12, padding: 4 }}>
             {fechasSemana.map((fecha, i) => {
               const iso      = fechasISO[i]
               const esHoy    = iso === hoyISO
@@ -270,6 +273,15 @@ export default function SemanaPlan() {
                 </div>
               )
             })}
+            {/* Footer info para captura */}
+            <div style={{ marginTop: 4, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>📅 {rangoTexto}</span>
+              {filtroTurno && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#d97706' : '#6d28d9' }}>
+                  {filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* ── Zonas creadas (desplegables) — excluye zonas semilla z1, z2 ── */}
@@ -314,7 +326,7 @@ export default function SemanaPlan() {
                       </button>
 
                       {abierta && (
-                        <div style={{ background: c.bg, borderRadius: '0 0 10px 10px', padding: '8px 12px', border: `1px solid ${c.bgAct}33`, borderTop: 'none' }}>
+                        <div ref={el => zonasRefs.current[zona.id] = el} style={{ background: c.bg, borderRadius: '0 0 10px 10px', padding: '8px 12px', border: `1px solid ${c.bgAct}33`, borderTop: 'none' }}>
                           {asigZona.length === 0 ? (
                             <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '6px 0' }}>Sin asignaciones esta semana</p>
                           ) : (
@@ -337,6 +349,15 @@ export default function SemanaPlan() {
                               })}
                             </div>
                           )}
+                          {/* Footer info zona */}
+                          <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${c.bgAct}33`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: c.txt }}>🏢 {zona.nombre} · 📅 {rangoTexto}</span>
+                            <button onClick={() => capturarZona(zona.id, zona.nombre)} style={{
+                              background: `linear-gradient(135deg, ${c.bgAct}, #6d28d9)`,
+                              border: 'none', borderRadius: 6, padding: '3px 8px',
+                              cursor: 'pointer', color: '#fff', fontSize: 10, fontWeight: 700,
+                            }}>📸</button>
+                          </div>
                         </div>
                       )}
                     </div>
