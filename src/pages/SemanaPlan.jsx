@@ -81,11 +81,11 @@ export default function SemanaPlan() {
 
   function abrirEdicion(a) {
     setEditandoId(a.id)
-    setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '' })
+    setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '', fecha: a.fecha || '' })
   }
 
   function guardarEdicion(id) {
-    store.editAsignacion(id, { zona_id: editForm.zona_id, turno: editForm.turno })
+    store.editAsignacion(id, { zona_id: editForm.zona_id, turno: editForm.turno, fecha: editForm.fecha })
     setEditandoId(null)
     setTick(t => t + 1)
   }
@@ -232,6 +232,30 @@ export default function SemanaPlan() {
                       {editandoId === a.id ? (
                         <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: '2px solid #86efac' }}>
                           <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>Editar asignación</p>
+
+                          {/* Día */}
+                          <div style={{ marginBottom: 10 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Día</p>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              {fechasSemana.map((fecha, i) => {
+                                const iso = fechasISO[i]
+                                const activo = editForm.fecha === iso
+                                return (
+                                  <button key={iso} onClick={() => setEditForm(f => ({ ...f, fecha: iso }))}
+                                    style={{
+                                      flex: 1, minWidth: 36, padding: '6px 4px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                      fontWeight: 700, fontSize: 11,
+                                      background: activo ? '#0ea5e9' : '#e0f2fe',
+                                      color: activo ? '#fff' : '#0369a1',
+                                      boxShadow: activo ? '0 2px 8px rgba(14,165,233,0.4)' : 'none',
+                                      transition: 'all 0.15s',
+                                    }}
+                                  >{DIAS_CORTO[i]}</button>
+                                )
+                              })}
+                            </div>
+                          </div>
+
                           {/* Turno: botones toggle */}
                           <div style={{ marginBottom: 10 }}>
                             <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Turno</p>
