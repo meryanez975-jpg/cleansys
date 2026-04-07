@@ -196,45 +196,6 @@ export default function SemanaPlan() {
           })}
         </div>
 
-        {/* ── En limpieza ── */}
-        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          En limpieza
-        </p>
-        {personalConTarea.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 28 }}>No hay personal asignado</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-            {personalConTarea.map((p, i) => (
-              <div key={i} className="card" style={{
-                padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <span style={{ fontWeight: 600, fontSize: 13, color: '#14532d' }}>🧹 {p.nombre}</span>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, color: '#15803d',
-                  background: '#dcfce7', borderRadius: 8, padding: '3px 8px',
-                }}>
-                  {p.dias.join(' · ')}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── Sin tareas ── */}
-        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Sin tareas
-        </p>
-        {sinTarea.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Todo el personal tiene tareas</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-            {sinTarea.map((p, i) => (
-              <div key={i} className="card" style={{ padding: '12px 14px' }}>
-                <span style={{ fontWeight: 600, fontSize: 13, color: '#475569' }}>💤 {p.nombre}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
       </div>
     </div>
