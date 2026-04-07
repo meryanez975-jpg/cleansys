@@ -30,6 +30,7 @@ export default function SemanaPlan() {
   const [editandoId, setEditandoId] = useState(null)
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
   const [zonas, setZonas] = useState([])
+  const [zonasAbiertas, setZonasAbiertas] = useState({})
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -219,6 +220,80 @@ export default function SemanaPlan() {
               )
             })}
           </div>
+
+          {/* ── Zonas de la semana (desplegables) ── */}
+          {zonas.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Zonas</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {zonas.map((zona, zi) => {
+                  const colores = [
+                    { bg: '#dbeafe', bgAct: '#1d4ed8', txt: '#1e40af' },
+                    { bg: '#dcfce7', bgAct: '#15803d', txt: '#14532d' },
+                    { bg: '#fce7f3', bgAct: '#db2777', txt: '#9d174d' },
+                    { bg: '#fef9c3', bgAct: '#ca8a04', txt: '#854d0e' },
+                    { bg: '#ede9fe', bgAct: '#6d28d9', txt: '#4c1d95' },
+                    { bg: '#ffedd5', bgAct: '#ea580c', txt: '#9a3412' },
+                  ]
+                  const c = colores[zi % colores.length]
+                  const abierta = zonasAbiertas[zona.id]
+                  const asigZona = asigs.filter(a => a.zona_id === zona.id && (!filtroTurno || a.turno === filtroTurno))
+
+                  return (
+                    <div key={zona.id}>
+                      <button
+                        onClick={() => setZonasAbiertas(z => ({ ...z, [zona.id]: !z[zona.id] }))}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 14px', borderRadius: abierta ? '10px 10px 0 0' : 10,
+                          border: 'none', cursor: 'pointer',
+                          background: abierta ? c.bgAct : c.bg,
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, fontSize: 13, color: abierta ? '#fff' : c.txt }}>🏢 {zona.nombre}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                            background: abierta ? 'rgba(255,255,255,0.25)' : c.bgAct,
+                            color: abierta ? '#fff' : '#fff',
+                          }}>{asigZona.length}</span>
+                          <span style={{ fontSize: 12, color: abierta ? '#fff' : c.txt }}>{abierta ? '▲' : '▼'}</span>
+                        </div>
+                      </button>
+
+                      {abierta && (
+                        <div style={{ background: c.bg, borderRadius: '0 0 10px 10px', padding: '8px 12px', border: `1px solid ${c.bgAct}33`, borderTop: 'none' }}>
+                          {asigZona.length === 0 ? (
+                            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '6px 0' }}>Sin asignaciones esta semana</p>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {asigZona.map(a => {
+                                const diaIdx = fechasISO.indexOf(a.fecha)
+                                return (
+                                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', background: '#fff', borderRadius: 7 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
+                                    <div style={{ display: 'flex', gap: 5 }}>
+                                      <span style={{ fontSize: 11, fontWeight: 600, color: c.txt, background: c.bg, borderRadius: 5, padding: '1px 7px' }}>
+                                        {diaIdx >= 0 ? DIAS_CORTO[diaIdx] : '—'}
+                                      </span>
+                                      <span style={{ fontSize: 11, color: a.turno === 'mañana' ? '#d97706' : '#6d28d9', fontWeight: 600 }}>
+                                        {a.turno === 'mañana' ? '☀️' : '🌙'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </>}
 
         {/* ── Vista: En limpieza ── */}
