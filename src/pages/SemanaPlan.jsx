@@ -114,10 +114,28 @@ export default function SemanaPlan() {
   async function capturarSemana() {
     if (!semanaRef.current) return
     const canvas = await html2canvas(semanaRef.current, { backgroundColor: '#fff', scale: 2 })
-    const link = document.createElement('a')
-    link.download = `semana-${fechasISO[0]}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+
+    // Intentar compartir (móvil) — sino descargar
+    canvas.toBlob(async blob => {
+      const file = new File([blob], `semana-${fechasISO[0]}.png`, { type: 'image/png' })
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Semana de trabajo',
+            text: `Semana ${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`,
+          })
+        } catch (e) {
+          // usuario canceló o error — no hacer nada
+        }
+      } else {
+        // Fallback: descargar
+        const link = document.createElement('a')
+        link.download = `semana-${fechasISO[0]}.png`
+        link.href = URL.createObjectURL(blob)
+        link.click()
+      }
+    }, 'image/png')
   }
 
   return (
