@@ -207,7 +207,10 @@ export default function SemanaPlan() {
                       {asigsDia.map(a => (
                         <div key={a.id} style={{ background: '#f8fafc', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.zona?.nombre || '—'}</span>
+                          <span style={{
+                          fontSize: 11, fontWeight: 700, color: '#0369a1',
+                          background: '#e0f2fe', borderRadius: 6, padding: '2px 8px',
+                        }}>{a.zona?.nombre || '—'}</span>
                         </div>
                       ))}
                     </div>
