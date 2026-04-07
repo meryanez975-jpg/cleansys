@@ -258,7 +258,7 @@ export default function SemanaPlan() {
                               >🌙 Noche</button>
                             </div>
                           </div>
-                          {/* Zona: select con estilo */}
+                          {/* Zona: select con estilo + chip flotante */}
                           <div style={{ marginBottom: 10 }}>
                             <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
                             <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
@@ -266,6 +266,24 @@ export default function SemanaPlan() {
                               <option value="">— Sin zona —</option>
                               {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
                             </select>
+                            {editForm.zona_id && (() => {
+                              const zona = zonas.find(z => z.id === editForm.zona_id)
+                              if (!zona) return null
+                              return (
+                                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    background: 'linear-gradient(135deg, #6d28d9, #a855f7)',
+                                    color: '#fff', fontWeight: 700, fontSize: 13,
+                                    padding: '6px 18px', borderRadius: 20,
+                                    boxShadow: '0 4px 12px rgba(109,40,217,0.45)',
+                                    letterSpacing: '0.03em',
+                                  }}>
+                                    🏢 {zona.nombre}
+                                  </span>
+                                </div>
+                              )
+                            })()}
                           </div>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Guardar</button>
