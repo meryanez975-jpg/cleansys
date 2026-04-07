@@ -36,6 +36,7 @@ export default function Materiales() {
   const [fechaRepos, setFechaRepos]     = useState('')
   const [foto, setFoto]                 = useState(null) // base64
   const [error, setError]               = useState('')
+  const [fotoVisor, setFotoVisor]       = useState(null) // foto ampliada
 
   function abrirNuevo() {
     setEditando(null)
@@ -145,16 +146,26 @@ export default function Materiales() {
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Foto arriba, ancho completo */}
+                  {/* Foto arriba, ancho completo — tocá para ver en grande */}
                   {m.foto && (
-                    <img
-                      src={m.foto}
-                      alt="foto material"
-                      style={{
-                        width: '100%', height: 180, objectFit: 'cover',
-                        display: 'block', borderBottom: '1px solid var(--border)',
-                      }}
-                    />
+                    <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setFotoVisor(m.foto)}>
+                      <img
+                        src={m.foto}
+                        alt="foto material"
+                        style={{
+                          width: '100%', height: 180, objectFit: 'cover',
+                          display: 'block', borderBottom: '1px solid var(--border)',
+                        }}
+                      />
+                      <div style={{
+                        position: 'absolute', bottom: 8, right: 8,
+                        background: 'rgba(0,0,0,0.45)', color: '#fff',
+                        borderRadius: 8, padding: '3px 10px',
+                        fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
+                      }}>
+                        🔍 Ver foto
+                      </div>
+                    </div>
                   )}
 
                   <div className="flex-between" style={{ padding: '12px 14px' }}>
@@ -341,6 +352,39 @@ export default function Materiales() {
       )}
 
       {showConfirm && <ModalConfirmSalida onConfirmar={confirmar} onCancelar={cancelar} />}
+
+      {/* Visor de foto en grande */}
+      {fotoVisor && (
+        <div
+          onClick={() => setFotoVisor(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.88)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <img
+            src={fotoVisor}
+            alt="foto ampliada"
+            style={{
+              maxWidth: '100%', maxHeight: '90vh',
+              borderRadius: 12, objectFit: 'contain',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+            }}
+          />
+          <button
+            onClick={() => setFotoVisor(null)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              background: 'rgba(255,255,255,0.15)', color: '#fff',
+              border: 'none', borderRadius: '50%', width: 40, height: 40,
+              fontSize: 20, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >✕</button>
+        </div>
+      )}
 
       {/* Toast éxito */}
       {guardadoOk && (
