@@ -564,14 +564,28 @@ export default function Asignacion() {
                 valor={selDiaSemana === null ? '' : String(selDiaSemana)}
                 onChange={v => { setSelDiaSemana(v === '' ? null : Number(v)); setErrForm('') }}
                 opciones={[
-                  { value: '', label: 'Opción de la semana', ...PALETA[0] },
+                  { value: '', label: 'Todos los días del rango', ...PALETA[0] },
                   ...DIAS_SEMANA
-                    .filter(({ jsDay }) => fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay).length > 0)
-                    .map(({ label, jsDay }) => ({
-                      value: String(jsDay),
-                      label,
-                      ...COLORES_DIAS[jsDay],
-                    }))
+                    .filter(({ jsDay }) => {
+                      // El día debe existir en el rango
+                      const fechasDelDia = fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay)
+                      if (fechasDelDia.length === 0) return false
+                      // Si hay persona seleccionada, excluir días donde ya está asignada en TODAS las fechas de ese día
+                      if (selPersonal) {
+                        const fechasLibres = fechasDelDia.filter(f => !diasBloqueados.has(f))
+                        return fechasLibres.length > 0
+                      }
+                      return true
+                    })
+                    .map(({ label, jsDay }) => {
+                      const fechasDelDia = fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay)
+                      const algunaBloqueada = selPersonal && fechasDelDia.some(f => diasBloqueados.has(f))
+                      return {
+                        value: String(jsDay),
+                        label: algunaBloqueada ? `${label} (parcial)` : label,
+                        ...COLORES_DIAS[jsDay],
+                      }
+                    })
                 ]}
               />
             </div>
