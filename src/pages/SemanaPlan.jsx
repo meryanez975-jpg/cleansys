@@ -232,23 +232,40 @@ export default function SemanaPlan() {
                       {editandoId === a.id ? (
                         <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: '2px solid #86efac' }}>
                           <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>Editar asignación</p>
-                          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 3 }}>☀️ Turno</p>
-                              <select value={editForm.turno} onChange={e => setEditForm(f => ({ ...f, turno: e.target.value }))}
-                                style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '2px solid #fcd34d', background: '#fffbeb', color: '#92400e', fontWeight: 600 }}>
-                                <option value="mañana">☀️ Mañana</option>
-                                <option value="noche">🌙 Noche</option>
-                              </select>
+                          {/* Turno: botones toggle */}
+                          <div style={{ marginBottom: 10 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Turno</p>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                onClick={() => setEditForm(f => ({ ...f, turno: 'mañana' }))}
+                                style={{
+                                  flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                                  background: editForm.turno === 'mañana' ? '#d97706' : '#fef3c7',
+                                  color: editForm.turno === 'mañana' ? '#fff' : '#92400e',
+                                  boxShadow: editForm.turno === 'mañana' ? '0 2px 8px rgba(217,119,6,0.4)' : 'none',
+                                  transition: 'all 0.15s',
+                                }}
+                              >☀️ Mañana</button>
+                              <button
+                                onClick={() => setEditForm(f => ({ ...f, turno: 'noche' }))}
+                                style={{
+                                  flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                                  background: editForm.turno === 'noche' ? '#6d28d9' : '#ede9fe',
+                                  color: editForm.turno === 'noche' ? '#fff' : '#4c1d95',
+                                  boxShadow: editForm.turno === 'noche' ? '0 2px 8px rgba(109,40,217,0.4)' : 'none',
+                                  transition: 'all 0.15s',
+                                }}
+                              >🌙 Noche</button>
                             </div>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#0369a1', marginBottom: 3 }}>🏢 Zona</p>
-                              <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
-                                style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '2px solid #7dd3fc', background: '#f0f9ff', color: '#0369a1', fontWeight: 600 }}>
-                                <option value="">Sin zona</option>
-                                {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-                              </select>
-                            </div>
+                          </div>
+                          {/* Zona: select con estilo */}
+                          <div style={{ marginBottom: 10 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
+                            <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
+                              style={{ width: '100%', fontSize: 13, padding: '8px 10px', borderRadius: 8, border: '2px solid #6d28d9', background: '#f5f3ff', color: '#4c1d95', fontWeight: 600, appearance: 'none', cursor: 'pointer' }}>
+                              <option value="">— Sin zona —</option>
+                              {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                            </select>
                           </div>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Guardar</button>
