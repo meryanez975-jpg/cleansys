@@ -26,6 +26,7 @@ export default function SemanaPlan() {
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
   const [filtroTurno, setFiltroTurno] = useState(null) // null | 'mañana' | 'noche'
+  const [vistaLimpieza, setVistaLimpieza] = useState(false)
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -73,6 +74,45 @@ export default function SemanaPlan() {
   const idsConTarea = [...new Set(asigs.map(a => a.personal?.id).filter(Boolean))]
   const sinTarea = todoElPersonal.filter(p => !idsConTarea.includes(p.id))
 
+  // ── Vista En limpieza ────────────────────────────────────────────
+  if (vistaLimpieza) {
+    return (
+      <div className="page">
+        <div className="container">
+          <div className="header">
+            <button className="header-back" onClick={() => setVistaLimpieza(false)}>←</button>
+            <div style={{ flex: 1 }}>
+              <p className="header-title">En limpieza</p>
+              <p className="header-sub">{formatMes(lunesBase)}</p>
+            </div>
+          </div>
+
+          {personalConTarea.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 30 }}>
+              No hay personal asignado esta semana
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {personalConTarea.map((p, i) => (
+                <div key={i} className="card" style={{
+                  padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#14532d' }}>🧹 {p.nombre}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: '#15803d',
+                    background: '#dcfce7', borderRadius: 8, padding: '3px 8px',
+                  }}>
+                    {p.dias.join(' · ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page">
       <div className="container">
@@ -92,10 +132,10 @@ export default function SemanaPlan() {
             <p style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8' }}>📅 Semana</p>
           </div>
-          <div style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
+          <button onClick={() => setVistaLimpieza(true)} style={{ flex: 1, background: '#dcfce7', borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer' }}>
             <p style={{ fontSize: 22, fontWeight: 800, color: '#15803d' }}>{personalConTarea.length}</p>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#15803d' }}>🧹 En limpieza</p>
-          </div>
+          </button>
           <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
             <p style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>💤 Sin tareas</p>
