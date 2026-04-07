@@ -221,12 +221,12 @@ export default function SemanaPlan() {
             })}
           </div>
 
-          {/* ── Zonas de la semana (desplegables) ── */}
-          {zonas.length > 0 && (
+          {/* ── Zonas creadas (desplegables) — excluye zonas semilla z1, z2 ── */}
+          {zonas.filter(z => !z.id.match(/^z\d+$/)).length > 0 && (
             <div style={{ marginTop: 8 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Zonas</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {zonas.map((zona, zi) => {
+                {zonas.filter(z => !z.id.match(/^z\d+$/)).map((zona, zi) => {
                   const colores = [
                     { bg: '#dbeafe', bgAct: '#1d4ed8', txt: '#1e40af' },
                     { bg: '#dcfce7', bgAct: '#15803d', txt: '#14532d' },
