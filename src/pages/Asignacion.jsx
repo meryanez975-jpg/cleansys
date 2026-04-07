@@ -110,22 +110,27 @@ function SelectColor({ placeholder, opciones, valor, onChange }) {
             <button
               key={o.value}
               type="button"
-              onClick={() => { onChange(o.value); setOpen(false) }}
+              disabled={o.disabled}
+              onClick={() => { if (!o.disabled) { onChange(o.value); setOpen(false) } }}
               style={{
                 width: '100%', padding: '10px 14px',
-                border: 'none', cursor: 'pointer',
-                background: valor === o.value ? o.bg : 'transparent',
+                border: 'none', cursor: o.disabled ? 'not-allowed' : 'pointer',
+                background: o.disabled ? '#fef2f2' : valor === o.value ? o.bg : 'transparent',
                 display: 'flex', alignItems: 'center', gap: 10,
                 textAlign: 'left', transition: 'background 0.1s',
+                opacity: o.disabled ? 0.8 : 1,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = o.bg}
-              onMouseLeave={e => e.currentTarget.style.background = valor === o.value ? o.bg : 'transparent'}
+              onMouseEnter={e => { if (!o.disabled) e.currentTarget.style.background = o.bg }}
+              onMouseLeave={e => { if (!o.disabled) e.currentTarget.style.background = valor === o.value ? o.bg : 'transparent' }}
             >
               <span style={{
                 width: 10, height: 10, borderRadius: '50%',
-                background: o.color, flexShrink: 0,
+                background: o.disabled ? '#ef4444' : o.color, flexShrink: 0,
               }} />
-              <span style={{ fontWeight: 600, fontSize: 13, color: o.color }}>{o.label}</span>
+              <span style={{ fontWeight: 600, fontSize: 13, color: o.disabled ? '#ef4444' : o.color }}>
+                {o.label}
+              </span>
+              {o.disabled && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#fee2e2', borderRadius: 5, padding: '1px 6px' }}>Ocupado</span>}
             </button>
           ))}
         </div>
@@ -586,16 +591,18 @@ export default function Asignacion() {
                 opciones={[
                   { value: '', label: 'Todos los días disponibles', ...PALETA[0] },
                   ...DIAS_SEMANA
-                    .filter(({ jsDay }) => {
-                      const fechasDelDia = fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === jsDay)
-                      if (fechasDelDia.length === 0) return false
-                      return fechasDelDia.some(f => !diasBloqueados.has(f))
+                    .filter(({ jsDay }) => fechasRango.some(f => new Date(f + 'T12:00:00').getDay() === jsDay))
+                    .map(({ label, jsDay }) => {
+                      const ocupado = selPersonal && fechasRango
+                        .filter(f => new Date(f + 'T12:00:00').getDay() === jsDay)
+                        .every(f => diasBloqueados.has(f))
+                      return {
+                        value: String(jsDay),
+                        label,
+                        ...COLORES_DIAS[jsDay],
+                        disabled: ocupado,
+                      }
                     })
-                    .map(({ label, jsDay }) => ({
-                      value: String(jsDay),
-                      label,
-                      ...COLORES_DIAS[jsDay],
-                    }))
                 ]}
               />
               {/* Días ocupados en el rango */}
