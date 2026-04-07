@@ -31,6 +31,17 @@ export default function SemanaPlan() {
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
   const [zonas, setZonas] = useState([])
   const [zonasAbiertas, setZonasAbiertas] = useState({})
+  const [fotoModal, setFotoModal] = useState(false)
+  const [fotoImagen, setFotoImagen] = useState(null)
+  const [fotoNota, setFotoNota] = useState('')
+
+  function handleFotoCaptura(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setFotoImagen(ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -109,7 +120,47 @@ export default function SemanaPlan() {
             <p className="header-title">Semana de trabajo</p>
             <p className="header-sub">{formatMes(lunesBase)}</p>
           </div>
+          <label style={{
+            background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
+            border: 'none', borderRadius: 10, padding: '8px 12px',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 3px 10px rgba(14,165,233,0.35)',
+          }}>
+            <span style={{ fontSize: 18 }}>📷</span>
+            <input type="file" accept="image/*" capture="environment" onChange={handleFotoCaptura} style={{ display: 'none' }} onClick={() => setFotoModal(true)} />
+          </label>
         </div>
+
+        {/* Modal foto */}
+        {fotoImagen && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360 }}>
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>📷 Foto de la semana</p>
+              <img src={fotoImagen} alt="foto" style={{ width: '100%', borderRadius: 10, maxHeight: 220, objectFit: 'cover', marginBottom: 12 }} />
+              <input
+                placeholder="Nota (opcional)"
+                value={fotoNota}
+                onChange={e => setFotoNota(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => { setFotoImagen(null); setFotoNota('') }}
+                  style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                >✕ Cancelar</button>
+                <button
+                  onClick={() => {
+                    const fotos = JSON.parse(localStorage.getItem('cleansys_fotos_semana') || '[]')
+                    fotos.push({ imagen: fotoImagen, nota: fotoNota, fecha: new Date().toISOString(), semana: fechasISO[0] })
+                    localStorage.setItem('cleansys_fotos_semana', JSON.stringify(fotos))
+                    setFotoImagen(null); setFotoNota('')
+                  }}
+                  style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#0ea5e9,#6d28d9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                >✓ Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 3 botones de navegación */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
