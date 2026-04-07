@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as store from '../data/store'
 import { supabase } from '../supabase/client'
+import html2canvas from 'html2canvas'
 
 const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -108,6 +109,16 @@ export default function SemanaPlan() {
   }
 
   const btnBase = { flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }
+  const semanaRef = useRef(null)
+
+  async function capturarSemana() {
+    if (!semanaRef.current) return
+    const canvas = await html2canvas(semanaRef.current, { backgroundColor: '#fff', scale: 2 })
+    const link = document.createElement('a')
+    link.download = `semana-${fechasISO[0]}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
 
   return (
     <div className="page">
@@ -120,47 +131,7 @@ export default function SemanaPlan() {
             <p className="header-title">Semana de trabajo</p>
             <p className="header-sub">{formatMes(lunesBase)}</p>
           </div>
-          <label style={{
-            background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
-            border: 'none', borderRadius: 10, padding: '8px 12px',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 3px 10px rgba(14,165,233,0.35)',
-          }}>
-            <span style={{ fontSize: 18 }}>📷</span>
-            <input type="file" accept="image/*" capture="environment" onChange={handleFotoCaptura} style={{ display: 'none' }} onClick={() => setFotoModal(true)} />
-          </label>
         </div>
-
-        {/* Modal foto */}
-        {fotoImagen && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-            <div style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360 }}>
-              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>📷 Foto de la semana</p>
-              <img src={fotoImagen} alt="foto" style={{ width: '100%', borderRadius: 10, maxHeight: 220, objectFit: 'cover', marginBottom: 12 }} />
-              <input
-                placeholder="Nota (opcional)"
-                value={fotoNota}
-                onChange={e => setFotoNota(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => { setFotoImagen(null); setFotoNota('') }}
-                  style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-                >✕ Cancelar</button>
-                <button
-                  onClick={() => {
-                    const fotos = JSON.parse(localStorage.getItem('cleansys_fotos_semana') || '[]')
-                    fotos.push({ imagen: fotoImagen, nota: fotoNota, fecha: new Date().toISOString(), semana: fechasISO[0] })
-                    localStorage.setItem('cleansys_fotos_semana', JSON.stringify(fotos))
-                    setFotoImagen(null); setFotoNota('')
-                  }}
-                  style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#0ea5e9,#6d28d9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-                >✓ Guardar</button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 3 botones de navegación */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -237,8 +208,19 @@ export default function SemanaPlan() {
             </button>
           </div>
 
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semana</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semana</p>
+            <button onClick={capturarSemana} style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
+              border: 'none', borderRadius: 8, padding: '5px 10px',
+              cursor: 'pointer', color: '#fff', fontSize: 11, fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(14,165,233,0.35)',
+            }}>
+              📸 Capturar
+            </button>
+          </div>
+          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
             {fechasSemana.map((fecha, i) => {
               const iso      = fechasISO[i]
               const esHoy    = iso === hoyISO
