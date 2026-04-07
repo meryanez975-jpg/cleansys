@@ -304,8 +304,8 @@ export default function Asignacion() {
     // eslint-disable-next-line no-unused-expressions
     || (refetchKey, [])
 
-  // Para el form: personas ya asignadas en TODOS los días del rango en este turno
-  const yaAsignadosIds = [...new Set(asignacionesRango.map(a => a.personal?.id).filter(Boolean))]
+  // Para el form: personas ya asignadas en algún día del rango en este turno
+  const yaAsignadosIds = [...new Set(asignacionesRango.map(a => a.personal_id).filter(Boolean))]
 
   // Días bloqueados: fechas donde la persona seleccionada ya tiene asignación en este turno
   const diasBloqueados = (() => {
@@ -586,16 +586,28 @@ export default function Asignacion() {
                   ⚠️ No hay personal con ese turno en el sistema
                 </p>
               ) : (
-                <SelectColor
-                  placeholder="Seleccionar personal"
-                  valor={selPersonal}
-                  onChange={v => { setSelPersonal(v); setErrForm('') }}
-                  opciones={personalTurno.map((p, i) => ({
-                    value: p.id,
-                    label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
-                    ...PALETA[i % PALETA.length],
-                  }))}
-                />
+                <>
+                  <SelectColor
+                    placeholder="Seleccionar personal"
+                    valor={selPersonal}
+                    onChange={v => { setSelPersonal(v); setErrForm('') }}
+                    opciones={personalTurno
+                      .filter(p => !yaAsignadosIds.includes(p.id))
+                      .map((p, i) => ({
+                        value: p.id,
+                        label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
+                        ...PALETA[i % PALETA.length],
+                      }))}
+                  />
+                  {yaAsignadosIds.length > 0 && inicio !== null && (
+                    <div style={{ marginTop: 8, padding: '8px 10px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 4 }}>Ya asignados en este rango:</p>
+                      {personalTurno.filter(p => yaAsignadosIds.includes(p.id)).map(p => (
+                        <p key={p.id} style={{ fontSize: 12, color: '#ef4444', marginBottom: 2 }}>✕ {p.nombre}</p>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
