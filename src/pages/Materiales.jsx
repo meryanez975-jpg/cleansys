@@ -141,10 +141,23 @@ export default function Materiales() {
                   className="card"
                   style={{
                     borderLeft: `4px solid ${estado?.color || 'var(--border)'}`,
-                    padding: '14px 16px',
+                    padding: 0,
+                    overflow: 'hidden',
                   }}
                 >
-                  <div className="flex-between">
+                  {/* Foto arriba, ancho completo */}
+                  {m.foto && (
+                    <img
+                      src={m.foto}
+                      alt="foto material"
+                      style={{
+                        width: '100%', height: 180, objectFit: 'cover',
+                        display: 'block', borderBottom: '1px solid var(--border)',
+                      }}
+                    />
+                  )}
+
+                  <div className="flex-between" style={{ padding: '12px 14px' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
@@ -186,10 +199,6 @@ export default function Materiales() {
                           </span>
                         )}
                       </div>
-
-                      {m.foto && (
-                        <img src={m.foto} alt="foto material" style={{ marginTop: 10, width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
-                      )}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 12, flexShrink: 0 }}>
