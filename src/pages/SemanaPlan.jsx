@@ -32,17 +32,7 @@ export default function SemanaPlan() {
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
   const [zonas, setZonas] = useState([])
   const [zonasAbiertas, setZonasAbiertas] = useState({})
-  const [fotoModal, setFotoModal] = useState(false)
-  const [fotoImagen, setFotoImagen] = useState(null)
-  const [fotoNota, setFotoNota] = useState('')
-
-  function handleFotoCaptura(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setFotoImagen(ev.target.result)
-    reader.readAsDataURL(file)
-  }
+  const [elegirTurnoCaptura, setElegirTurnoCaptura] = useState(null) // 'semana' | zonaId
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -133,12 +123,33 @@ export default function SemanaPlan() {
   }
 
   function capturarSemana() {
-    const turnoTexto = filtroTurno ? `Turno: ${filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}` : 'Todos los turnos'
+    if (!filtroTurno) { setElegirTurnoCaptura('semana'); return }
+    const turnoTexto = filtroTurno === 'mañana' ? '☀️ Turno Mañana' : '🌙 Turno Noche'
     compartirCaptura(semanaRef.current, 'Semana de trabajo', turnoTexto)
   }
 
   function capturarZona(zonaId, zonaNombre) {
-    compartirCaptura(zonasRefs.current[zonaId], `Zona ${zonaNombre}`, `🏢 Zona: ${zonaNombre}\n📅 ${rangoTexto}`)
+    if (!filtroTurno) { setElegirTurnoCaptura(zonaId); return }
+    const turnoTexto = filtroTurno === 'mañana' ? '☀️ Turno Mañana' : '🌙 Turno Noche'
+    compartirCaptura(zonasRefs.current[zonaId], `Zona ${zonaNombre}`, `🏢 ${zonaNombre} · ${turnoTexto}\n📅 ${rangoTexto}`)
+  }
+
+  function ejecutarCapturaConTurno(turno) {
+    const t = turno === 'mañana' ? '☀️ Turno Mañana' : '🌙 Turno Noche'
+    if (elegirTurnoCaptura === 'semana') {
+      // Capturar con filtro temporal
+      setFiltroTurno(turno)
+      setTimeout(() => {
+        compartirCaptura(semanaRef.current, 'Semana de trabajo', t)
+        setElegirTurnoCaptura(null)
+      }, 100)
+    } else {
+      const zona = zonas.find(z => z.id === elegirTurnoCaptura)
+      setTimeout(() => {
+        compartirCaptura(zonasRefs.current[elegirTurnoCaptura], `Zona ${zona?.nombre}`, `🏢 ${zona?.nombre} · ${t}\n📅 ${rangoTexto}`)
+        setElegirTurnoCaptura(null)
+      }, 100)
+    }
   }
 
   return (
@@ -493,6 +504,56 @@ export default function SemanaPlan() {
         )}
 
       </div>
+
+      {/* ── Modal: elegir turno para captura ── */}
+      {elegirTurnoCaptura !== null && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }} onClick={() => setElegirTurnoCaptura(null)}>
+          <div style={{
+            background: '#fff', borderRadius: 18, padding: '28px 24px',
+            width: '100%', maxWidth: 320, boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            textAlign: 'center',
+          }} onClick={e => e.stopPropagation()}>
+            <p style={{ fontSize: 22, marginBottom: 4 }}>📸</p>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
+              ¿Qué turno querés compartir?
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>
+              La imagen se enviará con el turno seleccionado
+            </p>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+              <button onClick={() => ejecutarCapturaConTurno('mañana')} style={{
+                flex: 1, padding: '14px 8px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: '#fff', fontWeight: 800, fontSize: 14,
+                boxShadow: '0 4px 14px rgba(217,119,6,0.4)',
+              }}>
+                <span style={{ display: 'block', fontSize: 20 }}>☀️</span>
+                Mañana
+              </button>
+              <button onClick={() => ejecutarCapturaConTurno('noche')} style={{
+                flex: 1, padding: '14px 8px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                color: '#fff', fontWeight: 800, fontSize: 14,
+                boxShadow: '0 4px 14px rgba(109,40,217,0.4)',
+              }}>
+                <span style={{ display: 'block', fontSize: 20 }}>🌙</span>
+                Noche
+              </button>
+            </div>
+            <button onClick={() => setElegirTurnoCaptura(null)} style={{
+              width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid #e2e8f0',
+              background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
