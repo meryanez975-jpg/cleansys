@@ -25,6 +25,7 @@ export default function SemanaPlan() {
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
+  const [filtroTurno, setFiltroTurno] = useState(null) // null | 'mañana' | 'noche'
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -124,16 +125,32 @@ export default function SemanaPlan() {
             style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
         </div>
 
-        {/* Tarjetas Mañana / Noche */}
+        {/* Botones filtro Mañana / Noche */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <div style={{ flex: 1, background: '#fef3c7', borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
-            <p style={{ fontSize: 18, fontWeight: 800, color: '#d97706' }}>{totalManana}</p>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>☀️ Mañana</p>
-          </div>
-          <div style={{ flex: 1, background: '#ede9fe', borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
-            <p style={{ fontSize: 18, fontWeight: 800, color: '#6d28d9' }}>{totalNoche}</p>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#4c1d95' }}>🌙 Noche</p>
-          </div>
+          <button
+            onClick={() => setFiltroTurno(filtroTurno === 'mañana' ? null : 'mañana')}
+            style={{
+              flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
+              background: filtroTurno === 'mañana' ? '#d97706' : '#fef3c7',
+              boxShadow: filtroTurno === 'mañana' ? '0 3px 10px rgba(217,119,6,0.4)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            <p style={{ fontSize: 18, fontWeight: 800, color: filtroTurno === 'mañana' ? '#fff' : '#d97706' }}>{totalManana}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#fff' : '#92400e' }}>☀️ Mañana</p>
+          </button>
+          <button
+            onClick={() => setFiltroTurno(filtroTurno === 'noche' ? null : 'noche')}
+            style={{
+              flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
+              background: filtroTurno === 'noche' ? '#6d28d9' : '#ede9fe',
+              boxShadow: filtroTurno === 'noche' ? '0 3px 10px rgba(109,40,217,0.4)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            <p style={{ fontSize: 18, fontWeight: 800, color: filtroTurno === 'noche' ? '#fff' : '#6d28d9' }}>{totalNoche}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'noche' ? '#fff' : '#4c1d95' }}>🌙 Noche</p>
+          </button>
         </div>
 
         {/* ── Días con columnas Mañana / Noche ── */}
@@ -144,7 +161,7 @@ export default function SemanaPlan() {
           {fechasSemana.map((fecha, i) => {
             const iso      = fechasISO[i]
             const esHoy    = iso === hoyISO
-            const asigsDia = asigs.filter(a => a.fecha === iso)
+            const asigsDia = asigs.filter(a => a.fecha === iso && (!filtroTurno || a.turno === filtroTurno))
 
             return (
               <div key={iso} className="card" style={{
