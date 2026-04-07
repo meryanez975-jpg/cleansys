@@ -198,7 +198,7 @@ export default function SemanaPlan() {
 
         {/* ── En limpieza ── */}
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          En limpieza esta semana
+          En limpieza
         </p>
         {personalConTarea.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 28 }}>No hay personal asignado</p>
@@ -222,7 +222,7 @@ export default function SemanaPlan() {
 
         {/* ── Sin tareas ── */}
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Sin tareas esta semana
+          Sin tareas
         </p>
         {sinTarea.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Todo el personal tiene tareas</p>
