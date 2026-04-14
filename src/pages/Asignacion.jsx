@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePersonal } from '../hooks/usePersonal'
@@ -64,28 +64,6 @@ function formatFechaCorta(iso) {
 function formatHora(isoStr) {
   if (!isoStr) return null
   return new Date(isoStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-}
-function fechasDeSemanaActual() {
-  const hoyDate = new Date()
-  const dow = hoyDate.getDay()
-  const lunes = new Date(hoyDate)
-  lunes.setDate(hoyDate.getDate() - (dow === 0 ? 6 : dow - 1))
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(lunes)
-    d.setDate(lunes.getDate() + i)
-    return d.toISOString().split('T')[0]
-  })
-}
-function fechasDeRangoISO(desde, hasta) {
-  if (!desde || !hasta || desde > hasta) return []
-  const fechas = []
-  const d = new Date(desde + 'T12:00:00')
-  const h = new Date(hasta + 'T12:00:00')
-  while (d <= h) { fechas.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1) }
-  return fechas
-}
-function formatFechaLarga(iso) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 // ── Dropdown con colores ──────────────────────────────────────────
@@ -308,12 +286,6 @@ export default function Asignacion() {
 
   const { navegarConGuardia, showConfirm, confirmar, cancelar } = useGuardiaNavegacion(hayCambios)
 
-  // ── Historial ─────────────────────────────────────
-  const [showHistorial, setShowHistorial]   = useState(false)
-  const [histFiltro, setHistFiltro]         = useState('hoy')
-  const [histDesde, setHistDesde]           = useState(hoy())
-  const [histHasta, setHistHasta]           = useState(hoy())
-  const [histAnio, setHistAnio]             = useState(new Date().getFullYear())
 
   // fecha activa = fin si hay rango, sino inicio, sino hoy
   const diaActivo = fin ?? inicio ?? parseInt(hoy().slice(8, 10))
@@ -351,33 +323,6 @@ export default function Asignacion() {
     refetchReg()
   }
 
-  const historialData = useMemo(() => {
-    try {
-      const allAsigs = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]').filter(a => a.activo !== false)
-      const allRegs  = JSON.parse(localStorage.getItem('cleansys_registros') || '[]')
-      const allZonas = JSON.parse(localStorage.getItem('cleansys_zonas') || '[]')
-      let filtradas = []
-      if (histFiltro === 'hoy') {
-        filtradas = allAsigs.filter(a => a.fecha === hoy())
-      } else if (histFiltro === 'semana') {
-        const set = new Set(fechasDeSemanaActual())
-        filtradas = allAsigs.filter(a => set.has(a.fecha))
-      } else if (histFiltro === 'mes') {
-        filtradas = allAsigs.filter(a => a.fecha.startsWith(mesActualStr()))
-      } else if (histFiltro === 'rango') {
-        const set = new Set(fechasDeRangoISO(histDesde, histHasta))
-        filtradas = allAsigs.filter(a => set.has(a.fecha))
-      } else if (histFiltro === 'anio') {
-        filtradas = allAsigs.filter(a => a.fecha.startsWith(String(histAnio)))
-      }
-      return filtradas.map(a => {
-        const reg      = allRegs.find(r => r.asignacion_id === a.id) || null
-        const zona     = allZonas.find(z => z.id === a.zona_id)
-        return { ...a, registro: reg, zonaNombre: zona?.nombre || 'Sin zona' }
-      }).sort((a, b) => b.fecha.localeCompare(a.fecha) || (a.personalNombre || '').localeCompare(b.personalNombre || ''))
-    } catch { return [] }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [histFiltro, histDesde, histHasta, histAnio, refetchKey])
 
   function marcarCambio() {
     setHayCambios(true)
@@ -704,180 +649,6 @@ export default function Asignacion() {
         )}
 
 
-        {/* ── Historial del personal ─────────────────────── */}
-        <div style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', marginBottom: 16, boxShadow: 'var(--shadow)',
-          overflow: 'hidden',
-        }}>
-          <button
-            onClick={() => setShowHistorial(v => !v)}
-            style={{
-              width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-              padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}
-          >
-            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--primary-dark)' }}>
-              📋 Historial del personal
-            </span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{showHistorial ? '▲' : '▼'}</span>
-          </button>
-
-          {showHistorial && (
-            <div style={{ padding: '0 14px 16px' }}>
-
-              {/* Filtros */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                {[
-                  { key: 'hoy',    label: 'Hoy' },
-                  { key: 'semana', label: 'Semana' },
-                  { key: 'mes',    label: 'Mes' },
-                  { key: 'rango',  label: 'Rango' },
-                  { key: 'anio',   label: 'Año' },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setHistFiltro(key)}
-                    style={{
-                      padding: '6px 16px', borderRadius: 20, cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                      border: `2px solid ${histFiltro === key ? 'var(--primary)' : 'var(--border)'}`,
-                      background: histFiltro === key ? 'var(--primary)' : 'var(--bg-card)',
-                      color: histFiltro === key ? '#fff' : 'var(--text)',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Inputs de rango */}
-              {histFiltro === 'rango' && (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-                  <input
-                    type="date" value={histDesde}
-                    onChange={e => setHistDesde(e.target.value)}
-                    style={{
-                      flex: 1, padding: '8px 10px', borderRadius: 8,
-                      border: '2px solid var(--border)', fontSize: 13,
-                      background: 'var(--bg)', color: 'var(--text)',
-                    }}
-                  />
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>→</span>
-                  <input
-                    type="date" value={histHasta}
-                    onChange={e => setHistHasta(e.target.value)}
-                    style={{
-                      flex: 1, padding: '8px 10px', borderRadius: 8,
-                      border: '2px solid var(--border)', fontSize: 13,
-                      background: 'var(--bg)', color: 'var(--text)',
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Selector de año */}
-              {histFiltro === 'anio' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12, justifyContent: 'center' }}>
-                  <button
-                    onClick={() => setHistAnio(y => y - 1)}
-                    style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
-                  >‹</button>
-                  <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', minWidth: 50, textAlign: 'center' }}>{histAnio}</span>
-                  <button
-                    onClick={() => setHistAnio(y => y + 1)}
-                    style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
-                  >›</button>
-                </div>
-              )}
-
-              {/* Contador */}
-              {historialData.length > 0 && (
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, textAlign: 'right' }}>
-                  {historialData.length} registro{historialData.length !== 1 ? 's' : ''}
-                </p>
-              )}
-
-              {/* Lista */}
-              {historialData.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>
-                  Sin registros para este período
-                </p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {historialData.map(entry => {
-                    const reg = entry.registro
-                    const completado = reg?.completado
-                    const enCurso   = reg && !reg.completado
-                    const sinReg    = !reg
-
-                    const statusColor = completado ? '#15803d' : enCurso ? '#b45309' : '#6b7280'
-                    const statusBg    = completado ? '#dcfce7'  : enCurso ? '#fef3c7' : '#f3f4f6'
-                    const statusLabel = completado ? 'Completado' : enCurso ? 'En curso' : 'Sin registro'
-
-                    return (
-                      <div key={entry.id} style={{
-                        background: 'var(--bg)', borderRadius: 10,
-                        border: '1px solid var(--border)', padding: '10px 12px',
-                      }}>
-                        {/* Fecha + estado */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                            {formatFechaLarga(entry.fecha)}
-                          </span>
-                          <span style={{
-                            fontSize: 11, fontWeight: 700,
-                            color: statusColor, background: statusBg,
-                            borderRadius: 6, padding: '2px 8px',
-                          }}>
-                            {statusLabel}
-                          </span>
-                        </div>
-
-                        {/* Nombre */}
-                        <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>
-                          {entry.personalNombre || 'Sin nombre'}
-                          {entry.personalSector ? <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}> · {entry.personalSector}</span> : null}
-                        </p>
-
-                        {/* Zona + turno */}
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: reg ? 6 : 0 }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>🏢 {entry.zonaNombre}</span>
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '1px 7px',
-                            background: entry.turno === 'mañana' ? 'var(--manana-bg, #fef9c3)' : 'var(--noche-bg, #ede9fe)',
-                            color: entry.turno === 'mañana' ? 'var(--manana-badge, #a16207)' : 'var(--noche-badge, #6d28d9)',
-                          }}>
-                            {entry.turno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
-                          </span>
-                        </div>
-
-                        {/* Horarios */}
-                        {reg && (
-                          <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
-                            {reg.hora_entrada && (
-                              <span style={{ color: '#15803d', fontWeight: 600 }}>
-                                ↓ {formatHora(reg.hora_entrada)}
-                              </span>
-                            )}
-                            {reg.hora_salida && (
-                              <span style={{ color: '#1d4ed8', fontWeight: 600 }}>
-                                ↑ {formatHora(reg.hora_salida)}
-                              </span>
-                            )}
-                            {reg.notas && (
-                              <span style={{ color: 'var(--text-muted)' }}>· {reg.notas}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
       </div>
 
