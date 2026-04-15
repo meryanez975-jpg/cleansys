@@ -52,6 +52,7 @@ export default function HistorialPersonal() {
   const [histAnio, setHistAnio]     = useState(new Date().getFullYear())
   const [selId, setSelId]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
+  const [showFiltros, setShowFiltros] = useState(false)
 
   // Conjunto de fechas según filtro activo
   const fechasFiltro = useMemo(() => {
@@ -124,82 +125,108 @@ export default function HistorialPersonal() {
           </div>
         </div>
 
-        {/* Filtros */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          {[
-            { key: 'hoy',    label: 'Hoy' },
-            { key: 'semana', label: 'Semana' },
-            { key: 'mes',    label: 'Mes' },
-            { key: 'rango',  label: 'Rango' },
-            { key: 'anio',   label: 'Año' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => { setHistFiltro(key); setSelId(null) }}
-              style={{
-                padding: '7px 18px', borderRadius: 20, cursor: 'pointer',
-                fontWeight: 700, fontSize: 13,
-                border: `2px solid ${histFiltro === key ? 'var(--primary)' : 'var(--border)'}`,
-                background: histFiltro === key ? 'var(--primary)' : 'var(--bg-card)',
-                color: histFiltro === key ? '#fff' : 'var(--text)',
-                transition: 'all 0.15s',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Buscador + botón filtro */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: showFiltros ? 0 : 12 }}>
+          <input
+            className="input"
+            placeholder="Buscar persona..."
+            value={busqueda}
+            onChange={e => { setBusqueda(e.target.value); setSelId(null) }}
+            style={{ flex: 1, margin: 0 }}
+          />
+          <button
+            onClick={() => setShowFiltros(v => !v)}
+            style={{
+              padding: '0 14px', borderRadius: 10, cursor: 'pointer',
+              border: `2px solid ${showFiltros ? 'var(--primary)' : 'var(--border)'}`,
+              background: showFiltros ? 'var(--primary)' : 'var(--bg-card)',
+              color: showFiltros ? '#fff' : 'var(--text)',
+              fontWeight: 700, fontSize: 15, flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'all 0.15s',
+            }}
+          >
+            🔍
+            <span style={{ fontSize: 12 }}>{labelPeriodo}</span>
+          </button>
         </div>
 
-        {/* Inputs de rango */}
-        {histFiltro === 'rango' && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-            <input
-              type="date" value={histDesde}
-              onChange={e => { setHistDesde(e.target.value); setSelId(null) }}
-              style={{
-                flex: 1, padding: '8px 10px', borderRadius: 8,
-                border: '2px solid var(--border)', fontSize: 13,
-                background: 'var(--bg)', color: 'var(--text)',
-              }}
-            />
-            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>→</span>
-            <input
-              type="date" value={histHasta}
-              onChange={e => { setHistHasta(e.target.value); setSelId(null) }}
-              style={{
-                flex: 1, padding: '8px 10px', borderRadius: 8,
-                border: '2px solid var(--border)', fontSize: 13,
-                background: 'var(--bg)', color: 'var(--text)',
-              }}
-            />
+        {/* Panel de filtros desplegable */}
+        {showFiltros && (
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '0 0 12px 12px', padding: '14px 14px 16px',
+            marginBottom: 12, boxShadow: 'var(--shadow)',
+          }}>
+            {/* Pills */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+              {[
+                { key: 'hoy',    label: 'Hoy' },
+                { key: 'semana', label: 'Semana' },
+                { key: 'mes',    label: 'Este mes' },
+                { key: 'rango',  label: 'Rango de fechas' },
+                { key: 'anio',   label: 'Año' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => { setHistFiltro(key); setSelId(null) }}
+                  style={{
+                    padding: '6px 16px', borderRadius: 20, cursor: 'pointer',
+                    fontWeight: 700, fontSize: 13,
+                    border: `2px solid ${histFiltro === key ? 'var(--primary)' : 'var(--border)'}`,
+                    background: histFiltro === key ? 'var(--primary)' : 'transparent',
+                    color: histFiltro === key ? '#fff' : 'var(--text)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Inputs de rango */}
+            {histFiltro === 'rango' && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="date" value={histDesde}
+                  onChange={e => { setHistDesde(e.target.value); setSelId(null) }}
+                  style={{
+                    flex: 1, padding: '8px 10px', borderRadius: 8,
+                    border: '2px solid var(--border)', fontSize: 13,
+                    background: 'var(--bg)', color: 'var(--text)',
+                  }}
+                />
+                <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>→</span>
+                <input
+                  type="date" value={histHasta}
+                  onChange={e => { setHistHasta(e.target.value); setSelId(null) }}
+                  style={{
+                    flex: 1, padding: '8px 10px', borderRadius: 8,
+                    border: '2px solid var(--border)', fontSize: 13,
+                    background: 'var(--bg)', color: 'var(--text)',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Selector de año */}
+            {histFiltro === 'anio' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
+                <button
+                  onClick={() => { setHistAnio(y => y - 1); setSelId(null) }}
+                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
+                >‹</button>
+                <span style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', minWidth: 60, textAlign: 'center' }}>
+                  {histAnio}
+                </span>
+                <button
+                  onClick={() => { setHistAnio(y => y + 1); setSelId(null) }}
+                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
+                >›</button>
+              </div>
+            )}
           </div>
         )}
-
-        {/* Selector de año */}
-        {histFiltro === 'anio' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12, justifyContent: 'center' }}>
-            <button
-              onClick={() => { setHistAnio(y => y - 1); setSelId(null) }}
-              style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
-            >‹</button>
-            <span style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', minWidth: 60, textAlign: 'center' }}>
-              {histAnio}
-            </span>
-            <button
-              onClick={() => { setHistAnio(y => y + 1); setSelId(null) }}
-              style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}
-            >›</button>
-          </div>
-        )}
-
-        {/* Buscador */}
-        <input
-          className="input"
-          placeholder="Buscar persona..."
-          value={busqueda}
-          onChange={e => { setBusqueda(e.target.value); setSelId(null) }}
-          style={{ marginBottom: 12 }}
-        />
 
         {/* Lista de personal */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
