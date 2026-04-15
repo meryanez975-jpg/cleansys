@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../supabase/client'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
@@ -53,6 +54,16 @@ export default function HistorialPersonal() {
   const [selId, setSelId]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
   const [showFiltros, setShowFiltros] = useState(false)
+  const [personalSupabase, setPersonalSupabase] = useState([])
+  const [loadingPersonal, setLoadingPersonal]   = useState(true)
+
+  useEffect(() => {
+    supabase.from('com_personal').select('id, nombre, sector, turno').eq('activo', true).order('nombre')
+      .then(({ data }) => {
+        if (data) setPersonalSupabase(data)
+        setLoadingPersonal(false)
+      })
+  }, [])
 
   // Conjunto de fechas según filtro activo
   const fechasFiltro = useMemo(() => {
@@ -73,15 +84,14 @@ export default function HistorialPersonal() {
   }, [histFiltro, histDesde, histHasta, histAnio])
 
   // Todas las asignaciones y registros
-  const { allAsigs, allRegs, allZonas, allPersonal } = useMemo(() => {
+  const { allAsigs, allRegs, allZonas } = useMemo(() => {
     try {
       return {
-        allAsigs:   JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]').filter(a => a.activo !== false),
-        allRegs:    JSON.parse(localStorage.getItem('cleansys_registros') || '[]'),
-        allZonas:   JSON.parse(localStorage.getItem('cleansys_zonas') || '[]'),
-        allPersonal: JSON.parse(localStorage.getItem('cleansys_personal') || '[]').filter(p => p.activo),
+        allAsigs: JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]').filter(a => a.activo !== false),
+        allRegs:  JSON.parse(localStorage.getItem('cleansys_registros') || '[]'),
+        allZonas: JSON.parse(localStorage.getItem('cleansys_zonas') || '[]'),
       }
-    } catch { return { allAsigs: [], allRegs: [], allZonas: [], allPersonal: [] } }
+    } catch { return { allAsigs: [], allRegs: [], allZonas: [] } }
   }, [histFiltro, histDesde, histHasta, histAnio])
 
   function asigsFiltradas(personal_id) {
@@ -96,8 +106,8 @@ export default function HistorialPersonal() {
     })).sort((a, b) => b.fecha.localeCompare(a.fecha))
   }
 
-  // Personal que coincide con la búsqueda (usando allPersonal de localStorage)
-  const personalFiltrado = allPersonal.filter(p =>
+  // Personal que coincide con la búsqueda (viene de Supabase com_personal)
+  const personalFiltrado = personalSupabase.filter(p =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
   )
 
@@ -230,7 +240,10 @@ export default function HistorialPersonal() {
 
         {/* Lista de personal */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {personalFiltrado.length === 0 && (
+          {loadingPersonal && (
+            <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
+          )}
+          {!loadingPersonal && personalFiltrado.length === 0 && (
             <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
           )}
 
