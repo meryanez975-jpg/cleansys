@@ -54,6 +54,7 @@ export default function HistorialPersonal() {
   const [selId, setSelId]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
   const [showFiltros, setShowFiltros] = useState(false)
+  const [turnoFiltro, setTurnoFiltro] = useState(null)   // null | 'mañana' | 'noche'
   const [personalSupabase, setPersonalSupabase] = useState([])
   const [loadingPersonal, setLoadingPersonal]   = useState(true)
 
@@ -106,10 +107,21 @@ export default function HistorialPersonal() {
     })).sort((a, b) => b.fecha.localeCompare(a.fecha))
   }
 
-  // Personal que coincide con la búsqueda (viene de Supabase com_personal)
-  const personalFiltrado = personalSupabase.filter(p =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  // Helper: mapea el turno de Supabase al turno de cleansys
+  function turnoDePersona(turnoSupabase) {
+    if (!turnoSupabase) return null
+    const t = turnoSupabase.toLowerCase()
+    if (t === 'mañana' || t === 'diurno') return 'mañana'
+    if (t === 'tarde'  || t === 'noche')  return 'noche'
+    return null
+  }
+
+  // Personal que coincide con la búsqueda y el filtro de turno
+  const personalFiltrado = personalSupabase.filter(p => {
+    if (!p.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
+    if (turnoFiltro && turnoDePersona(p.turno) !== turnoFiltro) return false
+    return true
+  })
 
   // Etiqueta del período activo
   const labelPeriodo = (() => {
@@ -168,7 +180,37 @@ export default function HistorialPersonal() {
             borderRadius: '0 0 12px 12px', padding: '14px 14px 16px',
             marginBottom: 12, boxShadow: 'var(--shadow)',
           }}>
-            {/* Pills */}
+            {/* Botones de turno */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              {[
+                { key: 'mañana', label: '☀️ Mañana' },
+                { key: 'noche',  label: '🌙 Noche' },
+              ].map(({ key, label }) => {
+                const activo = turnoFiltro === key
+                const esMañana = key === 'mañana'
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setTurnoFiltro(activo ? null : key); setSelId(null) }}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
+                      fontWeight: 700, fontSize: 14,
+                      border: `2px solid ${activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--border)'}`,
+                      background: activo ? (esMañana ? 'var(--manana-bg)' : 'var(--noche-bg)') : 'transparent',
+                      color: activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--text)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: '1px solid var(--border)', marginBottom: 12 }} />
+
+            {/* Pills de período */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
               {[
                 { key: 'hoy',    label: 'Hoy' },
