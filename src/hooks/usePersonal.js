@@ -8,13 +8,13 @@ export function usePersonal() {
     setPersonal(store.getPersonal())
   }, [])
 
-  function agregar(nombre, sector) {
-    store.addPersonal(nombre, sector)
+  function agregar(nombre, sector, turno, dia_libre) {
+    store.addPersonal(nombre, sector, turno, dia_libre)
     refetch()
   }
 
-  function editar(id, nombre, sector) {
-    store.editPersonal(id, nombre, sector)
+  function editar(id, nombre, sector, turno, dia_libre) {
+    store.editPersonal(id, nombre, sector, turno, dia_libre)
     refetch()
   }
 

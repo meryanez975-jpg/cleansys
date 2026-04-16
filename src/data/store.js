@@ -52,17 +52,17 @@ export function getPersonal() {
   return leer('personal').filter(p => p.activo)
 }
 
-export function addPersonal(nombre, sector) {
+export function addPersonal(nombre, sector, turno = null, dia_libre = null) {
   const all = leer('personal')
-  const nuevo = { id: genId(), nombre: nombre.trim(), sector: sector.trim(), activo: true }
+  const nuevo = { id: genId(), nombre: nombre.trim(), sector: sector.trim(), turno, dia_libre, activo: true }
   escribir('personal', [...all, nuevo])
   return nuevo
 }
 
-export function editPersonal(id, nombre, sector) {
+export function editPersonal(id, nombre, sector, turno = null, dia_libre = null) {
   const all = leer('personal')
   escribir('personal', all.map(p =>
-    p.id === id ? { ...p, nombre: nombre.trim(), sector: sector.trim() } : p
+    p.id === id ? { ...p, nombre: nombre.trim(), sector: sector.trim(), turno, dia_libre } : p
   ))
 }
 
