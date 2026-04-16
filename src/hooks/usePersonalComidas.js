@@ -17,7 +17,7 @@ export function usePersonalComidas(turno) {
       const turnos = TURNO_MAP[turno] || [turno]
       const { data, error } = await supabase
         .from('com_personal')
-        .select('id, nombre, sector, turno')
+        .select('id, nombre, sector, turno, dia_libre')
         .eq('activo', true)
         .in('turno', turnos)
         .order('nombre')

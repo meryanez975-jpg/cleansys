@@ -393,10 +393,13 @@ export default function Registro() {
                     {tieneSalida ? (
                       <div>
                         <div style={{ background: 'var(--success-light)', borderRadius: 10, padding: '12px 14px', marginBottom: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{ fontSize: 18 }}>✅</span>
                             <strong style={{ color: 'var(--success)', fontSize: 14 }}>¡Limpieza completada!</strong>
                           </div>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+                            👤 {empleadoSeleccionado?.nombre}
+                          </p>
                           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                             Inicio: {formatHora(reg.hora_entrada)} → Fin: {formatHora(reg.hora_salida)}
                           </p>

@@ -130,7 +130,11 @@ function SelectColor({ placeholder, opciones, valor, onChange }) {
               <span style={{ fontWeight: 600, fontSize: 13, color: o.disabled ? '#ef4444' : o.color }}>
                 {o.label}
               </span>
-              {o.disabled && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#fee2e2', borderRadius: 5, padding: '1px 6px' }}>Ocupado</span>}
+              {o.disabled && (
+                o.tipo === 'dia_libre'
+                  ? <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#7c3aed', background: '#ede9fe', borderRadius: 5, padding: '1px 6px' }}>Día libre</span>
+                  : <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#fee2e2', borderRadius: 5, padding: '1px 6px' }}>Ocupado</span>
+              )}
             </button>
           ))}
         </div>
@@ -158,6 +162,13 @@ const COLORES_DIAS = {
   5: { bg: '#ede9fe', color: '#6d28d9' },
   6: { bg: '#ffedd5', color: '#c2410c' },
   0: { bg: '#cffafe', color: '#0e7490' },
+}
+
+function diaLibreAJsDay(diaLibre) {
+  if (diaLibre === null || diaLibre === undefined) return null
+  if (typeof diaLibre === 'number') return diaLibre
+  const MAP = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 0 }
+  return MAP[String(diaLibre).toLowerCase()] ?? null
 }
 
 // ── Calendario con rango ──────────────────────────────────────────
@@ -430,15 +441,27 @@ export default function Asignacion() {
   // refetchKey fuerza re-lectura del store en cada cambio
   void refetchKey
 
-  // Días bloqueados: fechas donde la persona seleccionada ya tiene asignación en este turno
+  // Persona seleccionada y su día libre normalizado
+  const pSelec = personalTurno.find(p => p.id === selPersonal) ?? null
+  const diaLibreJsDay = diaLibreAJsDay(pSelec?.dia_libre ?? null)
+
+  // Días bloqueados: asignaciones existentes + todas las fechas del mes que caen en el día libre
   const diasBloqueados = (() => {
     if (!selPersonal) return new Set()
     try {
       const all = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-      return new Set(
+      const bloqueados = new Set(
         all.filter(a => a.personal_id === selPersonal && a.turno === selTurnoForm && a.activo !== false)
            .map(a => a.fecha)
       )
+      if (diaLibreJsDay !== null) {
+        const total = diasEnMes(mes)
+        for (let d = 1; d <= total; d++) {
+          const iso = isoDelDia(mes, d)
+          if (new Date(iso + 'T12:00:00').getDay() === diaLibreJsDay) bloqueados.add(iso)
+        }
+      }
+      return bloqueados
     } catch { return new Set() }
   })()
 
@@ -481,10 +504,16 @@ export default function Asignacion() {
     forceRefetch()
   }
 
-  // Fechas del rango filtradas por día de semana elegido
-  const fechasParaAsignar = selDiaSemana === null
-    ? fechasRango
-    : fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === selDiaSemana)
+  // Fechas del rango filtradas por día de semana elegido y sin el día libre
+  const fechasParaAsignar = (() => {
+    let fechas = selDiaSemana === null
+      ? fechasRango
+      : fechasRango.filter(f => new Date(f + 'T12:00:00').getDay() === selDiaSemana)
+    if (diaLibreJsDay !== null) {
+      fechas = fechas.filter(f => new Date(f + 'T12:00:00').getDay() !== diaLibreJsDay)
+    }
+    return fechas
+  })()
 
   function handleCrearAsignacion() {
     if (!selPersonal || !selZona) { setErrForm('Seleccioná persona y zona'); return }
@@ -494,7 +523,6 @@ export default function Asignacion() {
     }
     setGuardando(true)
     let errores = 0
-    const pSelec = personalTurno.find(p => p.id === selPersonal)
     for (const f of fechasParaAsignar) {
       const { error } = store.addAsignacion(selPersonal, selZona, selTurnoForm, f, pSelec?.nombre || '', pSelec?.sector || '')
       if (error) errores++
@@ -710,14 +738,16 @@ export default function Asignacion() {
                   ...DIAS_SEMANA
                     .filter(({ jsDay }) => fechasRango.some(f => new Date(f + 'T12:00:00').getDay() === jsDay))
                     .map(({ label, jsDay }) => {
-                      const ocupado = selPersonal && fechasRango
+                      const esDiaLibre = diaLibreJsDay !== null && jsDay === diaLibreJsDay
+                      const ocupado = !esDiaLibre && selPersonal && fechasRango
                         .filter(f => new Date(f + 'T12:00:00').getDay() === jsDay)
                         .every(f => diasBloqueados.has(f))
                       return {
                         value: String(jsDay),
-                        label,
+                        label: esDiaLibre ? `${label} — Día libre 🏖️` : label,
                         ...COLORES_DIAS[jsDay],
-                        disabled: ocupado,
+                        disabled: esDiaLibre || ocupado,
+                        tipo: esDiaLibre ? 'dia_libre' : 'ocupado',
                       }
                     })
                 ]}
