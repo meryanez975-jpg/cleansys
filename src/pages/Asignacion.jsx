@@ -167,8 +167,13 @@ const COLORES_DIAS = {
 function diaLibreAJsDay(diaLibre) {
   if (diaLibre === null || diaLibre === undefined) return null
   if (typeof diaLibre === 'number') return diaLibre
+  const s = String(diaLibre).trim()
+  // Número como string: '0'–'6'
+  const n = parseInt(s, 10)
+  if (!isNaN(n) && n >= 0 && n <= 6) return n
+  // Nombre en español
   const MAP = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 0 }
-  return MAP[String(diaLibre).toLowerCase()] ?? null
+  return MAP[s.toLowerCase()] ?? null
 }
 
 // ── Calendario con rango ──────────────────────────────────────────
@@ -444,7 +449,7 @@ export default function Asignacion() {
 
   // Persona seleccionada y su día libre normalizado
   const pSelec = personalTurno.find(p => p.id === selPersonal) ?? null
-  const diaLibreJsDay = diaLibreAJsDay(pSelec?.dia_libre ?? null)
+  const diaLibreJsDay = diaLibreAJsDay(pSelec?.diaLibre ?? null)
 
   // Días bloqueados: asignaciones existentes + todas las fechas del mes que caen en el día libre
   const diasBloqueados = (() => {
