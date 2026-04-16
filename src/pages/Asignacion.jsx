@@ -428,8 +428,8 @@ export default function Asignacion() {
   const fecha     = isoDelDia(mes, diaActivo)
 
   const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
-  // Personal desde Supabase filtrado por turno
-  const { personal: personalTurno, loading: loadingPersonal } = usePersonalComidas(selTurnoForm)
+  // Personal desde Supabase (todos los activos, sin filtrar por turno)
+  const { personal: personalTurno, loading: loadingPersonal } = usePersonalComidas(null)
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
   const { eliminarAsignacion, refetch: refetchAsig } = useAsignaciones(fecha)
   const { refetch: refetchReg } = useRegistros(fecha)

@@ -24,8 +24,12 @@ export function usePersonalComidas(turno) {
         .order('nombre')
 
       if (!error && data) {
-        // Filtra en JS usando el mismo mapeo que HistorialPersonal
-        setPersonal(data.filter(p => turnoDePersona(p.turno) === turno))
+        // Si turno es null, devuelve todos; si no, filtra por mapeo
+        const resultado = turno === null
+          ? data
+          : data.filter(p => turnoDePersona(p.turno) === turno)
+        // Fallback: si el filtro dejó vacío (turno en DB no reconocido), devuelve todos
+        setPersonal(resultado.length > 0 ? resultado : data)
       } else if (error) {
         console.error('Error cargando personal de comidas:', error.message)
       }
