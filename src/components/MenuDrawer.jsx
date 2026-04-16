@@ -132,6 +132,13 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
           </p>
 
           <MenuItem
+            icono="⏱"
+            texto="Control de limpiezas"
+            sub="Cronómetros de hoy y ayer por turno"
+            onClick={() => ir('/control')}
+          />
+
+          <MenuItem
             icono="👤"
             texto="Historial del personal"
             sub="Cuántas veces limpió cada uno"

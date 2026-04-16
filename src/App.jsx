@@ -4,6 +4,7 @@ import Asignacion from './pages/Asignacion'
 import SemanaPlan from './pages/SemanaPlan'
 import Materiales from './pages/Materiales'
 import HistorialPersonal from './pages/HistorialPersonal'
+import ControlCronometros from './pages/ControlCronometros'
 import GestionZonas from './pages/GestionZonas'
 import GestionPersonal from './pages/GestionPersonal'
 
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/semana" element={<SemanaPlan />} />
       <Route path="/materiales" element={<Materiales />} />
       <Route path="/historial" element={<HistorialPersonal />} />
+      <Route path="/control" element={<ControlCronometros />} />
       <Route path="/zonas" element={<GestionZonas />} />
       <Route path="/personal" element={<GestionPersonal />} />
     </Routes>
