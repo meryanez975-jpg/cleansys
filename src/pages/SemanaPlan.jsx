@@ -32,6 +32,7 @@ export default function SemanaPlan() {
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
   const [zonas, setZonas] = useState([])
   const [zonasAbiertas, setZonasAbiertas] = useState({})
+  const [showOtras, setShowOtras] = useState(false)
   const [elegirTurnoCaptura, setElegirTurnoCaptura] = useState(null) // 'semana' | zonaId
 
   useEffect(() => { setTick(t => t + 1) }, [])
@@ -252,31 +253,34 @@ export default function SemanaPlan() {
               📸 Capturar
             </button>
           </div>
-          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28, background: '#fff', borderRadius: 12, padding: 4 }}>
+          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14, background: '#fff', borderRadius: 12, padding: 4 }}>
             {fechasSemana.map((fecha, i) => {
               const iso      = fechasISO[i]
               const esHoy    = iso === hoyISO
               const asigsDia = asigs.filter(a => a.fecha === iso && (!filtroTurno || a.turno === filtroTurno))
+              const banioDia = asigsDia.filter(a => a.zona?.nombre?.toLowerCase().includes('baño'))
+              const sinBaño  = asigsDia.length > 0 && banioDia.length === 0
+
               return (
                 <div key={iso} className="card" style={{
                   borderLeft: `4px solid ${esHoy ? 'var(--primary)' : 'var(--border)'}`,
                   padding: '12px 14px', opacity: asigsDia.length === 0 ? 0.5 : 1,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: asigsDia.length > 0 ? 10 : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: banioDia.length > 0 ? 10 : 0 }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: esHoy ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_FULL[i]}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
                     {esHoy && <span className="badge badge-blue">Hoy</span>}
                     {asigsDia.length === 0 && <span style={{ fontSize: 11, color: 'var(--text-light)', marginLeft: 'auto' }}>Sin asignaciones</span>}
+                    {sinBaño && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>{asigsDia.length} otras</span>}
                   </div>
-                  {asigsDia.length > 0 && (
+                  {banioDia.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {asigsDia.map(a => (
+                      {banioDia.map(a => (
                         <div key={a.id} style={{ background: '#f8fafc', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
-                          <span style={{
-                          fontSize: 11, fontWeight: 700, color: '#0369a1',
-                          background: '#e0f2fe', borderRadius: 6, padding: '2px 8px',
-                        }}>{a.zona?.nombre || '—'}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 6, padding: '2px 8px' }}>
+                            🚿 {a.zona?.nombre}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -284,6 +288,67 @@ export default function SemanaPlan() {
                 </div>
               )
             })}
+
+            {/* Otras asignaciones (no Baño) — colapsable al final */}
+            {(() => {
+              const otras = asigs.filter(a =>
+                (!filtroTurno || a.turno === filtroTurno) &&
+                !a.zona?.nombre?.toLowerCase().includes('baño')
+              )
+              if (otras.length === 0) return null
+              return (
+                <div>
+                  <button
+                    onClick={() => setShowOtras(v => !v)}
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      background: showOtras ? '#475569' : '#f1f5f9',
+                      border: 'none', borderRadius: showOtras ? '10px 10px 0 0' : 10,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 13, color: showOtras ? '#fff' : '#475569' }}>
+                      📋 Otras asignaciones
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                        background: showOtras ? 'rgba(255,255,255,0.25)' : '#cbd5e1',
+                        color: showOtras ? '#fff' : '#475569',
+                      }}>{otras.length}</span>
+                      <span style={{ fontSize: 12, color: showOtras ? '#fff' : '#64748b' }}>{showOtras ? '▲' : '▼'}</span>
+                    </div>
+                  </button>
+
+                  {showOtras && (
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {fechasSemana.map((_, i) => {
+                        const iso = fechasISO[i]
+                        const otrasDelDia = otras.filter(a => a.fecha === iso)
+                        if (otrasDelDia.length === 0) return null
+                        return (
+                          <div key={iso}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 3, marginTop: 4 }}>
+                              {DIAS_CORTO[i]} {new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                            </p>
+                            {otrasDelDia.map(a => (
+                              <div key={a.id} style={{ background: '#fff', borderRadius: 6, padding: '5px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 6, padding: '2px 8px' }}>
+                                  {a.zona?.nombre || '—'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Footer info para captura */}
             <div style={{ marginTop: 4, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>📅 {rangoTexto}</span>
