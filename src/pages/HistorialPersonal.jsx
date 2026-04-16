@@ -219,7 +219,11 @@ export default function HistorialPersonal() {
               return (
                 <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <button
-                    onClick={() => { setHistFiltro(key); setSelId(null) }}
+                    onClick={() => {
+                      setHistFiltro(key)
+                      setSelId(null)
+                      if (key !== 'rango' && key !== 'anio') setShowFiltros(false)
+                    }}
                     style={{
                       width: '100%', padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
                       fontWeight: 700, fontSize: 14, textAlign: 'left',
@@ -266,7 +270,11 @@ export default function HistorialPersonal() {
                       <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>→</span>
                       <input
                         type="date" value={histHasta}
-                        onChange={e => { setHistHasta(e.target.value); setSelId(null) }}
+                        onChange={e => {
+                          setHistHasta(e.target.value)
+                          setSelId(null)
+                          if (histDesde && e.target.value) setShowFiltros(false)
+                        }}
                         style={{
                           flex: 1, padding: '8px 10px', borderRadius: 8,
                           border: '2px solid var(--border)', fontSize: 13,
