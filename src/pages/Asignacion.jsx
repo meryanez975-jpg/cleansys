@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePersonal } from '../hooks/usePersonal'
+import { usePersonalComidas } from '../hooks/usePersonalComidas'
 import { useZonas } from '../hooks/useZonas'
 import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
@@ -427,9 +428,8 @@ export default function Asignacion() {
   const fecha     = isoDelDia(mes, diaActivo)
 
   const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
-  // Filtra la lista local por turno seleccionado (null = sin turno asignado → aparece en ambos)
-  const personalTurno = personal.filter(p => !p.turno || p.turno === selTurnoForm)
-  const loadingPersonal = false
+  // Personal desde Supabase filtrado por turno
+  const { personal: personalTurno, loading: loadingPersonal } = usePersonalComidas(selTurnoForm)
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
   const { eliminarAsignacion, refetch: refetchAsig } = useAsignaciones(fecha)
   const { refetch: refetchReg } = useRegistros(fecha)
