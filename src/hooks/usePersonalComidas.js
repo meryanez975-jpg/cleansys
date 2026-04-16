@@ -19,7 +19,7 @@ export function usePersonalComidas(turno) {
       setLoading(true)
       const { data, error } = await supabase
         .from('com_personal')
-        .select('id, nombre, sector, turno, dia_libre')
+        .select('id, nombre, sector, turno')
         .eq('activo', true)
         .order('nombre')
 
