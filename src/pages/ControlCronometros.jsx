@@ -2,12 +2,31 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 
-// ── helpers ───────────────────────────────────────────────────────
+// ── helpers de fecha ──────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
 function ayer() {
-  const d = new Date()
-  d.setDate(d.getDate() - 1)
+  const d = new Date(); d.setDate(d.getDate() - 1)
   return d.toISOString().split('T')[0]
+}
+function fechasSemanaActual() {
+  const d = new Date()
+  const dow = d.getDay()
+  const lunes = new Date(d)
+  lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
+  return Array.from({ length: 7 }, (_, i) => {
+    const x = new Date(lunes); x.setDate(lunes.getDate() + i)
+    return x.toISOString().split('T')[0]
+  })
+}
+function fechasSemanaAnterior() {
+  const d = new Date(); d.setDate(d.getDate() - 7)
+  const dow = d.getDay()
+  const lunes = new Date(d)
+  lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
+  return Array.from({ length: 7 }, (_, i) => {
+    const x = new Date(lunes); x.setDate(lunes.getDate() + i)
+    return x.toISOString().split('T')[0]
+  })
 }
 function formatHora(isoStr) {
   if (!isoStr) return '—'
@@ -16,47 +35,152 @@ function formatHora(isoStr) {
 function duracion(entrada, salida) {
   if (!entrada || !salida) return null
   const seg = Math.floor((new Date(salida) - new Date(entrada)) / 1000)
-  const h   = Math.floor(seg / 3600)
-  const m   = Math.floor((seg % 3600) / 60)
-  const s   = seg % 60
+  const h = Math.floor(seg / 3600)
+  const m = Math.floor((seg % 3600) / 60)
+  const s = seg % 60
   if (h > 0) return `${h}h ${m}m`
   if (m > 0) return `${m}m ${s}s`
   return `${s}s`
 }
-function formatFecha(iso) {
+function formatFechaCorta(iso) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', {
+    weekday: 'short', day: 'numeric', month: 'short',
+  })
+}
+function formatFechaLarga(iso) {
   return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 }
 
-// Lee todo lo que necesitamos de localStorage
+// ── datos desde localStorage ──────────────────────────────────────
 function getDatosDelDia(fecha, turno) {
   try {
-    const asigs  = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-    const regs   = JSON.parse(localStorage.getItem('cleansys_registros')    || '[]')
-    const zonas  = JSON.parse(localStorage.getItem('cleansys_zonas')        || '[]')
-
+    const asigs = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    const regs  = JSON.parse(localStorage.getItem('cleansys_registros')    || '[]')
+    const zonas = JSON.parse(localStorage.getItem('cleansys_zonas')        || '[]')
     return asigs
       .filter(a => a.fecha === fecha && a.turno === turno && a.activo !== false)
-      .map(a => {
-        const reg  = regs.find(r => r.asignacion_id === a.id) || null
-        const zona = zonas.find(z => z.id === a.zona_id) || null
-        return { ...a, registro: reg, zona }
-      })
+      .map(a => ({
+        ...a,
+        registro: regs.find(r => r.asignacion_id === a.id) || null,
+        zona:     zonas.find(z => z.id === a.zona_id) || null,
+      }))
   } catch { return [] }
 }
+
+function eliminarRegistro(asignacion_id) {
+  try {
+    const regs = JSON.parse(localStorage.getItem('cleansys_registros') || '[]')
+    localStorage.setItem('cleansys_registros', JSON.stringify(
+      regs.filter(r => r.asignacion_id !== asignacion_id)
+    ))
+  } catch {}
+}
+
+// ── tarjeta de empleado ───────────────────────────────────────────
+function TarjetaEmpleado({ f, nombre, sector, onEliminar, mostrarEliminar }) {
+  const reg = f.registro
+  const completado  = reg?.completado
+  const enCurso     = reg && !reg.completado
+  const sinRegistro = !reg
+
+  const esCompletado  = completado
+  const esEnCurso     = enCurso
+  const esSinRegistro = sinRegistro
+
+  const colorBorde  = esCompletado ? '#22c55e' : esEnCurso ? '#f59e0b' : '#ef4444'
+  const bgCard      = esCompletado ? '#f0fdf4' : esEnCurso ? '#fffbeb' : '#fef2f2'
+  const bgBorde     = esCompletado ? '#bbf7d0' : esEnCurso ? '#fde68a' : '#fecaca'
+  const bgAvatar    = esCompletado ? '#dcfce7' : esEnCurso ? '#fef3c7' : '#fee2e2'
+  const colorAvatar = esCompletado ? '#15803d' : esEnCurso ? '#b45309' : '#dc2626'
+  const badgeBg     = esCompletado ? '#dcfce7' : esEnCurso ? '#fef3c7' : '#fee2e2'
+  const badgeColor  = esCompletado ? '#15803d' : esEnCurso ? '#b45309' : '#dc2626'
+  const badgeLabel  = esCompletado ? '✅ Listo' : esEnCurso ? '🟡 En curso' : '❌ No registró'
+
+  return (
+    <div style={{
+      background: bgCard,
+      border: `1.5px solid ${bgBorde}`,
+      borderLeft: `4px solid ${colorBorde}`,
+      borderRadius: 10, padding: '12px 14px',
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+    }}>
+      {/* Avatar */}
+      <div style={{
+        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+        background: bgAvatar,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, fontSize: 15, color: colorAvatar,
+      }}>
+        {nombre.charAt(0).toUpperCase()}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>{nombre}</p>
+        {sector && <p style={{ fontSize: 12, color: '#64748b' }}>{sector}</p>}
+        <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>🏢 {f.zona?.nombre || '—'}</p>
+        {esCompletado && (
+          <p style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>
+            {formatHora(reg.hora_entrada)} → {formatHora(reg.hora_salida)}
+            {duracion(reg.hora_entrada, reg.hora_salida) && (
+              <strong style={{ marginLeft: 6 }}>({duracion(reg.hora_entrada, reg.hora_salida)})</strong>
+            )}
+          </p>
+        )}
+        {esEnCurso && (
+          <p style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>
+            ⏱ Inicio: {formatHora(reg.hora_entrada)}
+          </p>
+        )}
+        {reg?.notas && (
+          <p style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>📝 {reg.notas}</p>
+        )}
+      </div>
+
+      {/* Derecha: badge + botón eliminar */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: badgeColor,
+          background: badgeBg, borderRadius: 6, padding: '3px 10px',
+        }}>
+          {badgeLabel}
+        </span>
+        {mostrarEliminar && reg && (
+          <button
+            onClick={() => onEliminar(f.id)}
+            style={{
+              fontSize: 11, fontWeight: 700, color: '#dc2626',
+              background: '#fee2e2', border: '1px solid #fecaca',
+              borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+            }}
+          >
+            🔄 Reiniciar
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── página principal ──────────────────────────────────────────────
+const OPCIONES_FECHA = [
+  { key: 'hoy',          label: 'Hoy' },
+  { key: 'ayer',         label: 'Ayer' },
+  { key: 'semana',       label: 'Esta semana' },
+  { key: 'semana_ant',   label: 'Semana pasada' },
+]
 
 export default function ControlCronometros() {
   const navigate = useNavigate()
 
-  const [turno,  setTurno]  = useState('mañana')  // 'mañana' | 'noche'
-  const [diaKey, setDiaKey] = useState('hoy')     // 'hoy' | 'ayer'
+  const [turno,     setTurno]     = useState('mañana')
+  const [diaKey,    setDiaKey]    = useState('hoy')
+  const [showFiltro, setShowFiltro] = useState(false)
   const [personalMap, setPersonalMap] = useState({})
   const [tick, setTick] = useState(0)
 
-  const fecha = diaKey === 'hoy' ? hoy() : ayer()
-
-  // Carga personal desde Supabase
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre, sector').eq('activo', true)
       .then(({ data }) => {
@@ -68,19 +192,24 @@ export default function ControlCronometros() {
       })
   }, [])
 
-  // Refresca cada 30s para que los "en curso" no queden obsoletos
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 30_000)
     return () => clearInterval(id)
   }, [])
 
   void tick
-  const filas = getDatosDelDia(fecha, turno)
 
-  // Separar por estado
-  const completadas  = filas.filter(f => f.registro?.completado)
-  const enCurso      = filas.filter(f => f.registro && !f.registro.completado)
-  const sinRegistro  = filas.filter(f => !f.registro)
+  // Fechas a mostrar según filtro
+  const fechas = (() => {
+    if (diaKey === 'hoy')        return [hoy()]
+    if (diaKey === 'ayer')       return [ayer()]
+    if (diaKey === 'semana')     return fechasSemanaActual()
+    if (diaKey === 'semana_ant') return fechasSemanaAnterior()
+    return [hoy()]
+  })()
+
+  const esMultiDia = fechas.length > 1
+  const labelFiltro = OPCIONES_FECHA.find(o => o.key === diaKey)?.label || 'Hoy'
 
   function getNombre(f) {
     return personalMap[f.personal_id]?.nombre || f.personalNombre || '—'
@@ -89,10 +218,26 @@ export default function ControlCronometros() {
     return personalMap[f.personal_id]?.sector || f.personalSector || ''
   }
 
-  // ── contadores para los botones de turno
-  const totalManana = getDatosDelDia(fecha, 'mañana').length
-  const totalNoche  = getDatosDelDia(fecha, 'noche').length
+  function handleEliminar(asignacion_id) {
+    eliminarRegistro(asignacion_id)
+    setTick(t => t + 1)
+  }
 
+  // Contadores para botones de turno (solo fecha activa / suma de semana)
+  const totalManana = fechas.reduce((s, f) => s + getDatosDelDia(f, 'mañana').length, 0)
+  const totalNoche  = fechas.reduce((s, f) => s + getDatosDelDia(f, 'noche').length,  0)
+
+  // Datos agrupados por fecha
+  const diasConDatos = fechas
+    .map(fecha => ({ fecha, filas: getDatosDelDia(fecha, turno) }))
+    .filter(d => d.filas.length > 0)
+
+  const todasLasFilas = diasConDatos.flatMap(d => d.filas)
+  const completadas   = todasLasFilas.filter(f => f.registro?.completado)
+  const enCurso       = todasLasFilas.filter(f => f.registro && !f.registro.completado)
+  const sinRegistro   = todasLasFilas.filter(f => !f.registro)
+
+  // ── render ────────────────────────────────────────────────────
   return (
     <div className="page">
       <div className="container">
@@ -102,37 +247,68 @@ export default function ControlCronometros() {
           <button className="header-back" onClick={() => navigate('/asignacion')}>←</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Control de limpiezas</p>
-            <p className="header-sub" style={{ textTransform: 'capitalize' }}>{formatFecha(fecha)}</p>
+            <p className="header-sub" style={{ textTransform: 'capitalize' }}>{labelFiltro}</p>
           </div>
         </div>
 
-        {/* Filtro Hoy / Ayer */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {[
-            { key: 'hoy',  label: '📅 Hoy'  },
-            { key: 'ayer', label: '🕐 Ayer' },
-          ].map(({ key, label }) => {
-            const activo = diaKey === key
-            return (
-              <button
-                key={key}
-                onClick={() => setDiaKey(key)}
-                style={{
-                  flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
-                  fontWeight: 700, fontSize: 14,
-                  border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
-                  background: activo ? 'var(--primary)' : 'var(--bg-card)',
-                  color: activo ? '#fff' : 'var(--text)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
+        {/* Filtro de fechas — desplegable */}
+        <div style={{ marginBottom: 14 }}>
+          <button
+            onClick={() => setShowFiltro(v => !v)}
+            style={{
+              width: '100%', padding: '11px 16px',
+              background: showFiltro ? 'var(--primary)' : 'var(--bg-card)',
+              border: `1.5px solid ${showFiltro ? 'var(--primary)' : 'var(--border)'}`,
+              borderRadius: showFiltro ? '10px 10px 0 0' : 10,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: 'var(--shadow)', transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 14, color: showFiltro ? '#fff' : 'var(--text)' }}>
+              📅 {labelFiltro}
+            </span>
+            <span style={{ color: showFiltro ? '#fff' : 'var(--text-muted)', fontSize: 13 }}>
+              {showFiltro ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {showFiltro && (
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--primary)', borderTop: 'none',
+              borderRadius: '0 0 10px 10px',
+              display: 'flex', flexDirection: 'column', gap: 4,
+              padding: '8px 10px 10px',
+              boxShadow: 'var(--shadow)',
+            }}>
+              {OPCIONES_FECHA.map(({ key, label }) => {
+                const activo = diaKey === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setDiaKey(key); setShowFiltro(false) }}
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      borderRadius: 8, cursor: 'pointer',
+                      border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
+                      background: activo ? 'var(--primary)' : 'transparent',
+                      color: activo ? '#fff' : 'var(--text)',
+                      fontWeight: 700, fontSize: 14, textAlign: 'left',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {label}
+                    {activo && <span style={{ fontSize: 12 }}>✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Filtro turno Mañana / Noche */}
+        {/* Turno Mañana / Noche */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {[
             { key: 'mañana', label: '☀️ Mañana', count: totalManana, color: 'var(--manana-badge)', bg: 'var(--manana-bg)' },
@@ -158,163 +334,101 @@ export default function ControlCronometros() {
           })}
         </div>
 
-        {filas.length === 0 ? (
+        {/* Sin datos */}
+        {todasLasFilas.length === 0 ? (
           <div className="card text-center" style={{ padding: 32 }}>
             <p style={{ fontSize: 32, marginBottom: 10 }}>📭</p>
             <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-              Sin asignaciones para este turno
+              Sin asignaciones para este período
             </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-            {/* ── Sin registro → No hizo la limpieza ── */}
+            {/* ── No registró ── */}
             {sinRegistro.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{
-                    width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0,
-                  }} />
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    No hizo la limpieza ({sinRegistro.length})
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {sinRegistro.map(f => (
-                    <div key={f.id} style={{
-                      background: '#fef2f2', border: '1.5px solid #fecaca',
-                      borderLeft: '4px solid #ef4444',
-                      borderRadius: 10, padding: '12px 14px',
-                      display: 'flex', alignItems: 'center', gap: 12,
-                    }}>
-                      <div style={{
-                        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                        background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 700, fontSize: 15, color: '#dc2626',
-                      }}>
-                        {getNombre(f).charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>{getNombre(f)}</p>
-                        {getSector(f) && <p style={{ fontSize: 12, color: '#64748b' }}>{getSector(f)}</p>}
-                        <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>🏢 {f.zona?.nombre || '—'}</p>
-                      </div>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, color: '#dc2626',
-                        background: '#fee2e2', borderRadius: 6, padding: '3px 10px',
-                        flexShrink: 0,
-                      }}>
-                        ❌ No registró
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Seccion
+                color="#ef4444" label={`No hizo la limpieza (${sinRegistro.length})`}
+                filas={sinRegistro} esMultiDia={esMultiDia}
+                getNombre={getNombre} getSector={getSector}
+                onEliminar={handleEliminar} mostrarEliminar={false}
+              />
             )}
 
             {/* ── En curso ── */}
             {enCurso.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{
-                    width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', flexShrink: 0,
-                  }} />
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    En curso ({enCurso.length})
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {enCurso.map(f => (
-                    <div key={f.id} style={{
-                      background: '#fffbeb', border: '1.5px solid #fde68a',
-                      borderLeft: '4px solid #f59e0b',
-                      borderRadius: 10, padding: '12px 14px',
-                      display: 'flex', alignItems: 'center', gap: 12,
-                    }}>
-                      <div style={{
-                        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                        background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 700, fontSize: 15, color: '#b45309',
-                      }}>
-                        {getNombre(f).charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>{getNombre(f)}</p>
-                        {getSector(f) && <p style={{ fontSize: 12, color: '#64748b' }}>{getSector(f)}</p>}
-                        <p style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>
-                          ⏱ Inicio: {formatHora(f.registro.hora_entrada)} · 🏢 {f.zona?.nombre || '—'}
-                        </p>
-                      </div>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, color: '#b45309',
-                        background: '#fef3c7', borderRadius: 6, padding: '3px 10px',
-                        flexShrink: 0,
-                      }}>
-                        🟡 En curso
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Seccion
+                color="#f59e0b" label={`En curso (${enCurso.length})`}
+                filas={enCurso} esMultiDia={esMultiDia}
+                getNombre={getNombre} getSector={getSector}
+                onEliminar={handleEliminar} mostrarEliminar={true}
+              />
             )}
 
             {/* ── Completadas ── */}
             {completadas.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{
-                    width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0,
-                  }} />
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    Completadas ({completadas.length})
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {completadas.map(f => {
-                    const dur = duracion(f.registro.hora_entrada, f.registro.hora_salida)
-                    return (
-                      <div key={f.id} style={{
-                        background: '#f0fdf4', border: '1.5px solid #bbf7d0',
-                        borderLeft: '4px solid #22c55e',
-                        borderRadius: 10, padding: '12px 14px',
-                        display: 'flex', alignItems: 'center', gap: 12,
-                      }}>
-                        <div style={{
-                          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                          background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, fontSize: 15, color: '#15803d',
-                        }}>
-                          {getNombre(f).charAt(0).toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>{getNombre(f)}</p>
-                          {getSector(f) && <p style={{ fontSize: 12, color: '#64748b' }}>{getSector(f)}</p>}
-                          <p style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>
-                            {formatHora(f.registro.hora_entrada)} → {formatHora(f.registro.hora_salida)}
-                            {dur && <span style={{ fontWeight: 700, marginLeft: 6 }}>({dur})</span>}
-                          </p>
-                          <p style={{ fontSize: 12, color: '#64748b' }}>🏢 {f.zona?.nombre || '—'}</p>
-                          {f.registro.notas && (
-                            <p style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>📝 {f.registro.notas}</p>
-                          )}
-                        </div>
-                        <span style={{
-                          fontSize: 11, fontWeight: 700, color: '#15803d',
-                          background: '#dcfce7', borderRadius: 6, padding: '3px 10px',
-                          flexShrink: 0,
-                        }}>
-                          ✅ Listo
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              <Seccion
+                color="#22c55e" label={`Completadas (${completadas.length})`}
+                filas={completadas} esMultiDia={esMultiDia}
+                getNombre={getNombre} getSector={getSector}
+                onEliminar={handleEliminar} mostrarEliminar={true}
+              />
             )}
 
           </div>
         )}
 
+      </div>
+    </div>
+  )
+}
+
+// ── Sección con título y lista de tarjetas ────────────────────────
+function Seccion({ color, label, filas, esMultiDia, getNombre, getSector, onEliminar, mostrarEliminar }) {
+  // En modo multi-día, agrupar por fecha
+  const porFecha = filas.reduce((acc, f) => {
+    if (!acc[f.fecha]) acc[f.fecha] = []
+    acc[f.fecha].push(f)
+    return acc
+  }, {})
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+        <p style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {label}
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: esMultiDia ? 12 : 8 }}>
+        {esMultiDia
+          ? Object.entries(porFecha)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([fecha, rows]) => (
+                <div key={fecha}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'capitalize' }}>
+                    {formatFechaCorta(fecha)}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {rows.map(f => (
+                      <TarjetaEmpleado
+                        key={f.id} f={f}
+                        nombre={getNombre(f)} sector={getSector(f)}
+                        onEliminar={onEliminar} mostrarEliminar={mostrarEliminar}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+          : filas.map(f => (
+              <TarjetaEmpleado
+                key={f.id} f={f}
+                nombre={getNombre(f)} sector={getSector(f)}
+                onEliminar={onEliminar} mostrarEliminar={mostrarEliminar}
+              />
+            ))
+        }
       </div>
     </div>
   )
