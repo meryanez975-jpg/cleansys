@@ -54,9 +54,11 @@ export default function HistorialPersonal() {
   const [selId, setSelId]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
   const [showFiltros, setShowFiltros] = useState(false)
-  const [turnoFiltro, setTurnoFiltro] = useState(null)   // null | 'mañana' | 'noche'
+  const [turnoFiltro, setTurnoFiltro] = useState(null)
   const [personalSupabase, setPersonalSupabase] = useState([])
   const [loadingPersonal, setLoadingPersonal]   = useState(true)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre, sector, turno').eq('activo', true).order('nombre')
@@ -93,7 +95,15 @@ export default function HistorialPersonal() {
         allZonas: JSON.parse(localStorage.getItem('cleansys_zonas') || '[]'),
       }
     } catch { return { allAsigs: [], allRegs: [], allZonas: [] } }
-  }, [histFiltro, histDesde, histHasta, histAnio])
+  }, [histFiltro, histDesde, histHasta, histAnio, tick])
+
+  function eliminarTodo() {
+    localStorage.removeItem('cleansys_asignaciones')
+    localStorage.removeItem('cleansys_registros')
+    setTick(t => t + 1)
+    setSelId(null)
+    setShowConfirmDelete(false)
+  }
 
   function asigsFiltradas(personal_id) {
     return allAsigs.filter(a => {
@@ -145,6 +155,19 @@ export default function HistorialPersonal() {
             <p className="header-title">Historial del personal</p>
             <p className="header-sub" style={{ textTransform: 'capitalize' }}>{labelPeriodo}</p>
           </div>
+          <button
+            onClick={() => setShowConfirmDelete(true)}
+            title="Eliminar todo"
+            style={{
+              background: '#fee2e2', border: '1.5px solid #fecaca',
+              borderRadius: 10, padding: '8px 12px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              color: '#dc2626', fontWeight: 700, fontSize: 13,
+              transition: 'all 0.15s',
+            }}
+          >
+            🗑️
+          </button>
         </div>
 
         {/* Buscador + botón filtro */}
@@ -440,5 +463,50 @@ export default function HistorialPersonal() {
 
       </div>
     </div>
+
+    {/* Modal confirmar eliminar todo */}
+    {showConfirmDelete && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 500,
+        background: 'rgba(30,58,95,0.5)', backdropFilter: 'blur(3px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+      }} onClick={() => setShowConfirmDelete(false)}>
+        <div style={{
+          background: 'var(--bg-card)', borderRadius: 16, padding: '28px 24px',
+          width: '100%', maxWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          textAlign: 'center',
+        }} onClick={e => e.stopPropagation()}>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>🗑️</div>
+          <p style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', marginBottom: 8 }}>
+            Eliminar todo el historial
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+            Se borrarán todas las asignaciones y registros de limpieza. Esta acción no se puede deshacer.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={eliminarTodo}
+              style={{
+                width: '100%', padding: '13px 0', borderRadius: 10, cursor: 'pointer',
+                background: '#dc2626', border: 'none',
+                color: '#fff', fontWeight: 700, fontSize: 15,
+              }}
+            >
+              Sí, eliminar todo
+            </button>
+            <button
+              onClick={() => setShowConfirmDelete(false)}
+              style={{
+                width: '100%', padding: '12px 0', borderRadius: 10, cursor: 'pointer',
+                background: 'var(--bg)', border: '1.5px solid var(--border)',
+                color: 'var(--text)', fontWeight: 700, fontSize: 14,
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
