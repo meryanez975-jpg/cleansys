@@ -145,6 +145,7 @@ export default function HistorialPersonal() {
   })()
 
   return (
+    <>
     <div className="page">
       <div className="container">
 
@@ -508,5 +509,6 @@ export default function HistorialPersonal() {
         </div>
       </div>
     )}
+    </>
   )
 }
