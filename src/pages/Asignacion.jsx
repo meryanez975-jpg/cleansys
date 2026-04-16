@@ -714,17 +714,35 @@ export default function Asignacion() {
             {/* 1. Personal — lo más importante */}
             <div className="input-group">
               <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-dark)' }}>👤 Persona</label>
-              <PersonSelector
-                loading={loadingPersonal}
-                placeholder="Seleccionar persona"
-                valor={selPersonal}
-                onChange={v => { setSelPersonal(v); setSelDiaSemana(null); setErrForm('') }}
-                opciones={personalTurno.map((p, i) => ({
-                  value: p.id,
-                  label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
-                  ...PALETA[i % PALETA.length],
-                }))}
-              />
+              {personal.length === 0 ? (
+                <div style={{ background: '#fffbeb', border: '1.5px solid #fbbf24', borderRadius: 10, padding: '14px 16px' }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: '#92400e', marginBottom: 4 }}>
+                    No hay personal en la lista
+                  </p>
+                  <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
+                    Primero tenés que agregar a tu equipo con sus turnos.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowPersonal(true)}
+                    style={{ background: '#f59e0b', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: '#fff' }}
+                  >
+                    👥 Agregar personal
+                  </button>
+                </div>
+              ) : (
+                <PersonSelector
+                  loading={loadingPersonal}
+                  placeholder="Seleccionar persona"
+                  valor={selPersonal}
+                  onChange={v => { setSelPersonal(v); setSelDiaSemana(null); setErrForm('') }}
+                  opciones={personalTurno.map((p, i) => ({
+                    value: p.id,
+                    label: p.nombre + (p.sector ? ` · ${p.sector}` : ''),
+                    ...PALETA[i % PALETA.length],
+                  }))}
+                />
+              )}
             </div>
 
             {/* 2. Día disponible */}
