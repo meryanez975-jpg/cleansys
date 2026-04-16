@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabase/client'
 import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
-import { usePersonal } from '../hooks/usePersonal'
 import * as store from '../data/store'
 
 function hoy() {
@@ -13,48 +13,52 @@ function formatHora(isoStr) {
   return new Date(isoStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function formatFechaCompleta(iso) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
-}
-
 function formatFechaCorta(iso) {
   return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', {
     weekday: 'short', day: 'numeric', month: 'short',
   })
 }
 
-// Obtiene las próximas asignaciones del empleado (hoy en adelante, este mes + el siguiente)
+// Próximas asignaciones del empleado (desde mañana, este mes + el siguiente)
 function getProximasAsignaciones(personal_id) {
   const fechaHoy = hoy()
   const [y, m] = fechaHoy.slice(0, 7).split('-').map(Number)
-  const mesActual  = `${y}-${String(m).padStart(2, '0')}`
-  const nextMonth  = m === 12
+  const mesActual = `${y}-${String(m).padStart(2, '0')}`
+  const nextMonth = m === 12
     ? `${y + 1}-01`
     : `${y}-${String(m + 1).padStart(2, '0')}`
 
-  const personal = JSON.parse(localStorage.getItem('cleansys_personal') || '[]')
-  const zonas    = JSON.parse(localStorage.getItem('cleansys_zonas') || '[]')
+  const zonas = JSON.parse(localStorage.getItem('cleansys_zonas') || '[]')
 
   return JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
     .filter(a =>
       a.personal_id === personal_id &&
-      a.fecha >= fechaHoy &&
+      a.activo !== false &&
+      a.fecha > fechaHoy &&
       (a.fecha.startsWith(mesActual) || a.fecha.startsWith(nextMonth))
     )
     .sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.turno === 'mañana' ? -1 : 1))
     .map(a => ({
       ...a,
-      personal: personal.find(p => p.id === a.personal_id) || null,
-      zona:     zonas.find(z => z.id === a.zona_id) || null,
+      zona: zonas.find(z => z.id === a.zona_id) || null,
     }))
 }
 
 export default function Registro() {
   const fechaHoy = hoy()
 
-  const { personal } = usePersonal()
+  // Personal desde Supabase (igual que SemanaPlan e HistorialPersonal)
+  const [personal, setPersonal]           = useState([])
+  const [loadingPersonal, setLoadingPersonal] = useState(true)
+
+  useEffect(() => {
+    supabase.from('com_personal').select('id, nombre, sector, turno').eq('activo', true).order('nombre')
+      .then(({ data }) => {
+        if (data) setPersonal(data)
+        setLoadingPersonal(false)
+      })
+  }, [])
+
   const { asignaciones } = useAsignaciones(fechaHoy)
   const { marcarEntrada, marcarSalida, getRegistroPorAsignacion } = useRegistros(fechaHoy)
 
@@ -62,7 +66,7 @@ export default function Registro() {
   const [busqueda, setBusqueda]       = useState('')
   const [confirmando, setConfirmando] = useState(null)
   const [notas, setNotas]             = useState('')
-  const [imagen, setImagen]           = useState(null) // base64
+  const [imagen, setImagen]           = useState(null)
 
   function handleImagen(e) {
     const file = e.target.files[0]
@@ -74,9 +78,11 @@ export default function Registro() {
 
   const empleadoSeleccionado = personal.find(p => p.id === empleadoId)
 
-  const tareasHoy     = asignaciones.filter(a => a.personal?.id === empleadoId)
-  const proximosDias  = empleadoId
-    ? getProximasAsignaciones(empleadoId).filter(a => a.fecha !== fechaHoy)
+  // Asignaciones de hoy para el empleado seleccionado — matchear por personal_id directo
+  const tareasHoy = asignaciones.filter(a => a.personal_id === empleadoId)
+
+  const proximosDias = empleadoId
+    ? getProximasAsignaciones(empleadoId)
     : []
 
   const personalFiltrado = personal.filter(p =>
@@ -116,13 +122,15 @@ export default function Registro() {
             />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
-              {personalFiltrado.length === 0 ? (
+              {loadingPersonal ? (
+                <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
+              ) : personalFiltrado.length === 0 ? (
                 <p className="text-muted text-center" style={{ padding: 20 }}>
                   {personal.length === 0 ? 'No hay personal cargado aún' : 'Sin resultados'}
                 </p>
               ) : (
                 personalFiltrado.map(p => {
-                  const tieneHoy = asignaciones.some(a => a.personal?.id === p.id)
+                  const tieneHoy = asignaciones.some(a => a.personal_id === p.id)
                   return (
                     <button
                       key={p.id}
@@ -260,7 +268,6 @@ export default function Registro() {
                               onChange={e => setNotas(e.target.value)}
                             />
 
-                            {/* Subir foto */}
                             <label style={{
                               display: 'flex', alignItems: 'center', gap: 10,
                               padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
@@ -347,7 +354,7 @@ export default function Registro() {
                           {formatFechaCorta(a.fecha)}
                         </p>
                         <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          🏢 {a.zona?.nombre} · Turno {esManana ? 'mañana' : 'noche'}
+                          🏢 {a.zona?.nombre || a.zonaId || '—'} · Turno {esManana ? 'mañana' : 'noche'}
                         </p>
                       </div>
                     </div>
