@@ -148,7 +148,7 @@ export default function HistorialPersonal() {
         </div>
 
         {/* Buscador + botón filtro */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: showFiltros ? 0 : 12 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <input
             className="input"
             placeholder="Buscar persona..."
@@ -173,6 +173,33 @@ export default function HistorialPersonal() {
           </button>
         </div>
 
+        {/* Botones de turno — siempre visibles */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: showFiltros ? 0 : 12 }}>
+          {[
+            { key: 'mañana', label: '☀️ Mañana' },
+            { key: 'noche',  label: '🌙 Noche' },
+          ].map(({ key, label }) => {
+            const activo = turnoFiltro === key
+            const esMañana = key === 'mañana'
+            return (
+              <button
+                key={key}
+                onClick={() => { setTurnoFiltro(activo ? null : key); setSelId(null) }}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
+                  fontWeight: 700, fontSize: 14,
+                  border: `2px solid ${activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--border)'}`,
+                  background: activo ? (esMañana ? 'var(--manana-bg)' : 'var(--noche-bg)') : 'var(--bg-card)',
+                  color: activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--text)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
         {/* Panel de filtros desplegable */}
         {showFiltros && (
           <div style={{
@@ -180,36 +207,6 @@ export default function HistorialPersonal() {
             borderRadius: '0 0 12px 12px', padding: '14px 14px 16px',
             marginBottom: 12, boxShadow: 'var(--shadow)',
           }}>
-            {/* Botones de turno */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              {[
-                { key: 'mañana', label: '☀️ Mañana' },
-                { key: 'noche',  label: '🌙 Noche' },
-              ].map(({ key, label }) => {
-                const activo = turnoFiltro === key
-                const esMañana = key === 'mañana'
-                return (
-                  <button
-                    key={key}
-                    onClick={() => { setTurnoFiltro(activo ? null : key); setSelId(null) }}
-                    style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
-                      fontWeight: 700, fontSize: 14,
-                      border: `2px solid ${activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--border)'}`,
-                      background: activo ? (esMañana ? 'var(--manana-bg)' : 'var(--noche-bg)') : 'transparent',
-                      color: activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--text)',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Separador */}
-            <div style={{ borderTop: '1px solid var(--border)', marginBottom: 12 }} />
-
             {/* Pills de período */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
               {[
