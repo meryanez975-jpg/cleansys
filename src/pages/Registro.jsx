@@ -124,10 +124,12 @@ export default function Registro() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
               {loadingPersonal ? (
                 <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
-              ) : personalFiltrado.length === 0 ? (
+              ) : !busqueda.trim() ? (
                 <p className="text-muted text-center" style={{ padding: 20 }}>
-                  {personal.length === 0 ? 'No hay personal cargado aún' : 'Sin resultados'}
+                  Escribí tu nombre para buscarte
                 </p>
+              ) : personalFiltrado.length === 0 ? (
+                <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
               ) : (
                 personalFiltrado.map(p => {
                   const tieneHoy = asignaciones.some(a => a.personal_id === p.id)
