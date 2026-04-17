@@ -803,7 +803,26 @@ export default function Asignacion() {
           </div>
         )}
 
-
+        {/* Eliminar todas las asignaciones */}
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <button
+            onClick={() => {
+              if (window.confirm('¿Estás segura de eliminar TODAS las asignaciones? Esta acción no se puede deshacer.')) {
+                localStorage.removeItem('cleansys_asignaciones')
+                forceRefetch()
+              }
+            }}
+            style={{
+              width: '100%', padding: '11px 0', borderRadius: 10,
+              border: '1.5px solid #fca5a5', background: '#fff5f5',
+              color: '#dc2626', fontWeight: 700, fontSize: 13,
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 8,
+            }}
+          >
+            🗑️ Eliminar todas las asignaciones
+          </button>
+        </div>
 
       </div>
 
