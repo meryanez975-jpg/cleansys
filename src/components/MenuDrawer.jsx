@@ -1,7 +1,15 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZonas }) {
   const navigate = useNavigate()
+  const { logout } = useAuth()
+
+  function handleLogout() {
+    onClose()
+    logout()
+    navigate('/login-supervisor')
+  }
 
   function ir(path) {
     onClose()
@@ -151,6 +159,32 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
             sub="Cuántas veces limpió cada uno"
             onClick={() => ir('/historial')}
           />
+
+          <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+
+          <button
+            onClick={handleLogout}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderRadius: 10,
+              cursor: 'pointer',
+              padding: '10px 12px',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              width: '100%',
+              color: 'var(--danger, #ef4444)',
+              fontWeight: 600,
+              fontSize: 14,
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <span style={{ fontSize: 22, width: 30, textAlign: 'center' }}>🔒</span>
+            Cerrar sesión
+          </button>
         </div>
       </div>
     </>
