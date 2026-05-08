@@ -7,13 +7,16 @@ import HistorialPersonal from './pages/HistorialPersonal'
 import ControlCronometros from './pages/ControlCronometros'
 import GestionZonas from './pages/GestionZonas'
 import GestionPersonal from './pages/GestionPersonal'
+import LoginSupervisor from './pages/LoginSupervisor'
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/registro" replace />} />
+      <Route path="/" element={<Navigate to="/login-supervisor" replace />} />
+      <Route path="/login-supervisor" element={<LoginSupervisor />} />
       <Route path="/registro" element={<Registro />} />
       <Route path="/asignacion" element={<Asignacion />} />
+      <Route path="/asignacion/panel" element={<Asignacion />} />
       <Route path="/semana" element={<SemanaPlan />} />
       <Route path="/materiales" element={<Materiales />} />
       <Route path="/historial" element={<HistorialPersonal />} />
