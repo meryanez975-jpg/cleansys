@@ -26,6 +26,13 @@ function getLunesDeHoy() {
 function fechaISO(date) { return date.toISOString().split('T')[0] }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
 function formatMes(date) { return date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) }
+function turnoDePersona(turnoSupabase) {
+  if (!turnoSupabase) return null
+  const t = turnoSupabase.toLowerCase()
+  if (t === 'mañana' || t === 'diurno') return 'mañana'
+  if (t === 'tarde'  || t === 'noche')  return 'noche'
+  return null
+}
 
 export default function SemanaPlan() {
   const navigate = useNavigate()
@@ -383,39 +390,44 @@ export default function SemanaPlan() {
                                 <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: 4 }}>
                                   {/* Selector de persona */}
                                   <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                                    {personalDB.filter(p => !t.lista.some(a => a.personal_id === p.id)).map(p => (
-                                      <button
-                                        key={p.id}
-                                        onClick={() => setAddPersonalId(p.id)}
-                                        style={{
-                                          padding: '6px 12px', borderRadius: 16,
-                                          border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
-                                          background: addPersonalId === p.id ? t.bg : '#f8fafc',
-                                          color: addPersonalId === p.id ? t.bgAct : '#475569',
-                                          fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                                          transition: 'all 0.12s',
-                                        }}
-                                      >
-                                        {p.nombre}
-                                      </button>
-                                    ))}
+                                  <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
+                                    {personalDB
+                                      .filter(p => turnoDePersona(p.turno) === t.key)
+                                      .filter(p => !t.lista.some(a => a.personal_id === p.id))
+                                      .map(p => (
+                                        <button
+                                          key={p.id}
+                                          onClick={() => setAddPersonalId(p.id)}
+                                          style={{
+                                            flexShrink: 0,
+                                            padding: '6px 12px', borderRadius: 16,
+                                            border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
+                                            background: addPersonalId === p.id ? t.bg : '#f8fafc',
+                                            color: addPersonalId === p.id ? t.bgAct : '#475569',
+                                            fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                                            transition: 'all 0.12s', whiteSpace: 'nowrap',
+                                          }}
+                                        >
+                                          {p.nombre}
+                                        </button>
+                                      ))}
                                   </div>
 
                                   {/* Selector de zona */}
                                   <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                                  <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
                                     {zonas.map(z => (
                                       <button
                                         key={z.id}
                                         onClick={() => setAddZonaId(z.id)}
                                         style={{
+                                          flexShrink: 0,
                                           padding: '6px 12px', borderRadius: 16,
                                           border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`,
                                           background: addZonaId === z.id ? t.bg : '#f8fafc',
                                           color: addZonaId === z.id ? t.bgAct : '#475569',
                                           fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                                          transition: 'all 0.12s',
+                                          transition: 'all 0.12s', whiteSpace: 'nowrap',
                                         }}
                                       >
                                         {z.nombre}
