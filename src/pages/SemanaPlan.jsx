@@ -8,6 +8,7 @@ import ZonaModal from '../components/ZonaModal'
 import PersonalModal from '../components/PersonalModal'
 import { useZonas } from '../hooks/useZonas'
 import { usePersonal } from '../hooks/usePersonal'
+import { usePersonalComidas } from '../hooks/usePersonalComidas'
 
 const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -41,11 +42,15 @@ export default function SemanaPlan() {
   const [showMenu, setShowMenu] = useState(false)
   const [showZonas, setShowZonas] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
+  const [addingFor, setAddingFor] = useState(null) // { iso, turno }
+  const [addPersonalId, setAddPersonalId] = useState('')
+  const [addZonaId, setAddZonaId] = useState('')
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
   const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
+  const { personal: personalDB } = usePersonalComidas(null)
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre').eq('activo', true)
@@ -113,6 +118,19 @@ export default function SemanaPlan() {
       const actual = prev[iso]
       return { ...prev, [iso]: actual === turno ? null : turno }
     })
+    setAddingFor(null)
+    setAddPersonalId('')
+    setAddZonaId('')
+  }
+
+  function handleAddAsignacion() {
+    if (!addPersonalId || !addingFor) return
+    const p = personalDB.find(x => x.id === addPersonalId)
+    store.addAsignacion(addPersonalId, addZonaId || '', addingFor.turno, addingFor.iso, p?.nombre || '', p?.sector || '')
+    setTick(t => t + 1)
+    setAddingFor(null)
+    setAddPersonalId('')
+    setAddZonaId('')
   }
 
   const btnBase = { flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }
@@ -342,11 +360,12 @@ export default function SemanaPlan() {
                           {abierto && (
                             <div style={{
                               background: t.bg, border: `1px solid ${t.bgAct}44`, borderTop: 'none',
-                              borderRadius: '0 0 8px 8px', padding: '6px 10px',
-                              display: 'flex', flexDirection: 'column', gap: 4,
+                              borderRadius: '0 0 8px 8px', padding: '8px 10px',
+                              display: 'flex', flexDirection: 'column', gap: 5,
                             }}>
+                              {/* Personas asignadas */}
                               {t.lista.length === 0 ? (
-                                <p style={{ fontSize: 12, color: t.txt, textAlign: 'center', padding: '4px 0', opacity: 0.7 }}>Sin asignaciones</p>
+                                <p style={{ fontSize: 12, color: t.txt, textAlign: 'center', padding: '2px 0', opacity: 0.7 }}>Sin asignaciones</p>
                               ) : t.lista.map(a => (
                                 <div key={a.id} style={{
                                   background: '#fff', borderRadius: 7, padding: '6px 10px',
@@ -358,6 +377,89 @@ export default function SemanaPlan() {
                                   </span>
                                 </div>
                               ))}
+
+                              {/* Formulario inline para agregar */}
+                              {addingFor?.iso === iso && addingFor?.turno === t.key ? (
+                                <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: 4 }}>
+                                  {/* Selector de persona */}
+                                  <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                                    {personalDB.filter(p => !t.lista.some(a => a.personal_id === p.id)).map(p => (
+                                      <button
+                                        key={p.id}
+                                        onClick={() => setAddPersonalId(p.id)}
+                                        style={{
+                                          padding: '6px 12px', borderRadius: 16,
+                                          border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
+                                          background: addPersonalId === p.id ? t.bg : '#f8fafc',
+                                          color: addPersonalId === p.id ? t.bgAct : '#475569',
+                                          fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                                          transition: 'all 0.12s',
+                                        }}
+                                      >
+                                        {p.nombre}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* Selector de zona */}
+                                  <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                                    {zonas.map(z => (
+                                      <button
+                                        key={z.id}
+                                        onClick={() => setAddZonaId(z.id)}
+                                        style={{
+                                          padding: '6px 12px', borderRadius: 16,
+                                          border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`,
+                                          background: addZonaId === z.id ? t.bg : '#f8fafc',
+                                          color: addZonaId === z.id ? t.bgAct : '#475569',
+                                          fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                                          transition: 'all 0.12s',
+                                        }}
+                                      >
+                                        {z.nombre}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                      onClick={handleAddAsignacion}
+                                      disabled={!addPersonalId}
+                                      style={{
+                                        flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                                        background: addPersonalId ? t.bgAct : '#cbd5e1',
+                                        color: '#fff', fontWeight: 700, fontSize: 13, cursor: addPersonalId ? 'pointer' : 'not-allowed',
+                                      }}
+                                    >
+                                      ✓ Guardar
+                                    </button>
+                                    <button
+                                      onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }}
+                                      style={{
+                                        padding: '8px 14px', borderRadius: 8, border: 'none',
+                                        background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId('') }}
+                                  style={{
+                                    width: '100%', padding: '6px 0', borderRadius: 7,
+                                    border: `1.5px dashed ${t.bgAct}88`,
+                                    background: 'transparent', color: t.bgAct,
+                                    fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  ➕ Agregar persona
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
