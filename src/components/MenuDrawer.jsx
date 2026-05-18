@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZonas }) {
+export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZonas, zonas = [], onSeleccionarZona }) {
   const navigate = useNavigate()
   const { logout } = useAuth()
 
@@ -83,10 +83,20 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
 
           <MenuItem
             icono="📅"
-            texto="Personal de la semana"
-            sub="Ver cómo está organizada la semana"
-            onClick={() => ir('/semana')}
+            texto="Semana completa"
+            sub="Ver todas las zonas de la semana"
+            onClick={() => { onSeleccionarZona && onSeleccionarZona(null); ir('/semana') }}
           />
+
+          {zonas.filter(z => !z.id.match(/^z\d+$/)).map(z => (
+            <MenuItem
+              key={z.id}
+              icono="🏢"
+              texto={z.nombre}
+              sub="Ver semana de esta zona"
+              onClick={() => { onSeleccionarZona && onSeleccionarZona(z.id); ir('/semana') }}
+            />
+          ))}
 
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
 

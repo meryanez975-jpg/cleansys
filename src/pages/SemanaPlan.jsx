@@ -49,6 +49,7 @@ export default function SemanaPlan() {
   const [showMenu, setShowMenu] = useState(false)
   const [showZonas, setShowZonas] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
+  const [zonaFiltro, setZonaFiltro] = useState(null) // null = todas, o zona ID
   const [addingFor, setAddingFor] = useState(null) // { iso, turno }
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
@@ -72,7 +73,8 @@ export default function SemanaPlan() {
 
   const fechasSemana = Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
   const fechasISO    = fechasSemana.map(fechaISO)
-  const asigs        = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
+  const asigsTodas   = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
+  const asigs        = zonaFiltro ? asigsTodas.filter(a => a.zona_id === zonaFiltro) : asigsTodas
   const hoyISO       = fechaISO(new Date())
 
   function getNombre(a) {
@@ -213,7 +215,9 @@ export default function SemanaPlan() {
             <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
           </button>
           <div style={{ flex: 1 }}>
-            <p className="header-title">Semana de trabajo</p>
+            <p className="header-title">
+              {zonaFiltro ? (zonas.find(z => z.id === zonaFiltro)?.nombre ?? 'Semana de trabajo') : 'Semana de trabajo'}
+            </p>
             <p className="header-sub">{formatMes(lunesBase)}</p>
           </div>
         </div>
@@ -473,20 +477,6 @@ export default function SemanaPlan() {
 
           {/* ── Zonas creadas (desplegables) — excluye zonas semilla z1, z2 ── */}
           <div style={{ marginTop: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Zonas</p>
-              <button
-                onClick={() => setShowZonas(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  background: 'var(--primary-light)', border: 'none', borderRadius: 8,
-                  padding: '5px 10px', cursor: 'pointer',
-                  color: 'var(--primary-dark)', fontSize: 11, fontWeight: 700,
-                }}
-              >
-                🏢 Gestionar zonas
-              </button>
-            </div>
           {zonas.filter(z => !z.id.match(/^z\d+$/)).length > 0 && (
             <div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -752,6 +742,8 @@ export default function SemanaPlan() {
           onIr={path => { setShowMenu(false); navigate(path) }}
           onAbrirPersonal={() => { setShowMenu(false); setShowPersonal(true) }}
           onAbrirZonas={() => { setShowMenu(false); setShowZonas(true) }}
+          zonas={zonas}
+          onSeleccionarZona={id => { setZonaFiltro(id); setShowMenu(false) }}
         />
       )}
 
