@@ -82,13 +82,6 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
           </p>
 
           <MenuItem
-            icono="📋"
-            texto="Asignación diaria"
-            sub="Gestionar turnos del día"
-            onClick={() => ir('/asignacion')}
-          />
-
-          <MenuItem
             icono="📅"
             texto="Personal de la semana"
             sub="Ver cómo está organizada la semana"
@@ -127,13 +120,6 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
             texto="Personal"
             sub="Agregar, turnos y día libre"
             onClick={() => onAbrirPersonal && accion(onAbrirPersonal)}
-          />
-
-          <MenuItem
-            icono="🏢"
-            texto="Zonas de limpieza"
-            sub="Agregar, editar y eliminar zonas"
-            onClick={() => ir('/zonas')}
           />
 
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />

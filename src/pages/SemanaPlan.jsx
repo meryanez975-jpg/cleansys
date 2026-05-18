@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import * as store from '../data/store'
 import { supabase } from '../supabase/client'
 import html2canvas from 'html2canvas'
+import MenuDrawer from '../components/MenuDrawer'
+import ZonaModal from '../components/ZonaModal'
+import PersonalModal from '../components/PersonalModal'
+import { useZonas } from '../hooks/useZonas'
+import { usePersonal } from '../hooks/usePersonal'
 
 const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -30,12 +35,17 @@ export default function SemanaPlan() {
   const [vista, setVista] = useState('semana') // 'semana' | 'limpieza' | 'sinTarea'
   const [editandoId, setEditandoId] = useState(null)
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
-  const [zonas, setZonas] = useState([])
   const [zonasAbiertas, setZonasAbiertas] = useState({})
   const [turnosAbiertos, setTurnosAbiertos] = useState({})
   const [elegirTurnoCaptura, setElegirTurnoCaptura] = useState(null) // 'semana' | zonaId
+  const [showMenu, setShowMenu] = useState(false)
+  const [showZonas, setShowZonas] = useState(false)
+  const [showPersonal, setShowPersonal] = useState(false)
 
   useEffect(() => { setTick(t => t + 1) }, [])
+
+  const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
+  const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre').eq('activo', true)
@@ -46,7 +56,6 @@ export default function SemanaPlan() {
           setPersonalMap(map)
         }
       })
-    setZonas(store.getZonas())
   }, [])
 
   const fechasSemana = Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
@@ -166,7 +175,18 @@ export default function SemanaPlan() {
 
         {/* Header */}
         <div className="header">
-          <button className="header-back" onClick={() => navigate('/asignacion')}>←</button>
+          <button
+            onClick={() => setShowMenu(true)}
+            style={{
+              background: 'var(--primary-light)', border: 'none',
+              borderRadius: 'var(--radius-sm)', cursor: 'pointer', padding: '10px 12px',
+              display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
+          </button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Semana de trabajo</p>
             <p className="header-sub">{formatMes(lunesBase)}</p>
@@ -360,9 +380,23 @@ export default function SemanaPlan() {
           </div>
 
           {/* ── Zonas creadas (desplegables) — excluye zonas semilla z1, z2 ── */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Zonas</p>
+              <button
+                onClick={() => setShowZonas(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  background: 'var(--primary-light)', border: 'none', borderRadius: 8,
+                  padding: '5px 10px', cursor: 'pointer',
+                  color: 'var(--primary-dark)', fontSize: 11, fontWeight: 700,
+                }}
+              >
+                🏢 Gestionar zonas
+              </button>
+            </div>
           {zonas.filter(z => !z.id.match(/^z\d+$/)).length > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Zonas</p>
+            <div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {zonas.filter(z => !z.id.match(/^z\d+$/)).map((zona, zi) => {
                   const colores = [
@@ -441,6 +475,7 @@ export default function SemanaPlan() {
               </div>
             </div>
           )}
+          </div>
         </>}
 
         {/* ── Vista: En limpieza ── */}
@@ -617,6 +652,35 @@ export default function SemanaPlan() {
             </button>
           </div>
         </div>
+      )}
+
+      {showMenu && (
+        <MenuDrawer
+          onClose={() => setShowMenu(false)}
+          onIr={path => { setShowMenu(false); navigate(path) }}
+          onAbrirPersonal={() => { setShowMenu(false); setShowPersonal(true) }}
+          onAbrirZonas={() => { setShowMenu(false); setShowZonas(true) }}
+        />
+      )}
+
+      {showZonas && (
+        <ZonaModal
+          zonas={zonas}
+          onCrear={crearZona}
+          onEditar={editarZona}
+          onEliminar={desactivarZona}
+          onClose={() => setShowZonas(false)}
+        />
+      )}
+
+      {showPersonal && (
+        <PersonalModal
+          personal={personal}
+          onAgregar={agregarPersonal}
+          onEditar={editarPersonal}
+          onEliminar={eliminarPersonal}
+          onClose={() => { setShowPersonal(false); refetchPersonal() }}
+        />
       )}
     </div>
   )

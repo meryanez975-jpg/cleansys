@@ -19,7 +19,7 @@ export default function LoginSupervisor() {
   const { supervisor } = useAuth()
 
   useEffect(() => {
-    if (supervisor) navigate('/asignacion/panel', { replace: true })
+    if (supervisor) navigate('/semana', { replace: true })
   }, [supervisor])
 
   async function handleGoogleLogin() {
