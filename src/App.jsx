@@ -15,8 +15,8 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login-supervisor" replace />} />
       <Route path="/login-supervisor" element={<LoginSupervisor />} />
       <Route path="/registro" element={<Registro />} />
-      <Route path="/asignacion" element={<Asignacion />} />
-      <Route path="/asignacion/panel" element={<Asignacion />} />
+      <Route path="/asignacion" element={<Navigate to="/semana" replace />} />
+      <Route path="/asignacion/panel" element={<Navigate to="/semana" replace />} />
       <Route path="/semana" element={<SemanaPlan />} />
       <Route path="/materiales" element={<Materiales />} />
       <Route path="/historial" element={<HistorialPersonal />} />
