@@ -272,27 +272,6 @@ export default function SemanaPlan() {
               style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button onClick={() => setFiltroTurno(filtroTurno === 'mañana' ? null : 'mañana')} style={{
-              flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
-              background: filtroTurno === 'mañana' ? '#d97706' : '#fef3c7',
-              boxShadow: filtroTurno === 'mañana' ? '0 3px 10px rgba(217,119,6,0.4)' : 'none',
-              transition: 'all 0.15s',
-            }}>
-              <p style={{ fontSize: 18, fontWeight: 800, color: filtroTurno === 'mañana' ? '#fff' : '#d97706' }}>{totalManana}</p>
-              <p style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#fff' : '#92400e' }}>☀️ Mañana</p>
-            </button>
-            <button onClick={() => setFiltroTurno(filtroTurno === 'noche' ? null : 'noche')} style={{
-              flex: 1, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', border: 'none',
-              background: filtroTurno === 'noche' ? '#6d28d9' : '#ede9fe',
-              boxShadow: filtroTurno === 'noche' ? '0 3px 10px rgba(109,40,217,0.4)' : 'none',
-              transition: 'all 0.15s',
-            }}>
-              <p style={{ fontSize: 18, fontWeight: 800, color: filtroTurno === 'noche' ? '#fff' : '#6d28d9' }}>{totalNoche}</p>
-              <p style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'noche' ? '#fff' : '#4c1d95' }}>🌙 Noche</p>
-            </button>
-          </div>
-
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semana</p>
             <button onClick={capturarSemana} style={{
@@ -334,9 +313,9 @@ export default function SemanaPlan() {
                     {totalDia === 0 && <span style={{ fontSize: 11, color: 'var(--text-light)', marginLeft: 'auto' }}>Sin asignaciones</span>}
                   </div>
 
-                  {/* Botones de turno */}
+                  {/* Botones de turno — solo muestra el abierto, o ambos si ninguno está abierto */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {turnos.map(t => {
+                    {turnos.filter(t => turnoOpen === null || turnoOpen === t.key).map(t => {
                       const abierto = turnoOpen === t.key
                       return (
                         <div key={t.key}>
@@ -390,7 +369,7 @@ export default function SemanaPlan() {
                                 <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: 4 }}>
                                   {/* Selector de persona */}
                                   <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
-                                  <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
                                     {personalDB
                                       .filter(p => turnoDePersona(p.turno) === t.key)
                                       .filter(p => !t.lista.some(a => a.personal_id === p.id))
@@ -399,16 +378,15 @@ export default function SemanaPlan() {
                                           key={p.id}
                                           onClick={() => setAddPersonalId(p.id)}
                                           style={{
-                                            flexShrink: 0,
-                                            padding: '6px 12px', borderRadius: 16,
+                                            padding: '8px 12px', borderRadius: 8, textAlign: 'left',
                                             border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
                                             background: addPersonalId === p.id ? t.bg : '#f8fafc',
                                             color: addPersonalId === p.id ? t.bgAct : '#475569',
-                                            fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                                            transition: 'all 0.12s', whiteSpace: 'nowrap',
+                                            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                            transition: 'all 0.12s',
                                           }}
                                         >
-                                          {p.nombre}
+                                          {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
                                         </button>
                                       ))}
                                   </div>
