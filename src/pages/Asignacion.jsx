@@ -276,127 +276,51 @@ function CalendarioMes({ mes, inicio, fin, onClick, diasBloqueados = new Set() }
   )
 }
 
-// ── Selector de persona con buscador ─────────────────────────────
-function PersonSelector({ opciones, valor, onChange, loading, placeholder }) {
-  const [open, setOpen]       = useState(false)
-  const [busqueda, setBusqueda] = useState('')
-  const inputRef = useRef(null)
-
-  const seleccionado = opciones.find(o => o.value === valor)
-
-  const filtradas = busqueda.trim()
-    ? opciones.filter(o => o.label.toLowerCase().includes(busqueda.toLowerCase()))
-    : opciones
-
-  function seleccionar(v) {
-    onChange(v)
-    setOpen(false)
-    setBusqueda('')
-  }
-
-  useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus()
-  }, [open])
-
+// ── Selector de persona en fila horizontal ───────────────────────
+function PersonSelector({ opciones, valor, onChange, loading }) {
   if (loading) return <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Cargando personal...</p>
   if (opciones.length === 0) return <p style={{ fontSize: 13, color: 'var(--warning)', padding: '8px 0' }}>⚠️ No hay personal con ese turno</p>
 
   return (
-    <div>
-      {/* Botón disparador */}
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        style={{
-          width: '100%', padding: '10px 14px',
-          border: `2px solid ${seleccionado ? seleccionado.color : 'var(--border)'}`,
-          borderRadius: open ? '10px 10px 0 0' : 10,
-          cursor: 'pointer',
-          background: seleccionado ? seleccionado.bg : 'var(--bg-card)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          transition: 'all 0.15s',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {seleccionado && (
+    <div style={{
+      display: 'flex', flexDirection: 'row', gap: 8,
+      overflowX: 'auto', paddingBottom: 4,
+      scrollbarWidth: 'thin',
+    }}>
+      {opciones.map(o => {
+        const sel = valor === o.value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            style={{
+              flexShrink: 0,
+              padding: '8px 14px',
+              border: `2px solid ${sel ? o.color : 'var(--border)'}`,
+              borderRadius: 20,
+              cursor: 'pointer',
+              background: sel ? o.bg : 'var(--bg-card)',
+              display: 'flex', alignItems: 'center', gap: 7,
+              transition: 'all 0.15s',
+              boxShadow: sel ? `0 2px 8px ${o.color}33` : 'none',
+            }}
+          >
             <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: seleccionado.color + '33',
+              width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+              background: o.color + (sel ? '33' : '22'),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: 13, color: seleccionado.color, flexShrink: 0,
+              fontWeight: 700, fontSize: 12, color: o.color,
             }}>
-              {seleccionado.label.charAt(0).toUpperCase()}
+              {o.label.charAt(0).toUpperCase()}
             </div>
-          )}
-          <span style={{ fontWeight: 600, fontSize: 14, color: seleccionado ? seleccionado.color : 'var(--text-muted)' }}>
-            {seleccionado ? seleccionado.label : placeholder}
-          </span>
-        </div>
-        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
-      </button>
-
-      {/* Panel desplegable */}
-      {open && (
-        <div style={{
-          border: '2px solid var(--border)', borderTop: 'none',
-          borderRadius: '0 0 10px 10px',
-          background: 'var(--bg-card)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-        }}>
-          {/* Buscador */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              placeholder="Buscar persona..."
-              style={{
-                width: '100%', padding: '7px 10px', borderRadius: 8,
-                border: '1.5px solid var(--border)', fontSize: 13,
-                background: 'var(--bg)', color: 'var(--text)',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          {/* Lista */}
-          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-            {filtradas.length === 0 ? (
-              <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', padding: '12px 0' }}>Sin resultados</p>
-            ) : filtradas.map(o => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => seleccionar(o.value)}
-                style={{
-                  width: '100%', padding: '9px 14px',
-                  border: 'none', cursor: 'pointer', textAlign: 'left',
-                  background: valor === o.value ? o.bg : 'transparent',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  transition: 'background 0.1s',
-                  borderBottom: '1px solid var(--border)',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = o.bg }}
-                onMouseLeave={e => { e.currentTarget.style.background = valor === o.value ? o.bg : 'transparent' }}
-              >
-                <div style={{
-                  width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                  background: o.color + '22',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: 13, color: o.color,
-                }}>
-                  {o.label.charAt(0).toUpperCase()}
-                </div>
-                <span style={{ fontWeight: 600, fontSize: 13, color: o.color }}>{o.label}</span>
-                {valor === o.value && (
-                  <span style={{ marginLeft: 'auto', fontSize: 14, color: o.color }}>✓</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+            <span style={{ fontWeight: 600, fontSize: 13, color: sel ? o.color : 'var(--text)', whiteSpace: 'nowrap' }}>
+              {o.label}
+            </span>
+            {sel && <span style={{ fontSize: 12, color: o.color }}>✓</span>}
+          </button>
+        )
+      })}
     </div>
   )
 }
