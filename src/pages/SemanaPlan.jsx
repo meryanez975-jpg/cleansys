@@ -365,17 +365,8 @@ export default function SemanaPlan() {
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semana</p>
-            <button onClick={capturarSemana} style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
-              border: 'none', borderRadius: 8, padding: '5px 10px',
-              cursor: 'pointer', color: '#fff', fontSize: 11, fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(14,165,233,0.35)',
-            }}>
-              📸 Capturar
-            </button>
           </div>
           <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, background: '#fff', borderRadius: 12, padding: 4 }}>
             {fechasSemana.map((fecha, i) => {
@@ -551,6 +542,17 @@ export default function SemanaPlan() {
         {/* ── Vista: En limpieza ── */}
         {vista === 'limpieza' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+              <button onClick={capturarSemana} style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
+                border: 'none', borderRadius: 8, padding: '5px 10px',
+                cursor: 'pointer', color: '#fff', fontSize: 11, fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(14,165,233,0.35)',
+              }}>
+                📸 Capturar
+              </button>
+            </div>
             {personalConTarea.length === 0 ? (
               <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No hay personal asignado esta semana</p>
             ) : personalConTarea.map((p, pi) => (
@@ -656,6 +658,7 @@ export default function SemanaPlan() {
                 </div>
               </div>
             ))}
+          </div>
           </div>
         )}
 
