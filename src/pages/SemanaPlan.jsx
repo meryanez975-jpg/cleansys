@@ -659,7 +659,6 @@ export default function SemanaPlan() {
               </div>
             ))}
           </div>
-          </div>
         )}
 
         {/* ── Vista: Sin tareas ── */}
