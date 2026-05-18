@@ -50,6 +50,10 @@ export default function SemanaPlan() {
   const [showZonas, setShowZonas] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
   const [zonaFiltro, setZonaFiltro] = useState(null) // null = todas, o zona ID
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [inputInicio, setInputInicio] = useState('')
+  const [inputFin, setInputFin] = useState('')
+  const [rangoPersonalizado, setRangoPersonalizado] = useState(null) // { inicio: Date, fin: Date }
   const [addingFor, setAddingFor] = useState(null) // { iso, turno }
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
@@ -71,7 +75,16 @@ export default function SemanaPlan() {
       })
   }, [])
 
-  const fechasSemana = Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
+  const fechasSemana = (() => {
+    if (rangoPersonalizado) {
+      const dias = []
+      let cur = new Date(rangoPersonalizado.inicio)
+      const fin = new Date(rangoPersonalizado.fin)
+      while (cur <= fin) { dias.push(new Date(cur)); cur = addDays(cur, 1) }
+      return dias
+    }
+    return Array.from({ length: 7 }, (_, i) => addDays(lunesBase, i))
+  })()
   const fechasISO    = fechasSemana.map(fechaISO)
   const asigsTodas   = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
   const asigs        = zonaFiltro ? asigsTodas.filter(a => a.zona_id === zonaFiltro) : asigsTodas
@@ -255,25 +268,101 @@ export default function SemanaPlan() {
         {/* ── Vista: Semana ── */}
         {vista === 'semana' && <>
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
             borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 12,
             boxShadow: 'var(--shadow)',
           }}>
-            <button onClick={() => setLunesBase(d => addDays(d, -7))}
-              style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                {fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                {' — '}
-                {fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {personalConTarea.length} persona{personalConTarea.length !== 1 ? 's' : ''}
-              </p>
+            {/* Navegador de semana */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showDatePicker ? 12 : 0 }}>
+              {!rangoPersonalizado ? (
+                <button onClick={() => setLunesBase(d => addDays(d, -7))}
+                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
+              ) : <div style={{ width: 40 }} />}
+
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                  {fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                  {' — '}
+                  {fechasSemana[fechasSemana.length - 1].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {personalConTarea.length} persona{personalConTarea.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+
+              {!rangoPersonalizado ? (
+                <button onClick={() => setLunesBase(d => addDays(d, 7))}
+                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
+              ) : <div style={{ width: 40 }} />}
             </div>
-            <button onClick={() => setLunesBase(d => addDays(d, 7))}
-              style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
+
+            {/* Botón seleccionar fechas */}
+            <div style={{ display: 'flex', gap: 6, marginTop: showDatePicker || rangoPersonalizado ? 10 : 8 }}>
+              <button
+                onClick={() => {
+                  setShowDatePicker(v => !v)
+                  setInputInicio(rangoPersonalizado ? fechaISO(rangoPersonalizado.inicio) : '')
+                  setInputFin(rangoPersonalizado ? fechaISO(rangoPersonalizado.fin) : '')
+                }}
+                style={{
+                  flex: 1, padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: rangoPersonalizado ? 'var(--primary)' : 'var(--primary-light)',
+                  color: rangoPersonalizado ? '#fff' : 'var(--primary-dark)',
+                  fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                }}
+              >
+                📅 {rangoPersonalizado ? 'Cambiar fechas' : 'Seleccionar fechas'}
+              </button>
+              {rangoPersonalizado && (
+                <button
+                  onClick={() => { setRangoPersonalizado(null); setShowDatePicker(false) }}
+                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 12 }}
+                >
+                  ✕ Ver semana
+                </button>
+              )}
+            </div>
+
+            {/* Formulario de rango */}
+            {showDatePicker && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Desde</p>
+                    <input
+                      type="date"
+                      value={inputInicio}
+                      onChange={e => setInputInicio(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Hasta</p>
+                    <input
+                      type="date"
+                      value={inputFin}
+                      onChange={e => setInputFin(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!inputInicio || !inputFin) return
+                    setRangoPersonalizado({ inicio: new Date(inputInicio + 'T12:00:00'), fin: new Date(inputFin + 'T12:00:00') })
+                    setShowDatePicker(false)
+                  }}
+                  disabled={!inputInicio || !inputFin}
+                  style={{
+                    padding: '9px 0', borderRadius: 8, border: 'none', cursor: inputInicio && inputFin ? 'pointer' : 'not-allowed',
+                    background: inputInicio && inputFin ? 'var(--primary)' : '#cbd5e1',
+                    color: '#fff', fontWeight: 700, fontSize: 13,
+                  }}
+                >
+                  ✓ Aplicar rango
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
