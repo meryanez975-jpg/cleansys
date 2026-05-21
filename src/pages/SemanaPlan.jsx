@@ -777,7 +777,7 @@ export default function SemanaPlan() {
           onAbrirPersonal={() => { setShowMenu(false); setShowPersonal(true) }}
           onAbrirZonas={() => { setShowMenu(false); setShowZonas(true) }}
           zonas={zonas}
-          onSeleccionarZona={id => { setZonaFiltro(id); setShowMenu(false) }}
+          onSeleccionarZona={id => { setZonaFiltro(id); setShowMenu(false); setVista('semana') }}
         />
       )}
 
