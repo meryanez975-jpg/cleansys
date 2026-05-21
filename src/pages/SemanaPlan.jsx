@@ -288,36 +288,6 @@ export default function SemanaPlan() {
               </div>
             </div>
 
-            {/* Accesos rápidos */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 4px' }}>
-              Ver
-            </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setVista('semana')} style={{
-                flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center',
-                border: 'none', cursor: 'pointer',
-                background: '#dbeafe', boxShadow: '0 2px 8px rgba(29,78,216,0.1)',
-              }}>
-                <p style={{ fontSize: 24, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', marginTop: 2 }}>📅 Semana</p>
-              </button>
-              <button onClick={() => setVista('limpieza')} style={{
-                flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center',
-                border: 'none', cursor: 'pointer',
-                background: '#dcfce7', boxShadow: '0 2px 8px rgba(21,128,61,0.1)',
-              }}>
-                <p style={{ fontSize: 24, fontWeight: 800, color: '#15803d' }}>{personalConTarea.length}</p>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginTop: 2 }}>🧹 En limpieza</p>
-              </button>
-              <button onClick={() => setVista('sinTarea')} style={{
-                flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center',
-                border: 'none', cursor: 'pointer',
-                background: '#f1f5f9', boxShadow: '0 2px 8px rgba(71,85,105,0.08)',
-              }}>
-                <p style={{ fontSize: 24, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginTop: 2 }}>💤 Sin tareas</p>
-              </button>
-            </div>
           </div>
         )}
 
