@@ -40,7 +40,7 @@ export default function SemanaPlan() {
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
   const [filtroTurno, setFiltroTurno] = useState(null)
-  const [vista, setVista] = useState('semana') // 'semana' | 'limpieza' | 'sinTarea'
+  const [vista, setVista] = useState('inicio') // 'inicio' | 'semana' | 'limpieza' | 'sinTarea'
   const [editandoId, setEditandoId] = useState(null)
   const [editForm, setEditForm] = useState({ zona_id: '', turno: '' })
   const [zonasAbiertas, setZonasAbiertas] = useState({})
@@ -238,60 +238,125 @@ export default function SemanaPlan() {
           </div>
         </div>
 
-        {/* Tarjeta del día de hoy */}
-        <div style={{
-          background: 'linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%)',
-          borderRadius: 'var(--radius)',
-          padding: '16px 18px',
-          marginBottom: 16,
-          color: '#fff',
-          boxShadow: '0 4px 16px rgba(29,78,216,0.25)',
-        }}>
-          <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, textTransform: 'capitalize' }}>
-            {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-          <p style={{ fontSize: 17, fontWeight: 800, marginTop: 4 }}>
-            {asigHoy.length === 0
-              ? '💤 Sin asignaciones para hoy'
-              : `📋 ${asigHoy.length} asignación${asigHoy.length !== 1 ? 'es' : ''} para hoy`}
-          </p>
-          {asigHoy.length > 0 && (
-            <p style={{ fontSize: 12, opacity: 0.85, marginTop: 6, display: 'flex', gap: 12 }}>
-              {asigHoyManana > 0 && <span>☀️ {asigHoyManana} mañana</span>}
-              {asigHoyNoche  > 0 && <span>🌙 {asigHoyNoche} noche</span>}
+        {/* ── Vista: Inicio / Bienvenida ── */}
+        {vista === 'inicio' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            {/* Tarjeta principal de bienvenida */}
+            <div style={{
+              background: 'linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%)',
+              borderRadius: 'var(--radius)',
+              padding: '24px 20px',
+              color: '#fff',
+              boxShadow: '0 6px 24px rgba(29,78,216,0.3)',
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 600, opacity: 0.75, textTransform: 'capitalize' }}>
+                {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              <p style={{ fontSize: 22, fontWeight: 800, marginTop: 6 }}>
+                {(() => {
+                  const h = new Date().getHours()
+                  if (h >= 5  && h < 12) return 'Buenos días 👋'
+                  if (h >= 12 && h < 19) return 'Buenas tardes 👋'
+                  return 'Buenas noches 👋'
+                })()}
+              </p>
+              <p style={{ fontSize: 14, opacity: 0.85, marginTop: 6 }}>
+                ¿Qué planeas hacer hoy?
+              </p>
+
+              {/* Resumen hoy */}
+              <div style={{
+                marginTop: 16,
+                background: 'rgba(255,255,255,0.15)',
+                borderRadius: 10,
+                padding: '12px 14px',
+              }}>
+                {asigHoy.length === 0 ? (
+                  <p style={{ fontSize: 13, fontWeight: 600 }}>💤 Sin asignaciones para hoy</p>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 13, fontWeight: 700 }}>
+                      📋 {asigHoy.length} asignación{asigHoy.length !== 1 ? 'es' : ''} para hoy
+                    </p>
+                    <p style={{ fontSize: 12, opacity: 0.85, marginTop: 4, display: 'flex', gap: 12 }}>
+                      {asigHoyManana > 0 && <span>☀️ {asigHoyManana} mañana</span>}
+                      {asigHoyNoche  > 0 && <span>🌙 {asigHoyNoche} noche</span>}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Accesos rápidos */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 4px' }}>
+              Ver
             </p>
-          )}
-        </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setVista('semana')} style={{
+                flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center',
+                border: 'none', cursor: 'pointer',
+                background: '#dbeafe', boxShadow: '0 2px 8px rgba(29,78,216,0.1)',
+              }}>
+                <p style={{ fontSize: 24, fontWeight: 800, color: '#1d4ed8' }}>{totalAsigs}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', marginTop: 2 }}>📅 Semana</p>
+              </button>
+              <button onClick={() => setVista('limpieza')} style={{
+                flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center',
+                border: 'none', cursor: 'pointer',
+                background: '#dcfce7', boxShadow: '0 2px 8px rgba(21,128,61,0.1)',
+              }}>
+                <p style={{ fontSize: 24, fontWeight: 800, color: '#15803d' }}>{personalConTarea.length}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginTop: 2 }}>🧹 En limpieza</p>
+              </button>
+              <button onClick={() => setVista('sinTarea')} style={{
+                flex: 1, borderRadius: 14, padding: '16px 10px', textAlign: 'center',
+                border: 'none', cursor: 'pointer',
+                background: '#f1f5f9', boxShadow: '0 2px 8px rgba(71,85,105,0.08)',
+              }}>
+                <p style={{ fontSize: 24, fontWeight: 800, color: '#64748b' }}>{sinTarea.length}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginTop: 2 }}>💤 Sin tareas</p>
+              </button>
+            </div>
+          </div>
+        )}
 
-        {/* 3 botones de navegación */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <button onClick={() => setVista('semana')} style={{
-            ...btnBase,
-            background: vista === 'semana' ? '#1d4ed8' : '#dbeafe',
-            boxShadow: vista === 'semana' ? '0 3px 10px rgba(29,78,216,0.35)' : 'none',
-          }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>{totalAsigs}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
-          </button>
-
-          <button onClick={() => setVista('limpieza')} style={{
-            ...btnBase,
-            background: vista === 'limpieza' ? '#15803d' : '#dcfce7',
-            boxShadow: vista === 'limpieza' ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
-          }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>{personalConTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 En limpieza</p>
-          </button>
-
-          <button onClick={() => setVista('sinTarea')} style={{
-            ...btnBase,
-            background: vista === 'sinTarea' ? '#475569' : '#f1f5f9',
-            boxShadow: vista === 'sinTarea' ? '0 3px 10px rgba(71,85,105,0.35)' : 'none',
-          }}>
-            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>{sinTarea.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>💤 Sin tareas</p>
-          </button>
-        </div>
+        {/* Barra de navegación (visible en todas las vistas excepto inicio) */}
+        {vista !== 'inicio' && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            <button onClick={() => setVista('inicio')} style={{
+              ...btnBase, flex: 'none', padding: '10px 14px',
+              background: 'var(--primary-light)', color: 'var(--primary-dark)',
+              fontWeight: 700, fontSize: 18,
+            }}>
+              ←
+            </button>
+            <button onClick={() => setVista('semana')} style={{
+              ...btnBase,
+              background: vista === 'semana' ? '#1d4ed8' : '#dbeafe',
+              boxShadow: vista === 'semana' ? '0 3px 10px rgba(29,78,216,0.35)' : 'none',
+            }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>{totalAsigs}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
+            </button>
+            <button onClick={() => setVista('limpieza')} style={{
+              ...btnBase,
+              background: vista === 'limpieza' ? '#15803d' : '#dcfce7',
+              boxShadow: vista === 'limpieza' ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
+            }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>{personalConTarea.length}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 En limpieza</p>
+            </button>
+            <button onClick={() => setVista('sinTarea')} style={{
+              ...btnBase,
+              background: vista === 'sinTarea' ? '#475569' : '#f1f5f9',
+              boxShadow: vista === 'sinTarea' ? '0 3px 10px rgba(71,85,105,0.35)' : 'none',
+            }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>{sinTarea.length}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>💤 Sin tareas</p>
+            </button>
+          </div>
+        )}
 
         {/* ── Vista: Semana ── */}
         {vista === 'semana' && <>
