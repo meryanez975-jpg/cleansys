@@ -81,14 +81,7 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
             Vistas
           </p>
 
-          <MenuItem
-            icono="📅"
-            texto="Semana completa"
-            sub="Ver todas las zonas de la semana"
-            onClick={() => { onSeleccionarZona && onSeleccionarZona(null); ir('/semana') }}
-          />
-
-          {zonas.filter(z => !z.id.match(/^z\d+$/)).map(z => (
+          {zonas.map(z => (
             <MenuItem
               key={z.id}
               icono="🏢"
@@ -141,13 +134,6 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
           }}>
             Reportes
           </p>
-
-          <MenuItem
-            icono="⏱"
-            texto="Control de limpiezas"
-            sub="Cronómetros de hoy y ayer por turno"
-            onClick={() => ir('/control')}
-          />
 
           <MenuItem
             icono="👤"

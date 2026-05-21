@@ -89,6 +89,9 @@ export default function SemanaPlan() {
   const asigsTodas   = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
   const asigs        = zonaFiltro ? asigsTodas.filter(a => a.zona_id === zonaFiltro) : asigsTodas
   const hoyISO       = fechaISO(new Date())
+  const asigHoy      = asigs.filter(a => a.fecha === hoyISO)
+  const asigHoyManana = asigHoy.filter(a => a.turno === 'mañana').length
+  const asigHoyNoche  = asigHoy.filter(a => a.turno === 'noche').length
 
   function getNombre(a) {
     return personalMap[a.personal_id] || a.personalNombre || a.personal?.nombre || '—'
@@ -233,6 +236,31 @@ export default function SemanaPlan() {
             </p>
             <p className="header-sub">{formatMes(lunesBase)}</p>
           </div>
+        </div>
+
+        {/* Tarjeta del día de hoy */}
+        <div style={{
+          background: 'linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%)',
+          borderRadius: 'var(--radius)',
+          padding: '16px 18px',
+          marginBottom: 16,
+          color: '#fff',
+          boxShadow: '0 4px 16px rgba(29,78,216,0.25)',
+        }}>
+          <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, textTransform: 'capitalize' }}>
+            {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+          <p style={{ fontSize: 17, fontWeight: 800, marginTop: 4 }}>
+            {asigHoy.length === 0
+              ? '💤 Sin asignaciones para hoy'
+              : `📋 ${asigHoy.length} asignación${asigHoy.length !== 1 ? 'es' : ''} para hoy`}
+          </p>
+          {asigHoy.length > 0 && (
+            <p style={{ fontSize: 12, opacity: 0.85, marginTop: 6, display: 'flex', gap: 12 }}>
+              {asigHoyManana > 0 && <span>☀️ {asigHoyManana} mañana</span>}
+              {asigHoyNoche  > 0 && <span>🌙 {asigHoyNoche} noche</span>}
+            </p>
+          )}
         </div>
 
         {/* 3 botones de navegación */}
@@ -526,15 +554,19 @@ export default function SemanaPlan() {
               )
             })}
 
-            {/* Footer info para captura */}
-            <div style={{ marginTop: 4, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>📅 {rangoTexto}</span>
-              {filtroTurno && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#d97706' : '#6d28d9' }}>
-                  {filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
-                </span>
-              )}
-            </div>
+            {/* Footer info para captura — solo cuando hay rango personalizado */}
+            {(rangoPersonalizado || filtroTurno) && (
+              <div style={{ marginTop: 4, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {rangoPersonalizado && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>📅 {rangoTexto}</span>
+                )}
+                {filtroTurno && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#d97706' : '#6d28d9' }}>
+                    {filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
         </>}
