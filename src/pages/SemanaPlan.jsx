@@ -28,9 +28,9 @@ function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n)
 function formatMes(date) { return date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) }
 function turnoDePersona(turnoSupabase) {
   if (!turnoSupabase) return null
-  const t = turnoSupabase.toLowerCase()
-  if (t === 'mañana' || t === 'diurno') return 'mañana'
-  if (t === 'tarde'  || t === 'noche')  return 'noche'
+  const t = turnoSupabase.toLowerCase().normalize('NFC').trim()
+  if (t === 'mañana' || t === 'manana' || t === 'diurno') return 'mañana'
+  if (t === 'tarde' || t === 'noche') return 'noche'
   return null
 }
 
