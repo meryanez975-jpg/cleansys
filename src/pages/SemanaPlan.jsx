@@ -497,7 +497,7 @@ export default function SemanaPlan() {
                               display: 'flex', flexDirection: 'column', gap: 5,
                             }}>
                               {/* Personas asignadas */}
-                              {t.lista.length > 0 ? t.lista.map(a => (
+                              {t.lista.map(a => (
                                 <div key={a.id} style={{
                                   background: '#fff', borderRadius: 7, padding: '6px 10px',
                                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -507,76 +507,77 @@ export default function SemanaPlan() {
                                     {a.zona?.nombre || '—'}
                                   </span>
                                 </div>
-                              )) : (
-                                /* Formulario agregar — solo si está vacío */
-                                addingFor?.iso === iso && addingFor?.turno === t.key ? (
-                                  <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66` }}>
-                                    <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
-                                      {personalDB
-                                        .filter(p => turnoDePersona(p.turno) === t.key)
-                                        .map(p => (
-                                          <button
-                                            key={p.id}
-                                            onClick={() => setAddPersonalId(p.id)}
-                                            style={{
-                                              padding: '8px 12px', borderRadius: 8, textAlign: 'left',
-                                              border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
-                                              background: addPersonalId === p.id ? t.bg : '#f8fafc',
-                                              color: addPersonalId === p.id ? t.bgAct : '#475569',
-                                              fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                                              transition: 'all 0.12s',
-                                            }}
-                                          >
-                                            {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
-                                          </button>
-                                        ))}
-                                    </div>
-                                    <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                                    <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
-                                      {zonas.map(z => (
+                              ))}
+
+                              {/* Formulario agregar */}
+                              {addingFor?.iso === iso && addingFor?.turno === t.key ? (
+                                <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: t.lista.length > 0 ? 4 : 0 }}>
+                                  <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
+                                    {personalDB
+                                      .filter(p => turnoDePersona(p.turno) === t.key)
+                                      .map(p => (
                                         <button
-                                          key={z.id}
-                                          onClick={() => setAddZonaId(z.id)}
+                                          key={p.id}
+                                          onClick={() => setAddPersonalId(p.id)}
                                           style={{
-                                            flexShrink: 0, padding: '6px 12px', borderRadius: 16,
-                                            border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`,
-                                            background: addZonaId === z.id ? t.bg : '#f8fafc',
-                                            color: addZonaId === z.id ? t.bgAct : '#475569',
-                                            fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                                            transition: 'all 0.12s', whiteSpace: 'nowrap',
+                                            padding: '8px 12px', borderRadius: 8, textAlign: 'left',
+                                            border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
+                                            background: addPersonalId === p.id ? t.bg : '#f8fafc',
+                                            color: addPersonalId === p.id ? t.bgAct : '#475569',
+                                            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                            transition: 'all 0.12s',
                                           }}
-                                        >{z.nombre}</button>
+                                        >
+                                          {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
+                                        </button>
                                       ))}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 6 }}>
-                                      <button
-                                        onClick={handleAddAsignacion}
-                                        disabled={!addPersonalId}
-                                        style={{
-                                          flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                                          background: addPersonalId ? t.bgAct : '#cbd5e1',
-                                          color: '#fff', fontWeight: 700, fontSize: 13,
-                                          cursor: addPersonalId ? 'pointer' : 'not-allowed',
-                                        }}
-                                      >✓ Guardar</button>
-                                      <button
-                                        onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }}
-                                        style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-                                      >✕</button>
-                                    </div>
                                   </div>
-                                ) : (
-                                  <button
-                                    onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId('') }}
-                                    style={{
-                                      width: '100%', padding: '6px 0', borderRadius: 7,
-                                      border: `1.5px dashed ${t.bgAct}88`,
-                                      background: 'transparent', color: t.bgAct,
-                                      fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                                    }}
-                                  >➕ Agregar persona</button>
-                                )
+                                  <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
+                                  <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
+                                    {zonas.map(z => (
+                                      <button
+                                        key={z.id}
+                                        onClick={() => setAddZonaId(z.id)}
+                                        style={{
+                                          flexShrink: 0, padding: '6px 12px', borderRadius: 16,
+                                          border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`,
+                                          background: addZonaId === z.id ? t.bg : '#f8fafc',
+                                          color: addZonaId === z.id ? t.bgAct : '#475569',
+                                          fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                                          transition: 'all 0.12s', whiteSpace: 'nowrap',
+                                        }}
+                                      >{z.nombre}</button>
+                                    ))}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                      onClick={handleAddAsignacion}
+                                      disabled={!addPersonalId}
+                                      style={{
+                                        flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                                        background: addPersonalId ? t.bgAct : '#cbd5e1',
+                                        color: '#fff', fontWeight: 700, fontSize: 13,
+                                        cursor: addPersonalId ? 'pointer' : 'not-allowed',
+                                      }}
+                                    >✓ Guardar</button>
+                                    <button
+                                      onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }}
+                                      style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                                    >✕</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId('') }}
+                                  style={{
+                                    width: '100%', padding: '6px 0', borderRadius: 7,
+                                    border: `1.5px dashed ${t.bgAct}88`,
+                                    background: 'transparent', color: t.bgAct,
+                                    fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                                    marginTop: t.lista.length > 0 ? 4 : 0,
+                                  }}
+                                >➕ Agregar persona</button>
                               )}
 
                             </div>
