@@ -58,6 +58,7 @@ export default function SemanaPlan() {
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
   const [openPersonKey, setOpenPersonKey] = useState(null)
+  const [draftPatron, setDraftPatron] = useState([])
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -161,6 +162,30 @@ export default function SemanaPlan() {
     setAddingFor(null)
     setAddPersonalId('')
     setAddZonaId('')
+  }
+
+  function agregarAlDraft() {
+    if (!addPersonalId || !addingFor) return
+    const p = personalDB.find(x => x.id === addPersonalId)
+    const zona = addZonaId || zonaFiltro || ''
+    setDraftPatron(prev => {
+      const filtrado = prev.filter(d => !(d.patKey === addingFor.patKey && d.turno === addingFor.turno))
+      return [...filtrado, { patKey: addingFor.patKey, isos: addingFor.isos, turno: addingFor.turno, personalId: addPersonalId, nombre: p?.nombre || '', zonaId: zona }]
+    })
+    setAddingFor(null)
+    setAddPersonalId('')
+    setAddZonaId('')
+  }
+
+  function guardarPatronCompleto() {
+    draftPatron.forEach(d => {
+      const p = personalDB.find(x => x.id === d.personalId)
+      d.isos.forEach(iso => {
+        store.addAsignacion(d.personalId, d.zonaId, d.turno, iso, p?.nombre || d.nombre, p?.sector || '')
+      })
+    })
+    setDraftPatron([])
+    setTick(t => t + 1)
   }
 
   function handleAddAsignacion() {
@@ -501,6 +526,17 @@ export default function SemanaPlan() {
                                       <span style={{ fontSize: 11, fontWeight: 700, color: t.txt, background: t.bg, borderRadius: 6, padding: '2px 8px' }}>{a.zona?.nombre || '—'}</span>
                                     </div>
                                   ))}
+                                  {/* Borrador pendiente */}
+                                  {(() => {
+                                    const draft = draftPatron.find(d => d.patKey === 'pat-' + i && d.turno === t.key)
+                                    return draft ? (
+                                      <div style={{ background: '#fef9c3', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px dashed #d97706' }}>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color: '#78350f' }}>⏳ {draft.nombre}</span>
+                                        <button onClick={() => setDraftPatron(prev => prev.filter(d => !(d.patKey === draft.patKey && d.turno === draft.turno)))}
+                                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 13, fontWeight: 700, padding: '0 4px' }}>✕</button>
+                                      </div>
+                                    ) : null
+                                  })()}
                                   {addingFor?.patKey === 'pat-' + i && addingFor?.turno === t.key ? (
                                     <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: lista.length > 0 ? 4 : 0 }}>
                                       <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
@@ -518,13 +554,13 @@ export default function SemanaPlan() {
                                         ))}
                                       </div>
                                       <div style={{ display: 'flex', gap: 6 }}>
-                                        <button onClick={handleAddAsignacion} disabled={!addPersonalId} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: addPersonalId ? t.bgAct : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: addPersonalId ? 'pointer' : 'not-allowed' }}>
-                                          ✓ Guardar ({dia.count} {dia.count === 1 ? 'día' : 'días'})
+                                        <button onClick={agregarAlDraft} disabled={!addPersonalId} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: addPersonalId ? t.bgAct : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: addPersonalId ? 'pointer' : 'not-allowed' }}>
+                                          ➕ Agregar al plan
                                         </button>
                                         <button onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕</button>
                                       </div>
                                     </div>
-                                  ) : lista.length === 0 && (
+                                  ) : (lista.length === 0 && !draftPatron.find(d => d.patKey === 'pat-' + i && d.turno === t.key)) && (
                                     <button
                                       onClick={() => { setAddingFor({ isos: dia.isos, patKey: 'pat-' + i, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
                                       style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: `1.5px dashed ${t.bgAct}88`, background: 'transparent', color: t.bgAct, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
@@ -695,6 +731,33 @@ export default function SemanaPlan() {
               </div>
             )}
           </div>
+
+          {/* Botón confirmar patrón — solo visible cuando hay borradores */}
+          {rangoPersonalizado && draftPatron.length > 0 && (
+            <div style={{ background: 'linear-gradient(135deg, #1e3a5f, #4c1d95)', borderRadius: 14, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 800, color: '#fff', marginBottom: 2 }}>
+                  📋 {draftPatron.length} día{draftPatron.length !== 1 ? 's' : ''} de semana planificado{draftPatron.length !== 1 ? 's' : ''}
+                </p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+                  {draftPatron.reduce((sum, d) => sum + d.isos.length, 0)} asignaciones en total
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={guardarPatronCompleto} style={{
+                  flex: 1, padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: '#fff', color: '#1e3a5f', fontWeight: 800, fontSize: 14,
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                }}>
+                  ✓ Guardar todo el patrón
+                </button>
+                <button onClick={() => setDraftPatron([])} style={{
+                  padding: '13px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: 'rgba(255,255,255,0.15)', color: '#fff', fontWeight: 700, fontSize: 13,
+                }}>✕</button>
+              </div>
+            </div>
+          )}
 
         </>}
 
