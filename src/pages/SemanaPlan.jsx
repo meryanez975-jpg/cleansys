@@ -566,7 +566,7 @@ export default function SemanaPlan() {
                                     >✕</button>
                                   </div>
                                 </div>
-                              ) : (
+                              ) : t.lista.length === 0 && (
                                 <button
                                   onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
                                   style={{
@@ -574,7 +574,6 @@ export default function SemanaPlan() {
                                     border: `1.5px dashed ${t.bgAct}88`,
                                     background: 'transparent', color: t.bgAct,
                                     fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                                    marginTop: t.lista.length > 0 ? 4 : 0,
                                   }}
                                 >➕ Agregar persona</button>
                               )}
