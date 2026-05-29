@@ -986,10 +986,11 @@ export default function SemanaPlan() {
                       const dI = dJ === 0 ? 6 : dJ - 1
                       const dLabel = `${DIAS_CORTO[dI]} ${dF.getDate()}`
                       const nombre = personalMap[a.personal_id] || a.personalNombre || '—'
-                      const completado = allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
-                      const esPasado = a.fecha < hoyISO
-                      const esFuturo = a.fecha > hoyISO
-                      const estadoBg = completado ? '#f0fdf4' : esPasado ? '#fff5f5' : '#fff'
+                      const reg = allRegistros.find(r => r.asignacion_id === a.id)
+                      const completado = reg?.completado === true
+                      const empezado = reg?.hora_entrada && !reg?.completado
+                      const esHoy = a.fecha === hoyISO
+                      const estadoBg = completado ? '#f0fdf4' : empezado ? '#fff5f5' : '#fff'
                       return (
                         <div key={a.id} style={{
                           display: 'flex', alignItems: 'center',
@@ -997,17 +998,17 @@ export default function SemanaPlan() {
                           background: estadoBg,
                         }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', width: 50, flexShrink: 0 }}>{dLabel}</span>
-                          <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : esPasado ? '#dc2626' : '#1e293b', fontWeight: completado || esPasado ? 700 : 500, paddingLeft: 8 }}>
+                          <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : empezado ? '#dc2626' : '#1e293b', fontWeight: completado || empezado ? 700 : 500, paddingLeft: 8 }}>
                             {nombre.split(' ')[0]}
                           </span>
                           {completado ? (
                             <span style={{ width: 24, height: 24, borderRadius: 6, background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#fff', fontWeight: 800, flexShrink: 0 }}>✓</span>
-                          ) : esPasado ? (
+                          ) : empezado ? (
                             <span style={{ width: 24, height: 24, borderRadius: 6, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#dc2626', fontWeight: 800, flexShrink: 0 }}>✗</span>
-                          ) : esFuturo ? (
-                            <span style={{ fontSize: 14, color: '#cbd5e1', flexShrink: 0, width: 24, textAlign: 'center' }}>—</span>
-                          ) : (
+                          ) : esHoy ? (
                             <span style={{ width: 24, height: 24, borderRadius: 6, border: '2px solid #cbd5e1', background: '#f8fafc', flexShrink: 0 }} />
+                          ) : (
+                            <span style={{ fontSize: 14, color: '#cbd5e1', flexShrink: 0, width: 24, textAlign: 'center' }}>—</span>
                           )}
                         </div>
                       )
