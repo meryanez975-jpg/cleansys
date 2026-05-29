@@ -515,7 +515,6 @@ export default function SemanaPlan() {
                                   <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
                                     {personalDB
-                                      .filter(p => turnoDePersona(p.turno) === t.key)
                                       .map(p => (
                                         <button
                                           key={p.id}
