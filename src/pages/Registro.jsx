@@ -207,23 +207,13 @@ export default function Registro() {
   const { asignaciones } = useAsignaciones(fechaHoy)
   const { marcarEntrada, marcarSalida, getRegistroPorAsignacion } = useRegistros(fechaHoy)
 
-  const [empleadoId, setEmpleadoId]       = useState(null)
+  const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
   const [busqueda, setBusqueda]           = useState('')
   const [confirmando, setConfirmando]     = useState(null)
   const [checkBasura, setCheckBasura]     = useState(false)
   const [checkCartones, setCheckCartones] = useState(false)
-  const [imagen, setImagen]               = useState(null)
-  const [showCal, setShowCal]             = useState(false)
-  const [compartirId, setCompartirId]     = useState(null) // id de asig recién completada
+  const [compartirId, setCompartirId]     = useState(null)
   const cardRefs = useRef({})
-
-  function handleImagen(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setImagen(ev.target.result)
-    reader.readAsDataURL(file)
-  }
 
   function buildNotas() {
     const items = []
@@ -233,12 +223,11 @@ export default function Registro() {
   }
 
   function handleConfirmarSalida(asigId) {
-    marcarSalida(asigId, buildNotas(), imagen)
+    marcarSalida(asigId, buildNotas())
     setCompartirId(asigId)
     setConfirmando(null)
     setCheckBasura(false)
     setCheckCartones(false)
-    setImagen(null)
   }
 
   const empleadoSeleccionado = personal.find(p => p.id === empleadoId)
@@ -283,7 +272,7 @@ export default function Registro() {
                 personalFiltrado.map(p => {
                   const tieneHoy = asignaciones.some(a => a.personal_id === p.id)
                   return (
-                    <button key={p.id} onClick={() => setEmpleadoId(p.id)} style={{
+                    <button key={p.id} onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }} style={{
                       background: tieneHoy ? 'var(--primary-light)' : 'var(--bg)',
                       border: `1.5px solid ${tieneHoy ? 'var(--primary)' : 'var(--border)'}`,
                       borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
@@ -320,7 +309,7 @@ export default function Registro() {
 
         {/* Header */}
         <div className="header">
-          <button className="header-back" onClick={() => { setEmpleadoId(null); setShowCal(false) }}>←</button>
+          <button className="header-back" onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}>←</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">{empleadoSeleccionado?.nombre}</p>
             <p className="header-sub">
@@ -329,30 +318,6 @@ export default function Registro() {
           </div>
         </div>
 
-        {/* Calendario colapsable */}
-        <div style={{ marginBottom: 16 }}>
-          <button onClick={() => setShowCal(v => !v)} style={{
-            width: '100%', padding: '11px 16px',
-            background: showCal ? 'var(--primary)' : 'var(--bg-card)',
-            border: `1.5px solid ${showCal ? 'var(--primary)' : 'var(--border)'}`,
-            borderRadius: showCal ? '10px 10px 0 0' : 10,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            boxShadow: 'var(--shadow)', transition: 'all 0.15s',
-          }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: showCal ? '#fff' : 'var(--text)' }}>📅 Mis limpiezas del mes</span>
-            <span style={{ color: showCal ? '#fff' : 'var(--text-muted)', fontSize: 13 }}>{showCal ? '▲' : '▼'}</span>
-          </button>
-          {showCal && (
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--primary)', borderTop: 'none',
-              borderRadius: '0 0 10px 10px', padding: '14px 14px 12px',
-              boxShadow: 'var(--shadow)',
-            }}>
-              <CalendarioPuntitos personal_id={empleadoId} />
-            </div>
-          )}
-        </div>
 
         {/* HOY */}
         <div style={{ marginBottom: 24 }}>
@@ -409,9 +374,6 @@ export default function Registro() {
                           {reg.notas && (
                             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>📝 {reg.notas}</p>
                           )}
-                          {reg.imagen && (
-                            <img src={reg.imagen} alt="foto" style={{ width: '100%', borderRadius: 8, marginTop: 8, maxHeight: 180, objectFit: 'cover' }} />
-                          )}
                         </div>
                         {/* Botón compartir */}
                         <button
@@ -448,30 +410,6 @@ export default function Registro() {
                               emoji="📦"
                             />
 
-                            {/* Foto */}
-                            <label style={{
-                              display: 'flex', alignItems: 'center', gap: 10,
-                              padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
-                              border: `2px dashed ${imagen ? '#15803d' : 'var(--border)'}`,
-                              background: imagen ? '#f0fdf4' : 'var(--bg)',
-                              transition: 'all 0.15s',
-                            }}>
-                              <span style={{ fontSize: 22 }}>{imagen ? '✅' : '📷'}</span>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: imagen ? '#15803d' : 'var(--text-muted)' }}>
-                                {imagen ? 'Foto adjuntada' : 'Adjuntar foto (opcional)'}
-                              </span>
-                              <input type="file" accept="image/*" capture="environment" onChange={handleImagen} style={{ display: 'none' }} />
-                            </label>
-
-                            {imagen && (
-                              <div style={{ position: 'relative' }}>
-                                <img src={imagen} alt="preview" style={{ width: '100%', borderRadius: 10, maxHeight: 200, objectFit: 'cover' }} />
-                                <button
-                                  onClick={() => setImagen(null)}
-                                  style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
-                                >✕</button>
-                              </div>
-                            )}
 
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
@@ -481,7 +419,7 @@ export default function Registro() {
                               >
                                 ✓ Confirmar salida
                               </button>
-                              <button className="btn btn-ghost" onClick={() => { setConfirmando(null); setCheckBasura(false); setCheckCartones(false); setImagen(null) }}>
+                              <button className="btn btn-ghost" onClick={() => { setConfirmando(null); setCheckBasura(false); setCheckCartones(false) }}>
                                 Cancelar
                               </button>
                             </div>
@@ -507,7 +445,7 @@ export default function Registro() {
 
         {tareasHoy.length === 0 && (
           <div style={{ textAlign: 'center', marginTop: 8 }}>
-            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => setEmpleadoId(null)}>← Volver</button>
+            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}>← Volver</button>
           </div>
         )}
 
