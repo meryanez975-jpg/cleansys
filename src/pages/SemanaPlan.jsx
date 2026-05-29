@@ -985,7 +985,7 @@ export default function SemanaPlan() {
                       const dJ = dF.getDay()
                       const dI = dJ === 0 ? 6 : dJ - 1
                       const dLabel = `${DIAS_CORTO[dI]} ${dF.getDate()}`
-                      const nombre = personalMap[a.personal_id] || a.personalNombre || '—'
+                      const nombre = a.personalNombre || personalMap[a.personal_id] || '—'
                       const reg = allRegistros.find(r => r.asignacion_id === a.id)
                       const completado = reg?.completado === true
                       const empezado = reg?.hora_entrada && !reg?.completado
