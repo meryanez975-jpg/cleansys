@@ -82,6 +82,18 @@ export default function SemanaPlan() {
   useEffect(() => { setTick(t => t + 1) }, [])
 
   useEffect(() => {
+    if (vista === 'sinTarea') {
+      const hoy = new Date()
+      const d = hoy.getDay()
+      const diff = d === 0 ? -6 : 1 - d
+      const lunes = new Date(hoy)
+      lunes.setDate(hoy.getDate() + diff)
+      lunes.setHours(0, 0, 0, 0)
+      setSemanaConteo(lunes)
+    }
+  }, [vista])
+
+  useEffect(() => {
     if (rangoPersonalizado) {
       localStorage.setItem('cleansys_semana_rango', JSON.stringify({ inicio: rangoPersonalizado.inicio.toISOString(), fin: rangoPersonalizado.fin.toISOString() }))
     } else {
@@ -391,24 +403,21 @@ export default function SemanaPlan() {
               background: vista === 'semana' ? '#1d4ed8' : '#dbeafe',
               boxShadow: vista === 'semana' ? '0 3px 10px rgba(29,78,216,0.35)' : 'none',
             }}>
-              <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>{totalAsigs}</p>
-              <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
             </button>
             <button onClick={() => setVista('limpieza')} style={{
               ...btnBase,
               background: vista === 'limpieza' ? '#15803d' : '#dcfce7',
               boxShadow: vista === 'limpieza' ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
             }}>
-              <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>{personalConTarea.length}</p>
-              <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 En limpieza</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 Limpieza</p>
             </button>
             <button onClick={() => setVista('sinTarea')} style={{
               ...btnBase,
               background: vista === 'sinTarea' ? '#475569' : '#f1f5f9',
               boxShadow: vista === 'sinTarea' ? '0 3px 10px rgba(71,85,105,0.35)' : 'none',
             }}>
-              <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>{sinTarea.length}</p>
-              <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>💤 Sin tareas</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>🧮 Conteo</p>
             </button>
           </div>
         )}
