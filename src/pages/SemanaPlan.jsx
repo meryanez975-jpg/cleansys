@@ -55,7 +55,14 @@ export default function SemanaPlan() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [inputInicio, setInputInicio] = useState('')
   const [inputFin, setInputFin] = useState('')
-  const [rangoPersonalizado, setRangoPersonalizado] = useState(null) // { inicio: Date, fin: Date }
+  const [rangoPersonalizado, setRangoPersonalizado] = useState(() => {
+    try {
+      const s = localStorage.getItem('cleansys_semana_rango')
+      if (!s) return null
+      const { inicio, fin } = JSON.parse(s)
+      return { inicio: new Date(inicio), fin: new Date(fin) }
+    } catch { return null }
+  })
   const [addingFor, setAddingFor] = useState(null) // { iso, turno }
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
@@ -64,6 +71,14 @@ export default function SemanaPlan() {
   const [guardadoOk, setGuardadoOk] = useState(false)
 
   useEffect(() => { setTick(t => t + 1) }, [])
+
+  useEffect(() => {
+    if (rangoPersonalizado) {
+      localStorage.setItem('cleansys_semana_rango', JSON.stringify({ inicio: rangoPersonalizado.inicio.toISOString(), fin: rangoPersonalizado.fin.toISOString() }))
+    } else {
+      localStorage.removeItem('cleansys_semana_rango')
+    }
+  }, [rangoPersonalizado])
 
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
   const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
@@ -93,6 +108,7 @@ export default function SemanaPlan() {
   const fechasISO    = fechasSemana.map(fechaISO)
   const asigsTodas   = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
   const asigs        = zonaFiltro ? asigsTodas.filter(a => a.zona_id === zonaFiltro) : asigsTodas
+  const allRegistros = (() => { try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] } })()
   const hoyISO       = fechaISO(new Date())
   const asigHoy      = asigs.filter(a => a.fecha === hoyISO)
   const asigHoyManana = asigHoy.filter(a => a.turno === 'mañana').length
@@ -924,8 +940,10 @@ export default function SemanaPlan() {
                 </thead>
                 <tbody>
                   {(() => {
+                    const idsConAsig = new Set(asigsTodas.map(a => a.personal_id))
                     const sectorMap = {}
                     personalDB.forEach(p => {
+                      if (!idsConAsig.has(p.id)) return
                       const s = p.sector?.trim() || 'Otros'
                       if (!sectorMap[s]) sectorMap[s] = []
                       sectorMap[s].push(p)
@@ -937,22 +955,25 @@ export default function SemanaPlan() {
                         </td>
                       </tr>,
                       ...personas.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(p => {
-                        const dayHasAsig = DIAS_FULL.map((_, di) => {
+                        const dayDone = DIAS_FULL.map((_, di) => {
                           const isosDelDia = fechasISO.filter(iso => {
                             const d = new Date(iso + 'T12:00:00').getDay()
                             return (d === 0 ? 6 : d - 1) === di
                           })
-                          return isosDelDia.some(iso => asigsTodas.some(a => a.personal_id === p.id && a.fecha === iso))
+                          return isosDelDia.some(iso => {
+                            const asig = asigsTodas.find(a => a.personal_id === p.id && a.fecha === iso)
+                            return asig && allRegistros.some(r => r.asignacion_id === asig.id && r.completado === true)
+                          })
                         })
-                        const hasAny = dayHasAsig.some(Boolean)
+                        const hasAny = dayDone.some(Boolean)
                         return (
                           <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: hasAny ? 700 : 400, color: hasAny ? 'var(--text)' : 'var(--text-muted)', position: 'sticky', left: 0, background: '#fff', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 500, color: 'var(--text)', position: 'sticky', left: 0, background: '#fff', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {p.nombre.split(' ')[0]}
                             </td>
-                            {dayHasAsig.map((has, di) => (
+                            {dayDone.map((done, di) => (
                               <td key={di} style={{ textAlign: 'center', padding: '5px 2px' }}>
-                                <span style={{ fontSize: has ? 13 : 11, color: has ? '#15803d' : '#cbd5e1', fontWeight: has ? 700 : 400 }}>{has ? '✓' : '—'}</span>
+                                <span style={{ fontSize: done ? 13 : 11, color: done ? '#15803d' : '#cbd5e1', fontWeight: done ? 700 : 400 }}>{done ? '✓' : '—'}</span>
                               </td>
                             ))}
                           </tr>
@@ -968,7 +989,8 @@ export default function SemanaPlan() {
                       const count = new Set(
                         asigsTodas.filter(a => {
                           const d = new Date(a.fecha + 'T12:00:00').getDay()
-                          return (d === 0 ? 6 : d - 1) === di
+                          return (d === 0 ? 6 : d - 1) === di &&
+                            allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
                         }).map(a => a.personal_id)
                       ).size
                       return (
