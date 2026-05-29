@@ -6,22 +6,47 @@ function genId() {
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36)
 }
 
-// Sync asignaciones de Supabase a localStorage para que el store.js pueda leerlas offline
+// Sync bidireccional: baja de Supabase y sube las locales que faltan
 async function pullFromSupabase() {
   try {
     const { data, error } = await supabase
       .from('limpieza_asignaciones')
       .select('*')
-      .eq('activo', true)
-    if (!error && data) {
-      const existing = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-      const remoteIds = new Set(data.map(a => a.id))
-      const localOnly = existing.filter(a => !remoteIds.has(a.id) && a.activo !== false)
-      localStorage.setItem('cleansys_asignaciones', JSON.stringify([...data, ...localOnly]))
-      return true
+    if (error) return false
+
+    const remoteIds = new Set((data || []).map(a => a.id))
+    const existing = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+
+    // Subir a Supabase las asignaciones locales que no están en Supabase
+    const localOnly = existing.filter(a => !remoteIds.has(a.id) && a.activo !== false)
+    if (localOnly.length > 0) {
+      await supabase.from('limpieza_asignaciones').upsert(
+        localOnly.map(a => ({
+          id: a.id,
+          personal_id: a.personal_id,
+          zona_id: a.zona_id || null,
+          turno: a.turno,
+          fecha: a.fecha,
+          personalNombre: a.personalNombre || '',
+          personalSector: a.personalSector || '',
+          activo: a.activo !== false,
+        }))
+      )
     }
-  } catch {}
-  return false
+
+    // Bajar todo de Supabase y guardar en localStorage
+    const { data: all } = await supabase
+      .from('limpieza_asignaciones')
+      .select('*')
+      .eq('activo', true)
+    if (all) {
+      localStorage.setItem('cleansys_asignaciones', JSON.stringify(all))
+    }
+    return true
+  } catch (e) {
+    console.warn('pullFromSupabase error:', e)
+    return false
+  }
 }
 
 // Push una asignación a Supabase en background
