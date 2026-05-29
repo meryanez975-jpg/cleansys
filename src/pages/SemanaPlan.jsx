@@ -69,7 +69,15 @@ export default function SemanaPlan() {
   const [openPersonKey, setOpenPersonKey] = useState(null)
   const [draftPatron, setDraftPatron] = useState([])
   const [guardadoOk, setGuardadoOk] = useState(false)
-  const [filtroFechaConteo, setFiltroFechaConteo] = useState(null)
+  const [semanaConteo, setSemanaConteo] = useState(() => {
+    const hoy = new Date()
+    const d = hoy.getDay()
+    const diff = d === 0 ? -6 : 1 - d
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() + diff)
+    lunes.setHours(0, 0, 0, 0)
+    return lunes
+  })
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -920,66 +928,50 @@ export default function SemanaPlan() {
         )}
 
         {/* ── Vista: Conteo semanal ── */}
-        {vista === 'sinTarea' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {vista === 'sinTarea' && (() => {
+          const isosConteo = Array.from({ length: 7 }, (_, i) => fechaISO(addDays(semanaConteo, i)))
+          const asigsConteo = store.getAsignacionesPorFechas(isosConteo)
+          const domConteo = addDays(semanaConteo, 6)
+          const turnosConfig = [
+            { key: 'mañana', emoji: '☀️', label: 'Mañana', headerBg: '#d97706', rowBg: '#fef3c7' },
+            { key: 'noche',  emoji: '🌙', label: 'Noche',  headerBg: '#6d28d9', rowBg: '#ede9fe' },
+          ]
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>🧮 Conteo semanal</p>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rangoTexto}</p>
-            </div>
 
-            {/* Filtro por semana */}
-            {(() => {
-              const semanasMap = {}
-              fechasSemana.forEach(f => {
-                const d = f.getDay()
-                const diff = d === 0 ? -6 : 1 - d
-                const lunes = new Date(f); lunes.setDate(f.getDate() + diff)
-                const key = fechaISO(lunes)
-                if (!semanasMap[key]) semanasMap[key] = { key, fechas: [] }
-                semanasMap[key].fechas.push(f)
-              })
-              const semanas = Object.values(semanasMap)
-                .sort((a, b) => a.key.localeCompare(b.key))
-                .filter(s => asigsTodas.some(a => s.fechas.map(fechaISO).includes(a.fecha)))
-              return (
-                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
-                  <button onClick={() => setFiltroFechaConteo(null)}
-                    style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: !filtroFechaConteo ? 'var(--primary)' : 'var(--primary-light)', color: !filtroFechaConteo ? '#fff' : 'var(--primary-dark)' }}
-                  >Todos</button>
-                  {semanas.map(s => {
-                    const sel = filtroFechaConteo === s.key
-                    const ini = s.fechas[0]; const fin = s.fechas[s.fechas.length - 1]
-                    const label = ini.getDate() === fin.getDate()
-                      ? `${ini.getDate()} ${ini.toLocaleDateString('es-AR', { month: 'short' })}`
-                      : `${ini.getDate()}-${fin.getDate()} ${fin.toLocaleDateString('es-AR', { month: 'short' })}`
-                    return (
-                      <button key={s.key} onClick={() => setFiltroFechaConteo(s.key)}
-                        style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, background: sel ? 'var(--primary)' : 'var(--primary-light)', color: sel ? '#fff' : 'var(--primary-dark)', whiteSpace: 'nowrap' }}
-                      >{label}</button>
-                    )
-                  })}
+              {/* Navegador de semana */}
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setSemanaConteo(d => addDays(d, -7))}
+                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                    {semanaConteo.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — {domConteo.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                  </p>
                 </div>
-              )
-            })()}
+                <button onClick={() => setSemanaConteo(d => addDays(d, 7))}
+                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
+              </div>
 
-            {/* Cards por turno */}
-            {(() => {
-              const isosSemana = filtroFechaConteo
-                ? fechasSemana.filter(f => {
-                    const d = f.getDay(); const diff = d === 0 ? -6 : 1 - d
-                    const lunes = new Date(f); lunes.setDate(f.getDate() + diff)
-                    return fechaISO(lunes) === filtroFechaConteo
-                  }).map(fechaISO)
-                : null
-              const asigsFiltradas = isosSemana
-                ? asigsTodas.filter(a => isosSemana.includes(a.fecha))
-                : asigsTodas
-              const turnosConfig = [
-                { key: 'mañana', emoji: '☀️', label: 'Mañana', headerBg: '#d97706', rowBg: '#fef3c7' },
-                { key: 'noche',  emoji: '🌙', label: 'Noche',  headerBg: '#6d28d9', rowBg: '#ede9fe' },
-              ]
-              return turnosConfig.map(turno => {
-                const lista = [...asigsFiltradas.filter(a => a.turno === turno.key)]
+              {/* Buscador de fecha */}
+              <input
+                type="date"
+                placeholder="Buscar fecha..."
+                onChange={e => {
+                  if (!e.target.value) return
+                  const d = new Date(e.target.value + 'T12:00:00')
+                  const day = d.getDay()
+                  const diff = day === 0 ? -6 : 1 - day
+                  d.setDate(d.getDate() + diff)
+                  d.setHours(0, 0, 0, 0)
+                  setSemanaConteo(new Date(d))
+                }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
+              />
+
+              {/* Cards por turno */}
+              {turnosConfig.map(turno => {
+                const lista = [...asigsConteo.filter(a => a.turno === turno.key)]
                   .sort((a, b) => a.fecha.localeCompare(b.fecha))
                 if (lista.length === 0) return null
                 return (
@@ -994,20 +986,13 @@ export default function SemanaPlan() {
                       const dI = dJ === 0 ? 6 : dJ - 1
                       const dLabel = `${DIAS_CORTO[dI]} ${dF.getDate()}`
                       const nombre = personalMap[a.personal_id] || a.personalNombre || '—'
-                      const reg = allRegistros.find(r => r.asignacion_id === a.id)
-                      const completado = reg?.completado === true
+                      const completado = allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
                       return (
-                        <button
-                          key={a.id}
-                          onClick={() => { store.marcarCompletado(a.id, !completado); setTick(t => t + 1) }}
-                          style={{
-                            width: '100%', display: 'flex', alignItems: 'center',
-                            padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
-                            background: completado ? '#f0fdf4' : '#fff',
-                            border: 'none', cursor: 'pointer', textAlign: 'left',
-                            transition: 'background 0.15s',
-                          }}
-                        >
+                        <div key={a.id} style={{
+                          display: 'flex', alignItems: 'center',
+                          padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
+                          background: completado ? '#f0fdf4' : '#fff',
+                        }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', width: 46, flexShrink: 0 }}>{dLabel}</span>
                           <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : '#1e293b', fontWeight: completado ? 700 : 500, paddingLeft: 10 }}>
                             {nombre.split(' ')[0]}
@@ -1019,15 +1004,19 @@ export default function SemanaPlan() {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: 13, color: '#fff', fontWeight: 800,
                           }}>{completado ? '✓' : ''}</span>
-                        </button>
+                        </div>
                       )
                     })}
                   </div>
                 )
-              })
-            })()}
-          </div>
-        )}
+              })}
+
+              {asigsConteo.length === 0 && (
+                <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', padding: '20px 0' }}>Sin asignaciones esta semana</p>
+              )}
+            </div>
+          )
+        })()}
 
       </div>
 
