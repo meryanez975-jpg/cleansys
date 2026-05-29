@@ -974,43 +974,30 @@ export default function SemanaPlan() {
                       <span style={{ fontSize: 16 }}>{turno.emoji}</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{turno.label}</span>
                     </div>
-                    {lista.reduce((groups, a) => {
-                      const last = groups[groups.length - 1]
-                      if (last && last.fecha === a.fecha) { last.asigs.push(a) }
-                      else { groups.push({ fecha: a.fecha, asigs: [a] }) }
-                      return groups
-                    }, []).map(group => {
-                      const dF = new Date(group.fecha + 'T12:00:00')
+                    {lista.map(a => {
+                      const dF = new Date(a.fecha + 'T12:00:00')
                       const dJ = dF.getDay()
                       const dI = dJ === 0 ? 6 : dJ - 1
                       const dLabel = `${DIAS_CORTO[dI]} ${dF.getDate()}`
+                      const nombre = personalMap[a.personal_id] || a.personalNombre || '—'
+                      const completado = allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
                       return (
-                        <div key={group.fecha}>
-                          <div style={{ padding: '7px 16px', background: turno.rowBg, borderBottom: `1px solid ${turno.headerBg}33` }}>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{dLabel}</span>
-                          </div>
-                          {group.asigs.map(a => {
-                            const nombre = personalMap[a.personal_id] || a.personalNombre || '—'
-                            const completado = allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
-                            return (
-                              <div key={a.id} style={{
-                                display: 'flex', alignItems: 'center',
-                                padding: '10px 16px 10px 20px', borderBottom: `1px solid ${turno.rowBg}`,
-                                background: completado ? '#f0fdf4' : '#fff',
-                              }}>
-                                <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : '#1e293b', fontWeight: completado ? 700 : 500 }}>
-                                  {nombre.split(' ')[0]}
-                                </span>
-                                <span style={{
-                                  width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                                  border: completado ? 'none' : '2px solid #cbd5e1',
-                                  background: completado ? '#22c55e' : '#f8fafc',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  fontSize: 13, color: '#fff', fontWeight: 800,
-                                }}>{completado ? '✓' : ''}</span>
-                              </div>
-                            )
-                          })}
+                        <div key={a.id} style={{
+                          display: 'flex', alignItems: 'center',
+                          padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
+                          background: completado ? '#f0fdf4' : '#fff',
+                        }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', width: 50, flexShrink: 0 }}>{dLabel}</span>
+                          <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : '#1e293b', fontWeight: completado ? 700 : 500, paddingLeft: 8 }}>
+                            {nombre.split(' ')[0]}
+                          </span>
+                          <span style={{
+                            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                            border: completado ? 'none' : '2px solid #cbd5e1',
+                            background: completado ? '#22c55e' : '#f8fafc',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 13, color: '#fff', fontWeight: 800,
+                          }}>{completado ? '✓' : ''}</span>
                         </div>
                       )
                     })}
