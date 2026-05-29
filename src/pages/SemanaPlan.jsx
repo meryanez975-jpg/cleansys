@@ -442,7 +442,14 @@ export default function SemanaPlan() {
                     <input
                       type="date"
                       value={inputInicio}
-                      onChange={e => setInputInicio(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value
+                        setInputInicio(val)
+                        if (val && inputFin) {
+                          setRangoPersonalizado({ inicio: new Date(val + 'T12:00:00'), fin: new Date(inputFin + 'T12:00:00') })
+                          setShowDatePicker(false)
+                        }
+                      }}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
                     />
                   </div>
@@ -451,26 +458,18 @@ export default function SemanaPlan() {
                     <input
                       type="date"
                       value={inputFin}
-                      onChange={e => setInputFin(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value
+                        setInputFin(val)
+                        if (inputInicio && val) {
+                          setRangoPersonalizado({ inicio: new Date(inputInicio + 'T12:00:00'), fin: new Date(val + 'T12:00:00') })
+                          setShowDatePicker(false)
+                        }
+                      }}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
                     />
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    if (!inputInicio || !inputFin) return
-                    setRangoPersonalizado({ inicio: new Date(inputInicio + 'T12:00:00'), fin: new Date(inputFin + 'T12:00:00') })
-                    setShowDatePicker(false)
-                  }}
-                  disabled={!inputInicio || !inputFin}
-                  style={{
-                    padding: '9px 0', borderRadius: 8, border: 'none', cursor: inputInicio && inputFin ? 'pointer' : 'not-allowed',
-                    background: inputInicio && inputFin ? 'var(--primary)' : '#cbd5e1',
-                    color: '#fff', fontWeight: 700, fontSize: 13,
-                  }}
-                >
-                  ✓ Aplicar rango
-                </button>
               </div>
             )}
           </div>
@@ -746,8 +745,8 @@ export default function SemanaPlan() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={guardarPatronCompleto} style={{
                   flex: 1, padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: '#fff', color: '#1e3a5f', fontWeight: 800, fontSize: 14,
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                  background: '#22c55e', color: '#fff', fontWeight: 800, fontSize: 14,
+                  boxShadow: '0 4px 14px rgba(34,197,94,0.4)',
                 }}>
                   ✓ Guardar todo el patrón
                 </button>
