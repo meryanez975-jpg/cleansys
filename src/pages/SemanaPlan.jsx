@@ -23,7 +23,9 @@ function getLunesDeHoy() {
   return lunes
 }
 
-function fechaISO(date) { return date.toISOString().split('T')[0] }
+function fechaISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
 function formatMes(date) { return date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) }
 function turnoDePersona(turnoSupabase) {

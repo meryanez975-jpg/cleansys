@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 
 // ── helpers de fecha ──────────────────────────────────────────────
-function hoy() { return new Date().toISOString().split('T')[0] }
+function hoy() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
 function mesActualStr() { return hoy().slice(0, 7) }
 
 function diasEnMes(mes) {

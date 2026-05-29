@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 
 // ── helpers de fecha ──────────────────────────────────────────────
-function hoy() { return new Date().toISOString().split('T')[0] }
+function localISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function hoy() { return localISO(new Date()) }
 function ayer() {
   const d = new Date(); d.setDate(d.getDate() - 1)
-  return d.toISOString().split('T')[0]
+  return localISO(d)
 }
 function fechasSemanaActual() {
   const d = new Date()
@@ -15,7 +18,7 @@ function fechasSemanaActual() {
   lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
   return Array.from({ length: 7 }, (_, i) => {
     const x = new Date(lunes); x.setDate(lunes.getDate() + i)
-    return x.toISOString().split('T')[0]
+    return localISO(x)
   })
 }
 function fechasSemanaAnterior() {
@@ -25,7 +28,7 @@ function fechasSemanaAnterior() {
   lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
   return Array.from({ length: 7 }, (_, i) => {
     const x = new Date(lunes); x.setDate(lunes.getDate() + i)
-    return x.toISOString().split('T')[0]
+    return localISO(x)
   })
 }
 function formatHora(isoStr) {
