@@ -927,29 +927,52 @@ export default function SemanaPlan() {
               <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rangoTexto}</p>
             </div>
 
-            {/* Filtro de fecha */}
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
-              <button
-                onClick={() => setFiltroFechaConteo(null)}
-                style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: !filtroFechaConteo ? 'var(--primary)' : 'var(--primary-light)', color: !filtroFechaConteo ? '#fff' : 'var(--primary-dark)' }}
-              >Todos</button>
-              {fechasSemana.filter(f => asigsTodas.some(a => a.fecha === fechaISO(f))).map(fecha => {
-                const iso = fechaISO(fecha)
-                const d = fecha.getDay()
-                const dI = d === 0 ? 6 : d - 1
-                const sel = filtroFechaConteo === iso
-                return (
-                  <button key={iso} onClick={() => setFiltroFechaConteo(iso)}
-                    style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, background: sel ? 'var(--primary)' : 'var(--primary-light)', color: sel ? '#fff' : 'var(--primary-dark)', whiteSpace: 'nowrap' }}
-                  >{DIAS_CORTO[dI]} {fecha.getDate()}</button>
-                )
-              })}
-            </div>
+            {/* Filtro por semana */}
+            {(() => {
+              const semanasMap = {}
+              fechasSemana.forEach(f => {
+                const d = f.getDay()
+                const diff = d === 0 ? -6 : 1 - d
+                const lunes = new Date(f); lunes.setDate(f.getDate() + diff)
+                const key = fechaISO(lunes)
+                if (!semanasMap[key]) semanasMap[key] = { key, fechas: [] }
+                semanasMap[key].fechas.push(f)
+              })
+              const semanas = Object.values(semanasMap)
+                .sort((a, b) => a.key.localeCompare(b.key))
+                .filter(s => asigsTodas.some(a => s.fechas.map(fechaISO).includes(a.fecha)))
+              return (
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
+                  <button onClick={() => setFiltroFechaConteo(null)}
+                    style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: !filtroFechaConteo ? 'var(--primary)' : 'var(--primary-light)', color: !filtroFechaConteo ? '#fff' : 'var(--primary-dark)' }}
+                  >Todos</button>
+                  {semanas.map(s => {
+                    const sel = filtroFechaConteo === s.key
+                    const ini = s.fechas[0]; const fin = s.fechas[s.fechas.length - 1]
+                    const label = ini.getDate() === fin.getDate()
+                      ? `${ini.getDate()} ${ini.toLocaleDateString('es-AR', { month: 'short' })}`
+                      : `${ini.getDate()}-${fin.getDate()} ${fin.toLocaleDateString('es-AR', { month: 'short' })}`
+                    return (
+                      <button key={s.key} onClick={() => setFiltroFechaConteo(s.key)}
+                        style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, background: sel ? 'var(--primary)' : 'var(--primary-light)', color: sel ? '#fff' : 'var(--primary-dark)', whiteSpace: 'nowrap' }}
+                      >{label}</button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
 
             {/* Cards por turno */}
             {(() => {
-              const asigsFiltradas = filtroFechaConteo
-                ? asigsTodas.filter(a => a.fecha === filtroFechaConteo)
+              const isosSemana = filtroFechaConteo
+                ? fechasSemana.filter(f => {
+                    const d = f.getDay(); const diff = d === 0 ? -6 : 1 - d
+                    const lunes = new Date(f); lunes.setDate(f.getDate() + diff)
+                    return fechaISO(lunes) === filtroFechaConteo
+                  }).map(fechaISO)
+                : null
+              const asigsFiltradas = isosSemana
+                ? asigsTodas.filter(a => isosSemana.includes(a.fecha))
                 : asigsTodas
               const turnosConfig = [
                 { key: 'mañana', emoji: '☀️', label: 'Mañana', headerBg: '#d97706', rowBg: '#fef3c7' },
