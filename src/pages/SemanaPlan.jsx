@@ -151,7 +151,7 @@ export default function SemanaPlan() {
   function handleAddAsignacion() {
     if (!addPersonalId || !addingFor) return
     const p = personalDB.find(x => x.id === addPersonalId)
-    store.addAsignacion(addPersonalId, addZonaId || '', addingFor.turno, addingFor.iso, p?.nombre || '', p?.sector || '')
+    store.addAsignacion(addPersonalId, addZonaId || zonaFiltro || '', addingFor.turno, addingFor.iso, p?.nombre || '', p?.sector || '')
     setTick(t => t + 1)
     setAddingFor(null)
     setAddPersonalId('')
@@ -568,7 +568,7 @@ export default function SemanaPlan() {
                                 </div>
                               ) : (
                                 <button
-                                  onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId('') }}
+                                  onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
                                   style={{
                                     width: '100%', padding: '6px 0', borderRadius: 7,
                                     border: `1.5px dashed ${t.bgAct}88`,
