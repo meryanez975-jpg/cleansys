@@ -1,30 +1,55 @@
-import { useState, useCallback } from 'react'
-import * as store from '../data/store'
+import { useState, useCallback, useEffect } from 'react'
+import { supabase } from '../supabase/client'
+
+function genId() {
+  return Math.random().toString(36).slice(2, 9) + Date.now().toString(36)
+}
 
 export function useZonas() {
-  const [zonas, setZonas] = useState(() => store.getZonas())
+  const [zonas, setZonas] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const refetch = useCallback(() => {
-    setZonas(store.getZonas())
+  const refetch = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('limpieza_zonas')
+      .select('*')
+      .eq('activo', true)
+      .order('nombre')
+    if (!error && data) {
+      setZonas(data)
+      // Cachear en localStorage para que store.js resuelva nombres de zona en asignaciones
+      try { localStorage.setItem('cleansys_zonas', JSON.stringify(data)) } catch {}
+    }
+    setLoading(false)
   }, [])
 
-  function crearZona(nombre) {
-    store.addZona(nombre)
-    refetch()
-    return { error: null }
+  useEffect(() => { refetch() }, [refetch])
+
+  async function crearZona(nombre) {
+    const { error } = await supabase
+      .from('limpieza_zonas')
+      .insert({ id: genId(), nombre: nombre.trim(), activo: true })
+    if (!error) await refetch()
+    return { error: error?.message || null }
   }
 
-  function editarZona(id, nombre) {
-    store.editZona(id, nombre)
-    refetch()
-    return { error: null }
+  async function editarZona(id, nombre) {
+    const { error } = await supabase
+      .from('limpieza_zonas')
+      .update({ nombre: nombre.trim() })
+      .eq('id', id)
+    if (!error) await refetch()
+    return { error: error?.message || null }
   }
 
-  function desactivarZona(id) {
-    store.removeZona(id)
-    refetch()
-    return { error: null }
+  async function desactivarZona(id) {
+    const { error } = await supabase
+      .from('limpieza_zonas')
+      .update({ activo: false })
+      .eq('id', id)
+    if (!error) await refetch()
+    return { error: error?.message || null }
   }
 
-  return { zonas, loading: false, crearZona, editarZona, desactivarZona, refetch }
+  return { zonas, loading, crearZona, editarZona, desactivarZona, refetch }
 }
