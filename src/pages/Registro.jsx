@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
-import html2canvas from 'html2canvas'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -170,23 +169,26 @@ function CheckItem({ checked, onChange, label, emoji }) {
   )
 }
 
-// ── Compartir captura ─────────────────────────────────────────────
-async function compartirCaptura(cardEl) {
-  if (!cardEl) return
-  try {
-    const canvas = await html2canvas(cardEl, { backgroundColor: '#fff', scale: 2 })
-    canvas.toBlob(async blob => {
-      const file = new File([blob], 'limpieza-completada.png', { type: 'image/png' })
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: '✅ Limpieza completada' })
-      } else {
-        const link = document.createElement('a')
-        link.download = 'limpieza-completada.png'
-        link.href = URL.createObjectURL(blob)
-        link.click()
-      }
-    }, 'image/png')
-  } catch (e) { console.error(e) }
+// ── Compartir por WhatsApp (texto) ───────────────────────────────
+function compartirWhatsApp({ nombre, zona, turno, fecha, horaEntrada, horaSalida, notas }) {
+  const esManana = turno === 'mañana'
+  const fechaFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const lines = [
+    '✅ Limpieza completada',
+    `👤 ${nombre}`,
+    `📍 ${zona} · ${esManana ? '☀️ Turno Mañana' : '🌙 Turno Noche'}`,
+    `📅 ${fechaFmt}`,
+    `⏱ ${formatHora(horaEntrada)} → ${formatHora(horaSalida)}`,
+  ]
+  if (notas) lines.push(`📝 ${notas}`)
+  const texto = lines.join('\n')
+  if (navigator.share) {
+    navigator.share({ text: texto }).catch(() => {
+      window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
+    })
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
+  }
 }
 
 // ── Pantallas ─────────────────────────────────────────────────────
@@ -212,8 +214,6 @@ export default function Registro() {
   const [confirmando, setConfirmando]     = useState(null)
   const [checkBasura, setCheckBasura]     = useState(false)
   const [checkCartones, setCheckCartones] = useState(false)
-  const [compartirId, setCompartirId]     = useState(null)
-  const cardRefs = useRef({})
 
   function buildNotas() {
     const items = []
@@ -224,7 +224,6 @@ export default function Registro() {
 
   function handleConfirmarSalida(asigId) {
     marcarSalida(asigId, buildNotas())
-    setCompartirId(asigId)
     setConfirmando(null)
     setCheckBasura(false)
     setCheckCartones(false)
@@ -342,7 +341,6 @@ export default function Registro() {
                 return (
                   <div
                     key={a.id}
-                    ref={el => cardRefs.current[a.id] = el}
                     className="card"
                     style={{ borderLeft: `4px solid ${esManana ? 'var(--manana-badge)' : 'var(--noche-badge)'}` }}
                   >
@@ -377,7 +375,15 @@ export default function Registro() {
                         </div>
                         {/* Botón compartir */}
                         <button
-                          onClick={() => compartirCaptura(cardRefs.current[a.id])}
+                          onClick={() => compartirWhatsApp({
+                            nombre: empleadoSeleccionado?.nombre,
+                            zona: a.zona?.nombre,
+                            turno: a.turno,
+                            fecha: fechaHoy,
+                            horaEntrada: reg.hora_entrada,
+                            horaSalida: reg.hora_salida,
+                            notas: reg.notas,
+                          })}
                           style={{
                             width: '100%', padding: '12px 0', borderRadius: 10, cursor: 'pointer',
                             background: 'linear-gradient(135deg, #25d366, #128c7e)',
