@@ -9,6 +9,7 @@ import PersonalModal from '../components/PersonalModal'
 import { useZonas } from '../hooks/useZonas'
 import { usePersonal } from '../hooks/usePersonal'
 import { usePersonalComidas } from '../hooks/usePersonalComidas'
+import { pullFromSupabase, pushToSupabase } from '../hooks/useAsignaciones'
 
 const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -81,9 +82,16 @@ export default function SemanaPlan() {
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
+  // Sincronizar asignaciones desde Supabase al abrir la app
+  useEffect(() => {
+    pullFromSupabase().then(ok => { if (ok) setTick(t => t + 1) })
+  }, [])
+
   // Auto-refresh Conteo cada 30s para ver completados en tiempo real
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 30000)
+    const id = setInterval(() => {
+      pullFromSupabase().then(ok => { if (ok) setTick(t => t + 1) })
+    }, 30000)
     return () => clearInterval(id)
   }, [])
 
@@ -201,11 +209,13 @@ export default function SemanaPlan() {
     store.editAsignacion(id, { zona_id: editForm.zona_id, turno: editForm.turno, fecha: editForm.fecha })
     setEditandoId(null)
     setTick(t => t + 1)
+    supabase.from('limpieza_asignaciones').update({ zona_id: editForm.zona_id, turno: editForm.turno, fecha: editForm.fecha }).eq('id', id).then(() => {})
   }
 
   function eliminarAsig(id) {
     store.removeAsignacion(id)
     setTick(t => t + 1)
+    supabase.from('limpieza_asignaciones').update({ activo: false }).eq('id', id).then(() => {})
   }
 
   function toggleTurno(iso, turno) {
@@ -232,12 +242,18 @@ export default function SemanaPlan() {
   }
 
   function guardarPatronCompleto() {
+    const nuevas = []
     draftPatron.forEach(d => {
       const p = personalDB.find(x => x.id === d.personalId)
       d.isos.forEach(iso => {
-        store.addAsignacion(d.personalId, d.zonaId, d.turno, iso, p?.nombre || d.nombre, p?.sector || '')
+        const result = store.addAsignacion(d.personalId, d.zonaId, d.turno, iso, p?.nombre || d.nombre, p?.sector || '')
+        if (!result.error) {
+          const asig = store.getAsignaciones(iso).find(a => a.personal_id === d.personalId && a.turno === d.turno)
+          if (asig) nuevas.push(asig)
+        }
       })
     })
+    nuevas.forEach(a => pushToSupabase(a))
     setDraftPatron([])
     setTick(t => t + 1)
     setGuardadoOk(true)
@@ -248,13 +264,14 @@ export default function SemanaPlan() {
     if (!addPersonalId || !addingFor) return
     const p = personalDB.find(x => x.id === addPersonalId)
     const zona = addZonaId || zonaFiltro || ''
-    if (addingFor.isos) {
-      addingFor.isos.forEach(iso => {
-        store.addAsignacion(addPersonalId, zona, addingFor.turno, iso, p?.nombre || '', p?.sector || '')
-      })
-    } else {
-      store.addAsignacion(addPersonalId, zona, addingFor.turno, addingFor.iso, p?.nombre || '', p?.sector || '')
-    }
+    const isos = addingFor.isos || [addingFor.iso]
+    isos.forEach(iso => {
+      const result = store.addAsignacion(addPersonalId, zona, addingFor.turno, iso, p?.nombre || '', p?.sector || '')
+      if (!result.error) {
+        const asig = store.getAsignaciones(iso).find(a => a.personal_id === addPersonalId && a.turno === addingFor.turno)
+        if (asig) pushToSupabase(asig)
+      }
+    })
     setTick(t => t + 1)
     setAddingFor(null)
     setAddPersonalId('')
