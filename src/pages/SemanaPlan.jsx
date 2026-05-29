@@ -139,6 +139,14 @@ export default function SemanaPlan() {
       })
     : null
 
+  function confirmarSiHayDraft(accion) {
+    if (draftPatron.length === 0) { accion(); return }
+    if (window.confirm('Tenés cambios sin guardar en el patrón.\n¿Querés salir de todos modos?')) {
+      setDraftPatron([])
+      accion()
+    }
+  }
+
   function abrirEdicion(a) {
     setEditandoId(a.id)
     setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '', fecha: a.fecha || '' })
@@ -344,7 +352,7 @@ export default function SemanaPlan() {
         {/* Barra de navegación (visible en todas las vistas excepto inicio) */}
         {vista !== 'inicio' && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button onClick={() => setVista('inicio')} style={{
+            <button onClick={() => confirmarSiHayDraft(() => setVista('inicio'))} style={{
               ...btnBase, flex: 'none', padding: '10px 14px',
               background: 'var(--primary-light)', color: 'var(--primary-dark)',
               fontWeight: 700, fontSize: 18,
@@ -428,7 +436,7 @@ export default function SemanaPlan() {
               </button>
               {rangoPersonalizado && (
                 <button
-                  onClick={() => { setRangoPersonalizado(null); setShowDatePicker(false) }}
+                  onClick={() => confirmarSiHayDraft(() => { setRangoPersonalizado(null); setShowDatePicker(false) })}
                   style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 12 }}
                 >
                   ✕ Ver semana
@@ -495,9 +503,6 @@ export default function SemanaPlan() {
                     <div key={'pat-' + i} className="card" style={{ borderLeft: '4px solid var(--border)', padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{dia.nombre}</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', background: '#f1f5f9', borderRadius: 8, padding: '2px 8px' }}>
-                          x{dia.count} {dia.count === 1 ? 'vez' : 'veces'}
-                        </span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {turnos.filter(t => turnoOpenPat === null || turnoOpenPat === t.key).map(t => {
@@ -523,7 +528,7 @@ export default function SemanaPlan() {
                                   ) : (
                                     <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff' }}>{lista.length}</span>
                                   )}
-                                  <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
+                                  {(!badgeNombre || abierto) && <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>}
                                 </div>
                               </button>
                               {abierto && (
@@ -915,7 +920,7 @@ export default function SemanaPlan() {
       {/* Toast de éxito */}
       {guardadoOk && (
         <div style={{
-          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           zIndex: 9999, background: '#22c55e', color: '#fff', borderRadius: 12,
           padding: '12px 24px', fontWeight: 700, fontSize: 14,
           boxShadow: '0 8px 24px rgba(34,197,94,0.5)',
