@@ -57,6 +57,7 @@ export default function SemanaPlan() {
   const [addingFor, setAddingFor] = useState(null) // { iso, turno }
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
+  const [openPersonKey, setOpenPersonKey] = useState(null)
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -183,7 +184,7 @@ export default function SemanaPlan() {
   const semanaRef = useRef(null)
   const zonasRefs = useRef({})
 
-  const rangoTexto = `${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
+  const rangoTexto = `${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[fechasSemana.length - 1].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
 
   async function compartirCaptura(ref, titulo, info) {
     if (!ref) return
@@ -686,17 +687,11 @@ export default function SemanaPlan() {
                 })
             }
 
-            {/* Footer info para captura — solo cuando hay rango personalizado */}
-            {(rangoPersonalizado || filtroTurno) && (
-              <div style={{ marginTop: 4, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                {rangoPersonalizado && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>📅 {rangoTexto}</span>
-                )}
-                {filtroTurno && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#d97706' : '#6d28d9' }}>
-                    {filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
-                  </span>
-                )}
+            {filtroTurno && (
+              <div style={{ marginTop: 4, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: filtroTurno === 'mañana' ? '#d97706' : '#6d28d9' }}>
+                  {filtroTurno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
+                </span>
               </div>
             )}
           </div>
@@ -717,66 +712,120 @@ export default function SemanaPlan() {
                 📸 Capturar
               </button>
             </div>
-            {personalConTarea.length === 0 ? (
+            {asigs.length === 0 ? (
               <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No hay personal asignado esta semana</p>
-            ) : personalConTarea.map(({ nombre, asignaciones }, idx) => (
-              <div key={idx} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '10px 12px', border: '1px solid var(--border)' }}>
-                <p style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 8 }}>{nombre}</p>
-                {[...asignaciones]
-                  .sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.turno === 'mañana' ? -1 : 1))
-                  .map(a => {
-                    const dF = new Date(a.fecha + 'T12:00:00')
-                    const dJ = dF.getDay()
-                    const dI = dJ === 0 ? 6 : dJ - 1
-                    const dLabel = `${DIAS_CORTO[dI]} ${dF.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
-                    return (
-                      <div key={a.id}>
-                        {editandoId === a.id ? (
-                          <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: '2px solid #86efac', marginBottom: 4 }}>
-                            <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>Editar asignación</p>
-                            <div style={{ marginBottom: 10 }}>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Día</p>
-                              <input type="date" value={editForm.fecha} onChange={e => setEditForm(f => ({ ...f, fecha: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #86efac', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }} />
-                            </div>
-                            <div style={{ marginBottom: 10 }}>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Turno</p>
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => setEditForm(f => ({ ...f, turno: 'mañana' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: editForm.turno === 'mañana' ? '#d97706' : '#fef3c7', color: editForm.turno === 'mañana' ? '#fff' : '#92400e', transition: 'all 0.15s' }}>☀️ Mañana</button>
-                                <button onClick={() => setEditForm(f => ({ ...f, turno: 'noche' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: editForm.turno === 'noche' ? '#6d28d9' : '#ede9fe', color: editForm.turno === 'noche' ? '#fff' : '#4c1d95', transition: 'all 0.15s' }}>🌙 Noche</button>
-                              </div>
-                            </div>
-                            <div style={{ marginBottom: 10 }}>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                              <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
-                                style={{ width: '100%', fontSize: 13, padding: '9px 12px', borderRadius: 10, border: '2px solid #a78bfa', background: 'linear-gradient(135deg, #ede9fe, #fdf4ff)', color: '#5b21b6', fontWeight: 700, cursor: 'pointer' }}>
-                                <option value="">— Sin zona —</option>
-                                {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-                              </select>
-                            </div>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Guardar</button>
-                              <button onClick={() => setEditandoId(null)} style={{ flex: 1, background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✕ Cancelar</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ background: '#f8fafc', borderRadius: 8, padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+            ) : (() => {
+              // Agrupar por día de semana
+              const diasMap = {}
+              asigs.forEach(a => {
+                const dF = new Date(a.fecha + 'T12:00:00')
+                const dJ = dF.getDay()
+                const dI = dJ === 0 ? 6 : dJ - 1
+                if (!diasMap[dI]) diasMap[dI] = { nombre: DIAS_FULL[dI], idx: dI, asigs: [] }
+                diasMap[dI].asigs.push(a)
+              })
+              return Object.values(diasMap).sort((a, b) => a.idx - b.idx).map(dia => {
+                // Agrupar por turno+persona dentro del día
+                const personasMap = {}
+                dia.asigs.forEach(a => {
+                  const pKey = `${dia.idx}-${a.turno}-${a.personal_id}`
+                  if (!personasMap[pKey]) personasMap[pKey] = { pKey, turno: a.turno, nombre: getNombre(a), asigs: [] }
+                  personasMap[pKey].asigs.push(a)
+                })
+                const personas = Object.values(personasMap).sort((a, b) =>
+                  (a.turno === 'mañana' ? 0 : 1) - (b.turno === 'mañana' ? 0 : 1) || a.nombre.localeCompare(b.nombre)
+                )
+                return (
+                  <div key={dia.idx} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '10px 12px', border: '1px solid var(--border)' }}>
+                    <p style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 8 }}>{dia.nombre}</p>
+                    {personas.map(persona => {
+                      const isOpen = openPersonKey === persona.pKey
+                      const tColor = persona.turno === 'mañana' ? '#d97706' : '#6d28d9'
+                      const tBg    = persona.turno === 'mañana' ? '#fef3c7' : '#ede9fe'
+                      return (
+                        <div key={persona.pKey} style={{ marginBottom: 4 }}>
+                          <button
+                            onClick={() => setOpenPersonKey(isOpen ? null : persona.pKey)}
+                            style={{
+                              width: '100%', background: isOpen ? tBg : '#f8fafc',
+                              borderRadius: isOpen ? '8px 8px 0 0' : 8,
+                              padding: '8px 10px', border: 'none',
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                          >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 13 }}>{a.turno === 'mañana' ? '☀️' : '🌙'}</span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{dLabel}</span>
-                              {a.zona?.nombre && <span style={{ fontSize: 11, color: '#64748b' }}>· {a.zona.nombre}</span>}
+                              <span style={{ fontSize: 14 }}>{persona.turno === 'mañana' ? '☀️' : '🌙'}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{persona.nombre}</span>
                             </div>
-                            <div style={{ display: 'flex', gap: 5 }}>
-                              <button onClick={() => abrirEdicion(a)} style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#15803d', fontWeight: 600 }}>✏️</button>
-                              <button onClick={() => eliminarAsig(a.id)} style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>✕</button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: tColor, background: tBg, padding: '2px 8px', borderRadius: 8 }}>
+                                {persona.asigs.length} {persona.asigs.length === 1 ? 'día' : 'días'}
+                              </span>
+                              <span style={{ fontSize: 11, color: '#64748b' }}>{isOpen ? '▲' : '▼'}</span>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-              </div>
-            ))}
+                          </button>
+                          {isOpen && (
+                            <div style={{ background: tBg, borderRadius: '0 0 8px 8px', padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {[...persona.asigs].sort((a, b) => a.fecha.localeCompare(b.fecha)).map(a => {
+                                const dF2 = new Date(a.fecha + 'T12:00:00')
+                                const dJ2 = dF2.getDay()
+                                const dI2 = dJ2 === 0 ? 6 : dJ2 - 1
+                                const dLabel = `${DIAS_CORTO[dI2]} ${dF2.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
+                                return (
+                                  <div key={a.id}>
+                                    {editandoId === a.id ? (
+                                      <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: '2px solid #86efac', marginBottom: 2 }}>
+                                        <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>Editar asignación</p>
+                                        <div style={{ marginBottom: 10 }}>
+                                          <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Día</p>
+                                          <input type="date" value={editForm.fecha} onChange={e => setEditForm(f => ({ ...f, fecha: e.target.value }))}
+                                            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #86efac', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }} />
+                                        </div>
+                                        <div style={{ marginBottom: 10 }}>
+                                          <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Turno</p>
+                                          <div style={{ display: 'flex', gap: 6 }}>
+                                            <button onClick={() => setEditForm(f => ({ ...f, turno: 'mañana' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: editForm.turno === 'mañana' ? '#d97706' : '#fef3c7', color: editForm.turno === 'mañana' ? '#fff' : '#92400e', transition: 'all 0.15s' }}>☀️ Mañana</button>
+                                            <button onClick={() => setEditForm(f => ({ ...f, turno: 'noche' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: editForm.turno === 'noche' ? '#6d28d9' : '#ede9fe', color: editForm.turno === 'noche' ? '#fff' : '#4c1d95', transition: 'all 0.15s' }}>🌙 Noche</button>
+                                          </div>
+                                        </div>
+                                        <div style={{ marginBottom: 10 }}>
+                                          <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
+                                          <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
+                                            style={{ width: '100%', fontSize: 13, padding: '9px 12px', borderRadius: 10, border: '2px solid #a78bfa', background: 'linear-gradient(135deg, #ede9fe, #fdf4ff)', color: '#5b21b6', fontWeight: 700, cursor: 'pointer' }}>
+                                            <option value="">— Sin zona —</option>
+                                            {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                                          </select>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 6 }}>
+                                          <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Guardar</button>
+                                          <button onClick={() => setEditandoId(null)} style={{ flex: 1, background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✕ Cancelar</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div style={{ background: '#fff', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>{dLabel}</span>
+                                          {a.zona?.nombre && <span style={{ fontSize: 11, color: '#64748b' }}>· {a.zona.nombre}</span>}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 5 }}>
+                                          <button onClick={() => abrirEdicion(a)} style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#15803d', fontWeight: 600 }}>✏️</button>
+                                          <button onClick={() => eliminarAsig(a.id)} style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>✕</button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })
+            })()}
           </div>
         )}
 
