@@ -122,6 +122,20 @@ export default function SemanaPlan() {
     .map(([id, nombre]) => ({ id, nombre }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre))
 
+  // Modo patrón: agrupa las fechas del rango por día de semana
+  const patronSemanal = rangoPersonalizado
+    ? DIAS_FULL.map((nombre, i) => {
+        const fechasDelDia = fechasSemana.filter(f => {
+          const d = f.getDay()
+          const idx = d === 0 ? 6 : d - 1
+          return idx === i
+        })
+        const isosDelDia = fechasDelDia.map(fechaISO)
+        const asigsDia = asigs.filter(a => isosDelDia.includes(a.fecha))
+        return { nombre, isos: isosDelDia, asigs: asigsDia, count: isosDelDia.length }
+      })
+    : null
+
   function abrirEdicion(a) {
     setEditandoId(a.id)
     setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '', fecha: a.fecha || '' })
@@ -151,7 +165,14 @@ export default function SemanaPlan() {
   function handleAddAsignacion() {
     if (!addPersonalId || !addingFor) return
     const p = personalDB.find(x => x.id === addPersonalId)
-    store.addAsignacion(addPersonalId, addZonaId || zonaFiltro || '', addingFor.turno, addingFor.iso, p?.nombre || '', p?.sector || '')
+    const zona = addZonaId || zonaFiltro || ''
+    if (addingFor.isos) {
+      addingFor.isos.forEach(iso => {
+        store.addAsignacion(addPersonalId, zona, addingFor.turno, iso, p?.nombre || '', p?.sector || '')
+      })
+    } else {
+      store.addAsignacion(addPersonalId, zona, addingFor.turno, addingFor.iso, p?.nombre || '', p?.sector || '')
+    }
     setTick(t => t + 1)
     setAddingFor(null)
     setAddPersonalId('')
@@ -429,164 +450,241 @@ export default function SemanaPlan() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semana</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {rangoPersonalizado ? 'Patrón del mes' : 'Semana'}
+            </p>
           </div>
           <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, background: '#fff', borderRadius: 12, padding: 4 }}>
-            {fechasSemana.map((fecha, i) => {
-              const iso        = fechasISO[i]
-              const esHoy      = iso === hoyISO
-              const asigsDia   = asigs.filter(a => a.fecha === iso)
-              const asigManana = asigsDia.filter(a => a.turno === 'mañana')
-              const asigNoche  = asigsDia.filter(a => a.turno === 'noche')
-              const turnoOpen  = turnosAbiertos[iso] ?? null
-              const totalDia   = asigsDia.length
-
-              const turnos = [
-                { key: 'mañana', emoji: '☀️', label: 'Mañana', lista: asigManana, bg: '#fef3c7', bgAct: '#d97706', txt: '#92400e', txtAct: '#fff' },
-                { key: 'noche',  emoji: '🌙', label: 'Noche',  lista: asigNoche,  bg: '#ede9fe', bgAct: '#6d28d9', txt: '#4c1d95', txtAct: '#fff' },
-              ].filter(t => !filtroTurno || t.key === filtroTurno)
-
-              return (
-                <div key={iso} className="card" style={{
-                  borderLeft: `4px solid ${esHoy ? 'var(--primary)' : 'var(--border)'}`,
-                  padding: '12px 14px',
-                  opacity: totalDia === 0 ? 0.55 : 1,
-                }}>
-                  {/* Cabecera del día */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: esHoy ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_FULL[i]}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
-                    {esHoy && <span className="badge badge-blue">Hoy</span>}
-                    {totalDia === 0 && <span style={{ fontSize: 11, color: 'var(--text-light)', marginLeft: 'auto' }}>Sin asignaciones</span>}
-                  </div>
-
-                  {/* Botones de turno — solo muestra el abierto, o ambos si ninguno está abierto */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {turnos.filter(t => turnoOpen === null || turnoOpen === t.key).map(t => {
-                      const abierto = turnoOpen === t.key
-                      return (
-                        <div key={t.key}>
-                          <button
-                            onClick={() => toggleTurno(iso, t.key)}
-                            style={{
-                              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              padding: '8px 12px',
-                              borderRadius: abierto ? '8px 8px 0 0' : 8,
-                              border: 'none', cursor: 'pointer',
-                              background: abierto ? t.bgAct : t.bg,
-                              transition: 'all 0.15s',
-                            }}
-                          >
-                            <span style={{ fontWeight: 700, fontSize: 13, color: abierto ? t.txtAct : t.txt }}>
-                              {t.emoji} {t.label}
-                            </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{
-                                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                                background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct,
-                                color: '#fff',
-                              }}>{t.lista.length}</span>
-                              <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
-                            </div>
-                          </button>
-
-                          {abierto && (
-                            <div style={{
-                              background: t.bg, border: `1px solid ${t.bgAct}44`, borderTop: 'none',
-                              borderRadius: '0 0 8px 8px', padding: '8px 10px',
-                              display: 'flex', flexDirection: 'column', gap: 5,
-                            }}>
-                              {/* Personas asignadas */}
-                              {t.lista.map(a => (
-                                <div key={a.id} style={{
-                                  background: '#fff', borderRadius: 7, padding: '6px 10px',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                }}>
-                                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: t.txt, background: t.bg, borderRadius: 6, padding: '2px 8px' }}>
-                                    {a.zona?.nombre || '—'}
-                                  </span>
+            {rangoPersonalizado
+              ? patronSemanal.map((dia, i) => {
+                  if (dia.count === 0) return null
+                  const turnoOpenPat = turnosAbiertos['pat-' + i] ?? null
+                  const turnos = [
+                    { key: 'mañana', emoji: '☀️', label: 'Mañana', bg: '#fef3c7', bgAct: '#d97706', txt: '#92400e', txtAct: '#fff' },
+                    { key: 'noche',  emoji: '🌙', label: 'Noche',  bg: '#ede9fe', bgAct: '#6d28d9', txt: '#4c1d95', txtAct: '#fff' },
+                  ].filter(t => !filtroTurno || t.key === filtroTurno)
+                  return (
+                    <div key={'pat-' + i} className="card" style={{ borderLeft: '4px solid var(--border)', padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{dia.nombre}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', background: '#f1f5f9', borderRadius: 8, padding: '2px 8px' }}>
+                          x{dia.count} {dia.count === 1 ? 'vez' : 'veces'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {turnos.filter(t => turnoOpenPat === null || turnoOpenPat === t.key).map(t => {
+                          const listaRaw = dia.asigs.filter(a => a.turno === t.key)
+                          const lista = [...new Map(listaRaw.map(a => [a.personal_id, a])).values()]
+                          const abierto = turnoOpenPat === t.key
+                          return (
+                            <div key={t.key}>
+                              <button
+                                onClick={() => toggleTurno('pat-' + i, t.key)}
+                                style={{
+                                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  padding: '8px 12px', borderRadius: abierto ? '8px 8px 0 0' : 8,
+                                  border: 'none', cursor: 'pointer', background: abierto ? t.bgAct : t.bg, transition: 'all 0.15s',
+                                }}
+                              >
+                                <span style={{ fontWeight: 700, fontSize: 13, color: abierto ? t.txtAct : t.txt }}>{t.emoji} {t.label}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff' }}>{lista.length}</span>
+                                  <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
                                 </div>
-                              ))}
-
-                              {/* Formulario agregar */}
-                              {addingFor?.iso === iso && addingFor?.turno === t.key ? (
-                                <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: t.lista.length > 0 ? 4 : 0 }}>
-                                  <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
-                                    {personalDB
-                                      .map(p => (
-                                        <button
-                                          key={p.id}
-                                          onClick={() => setAddPersonalId(p.id)}
-                                          style={{
-                                            padding: '8px 12px', borderRadius: 8, textAlign: 'left',
-                                            border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
-                                            background: addPersonalId === p.id ? t.bg : '#f8fafc',
-                                            color: addPersonalId === p.id ? t.bgAct : '#475569',
-                                            fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                                            transition: 'all 0.12s',
-                                          }}
-                                        >
-                                          {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
+                              </button>
+                              {abierto && (
+                                <div style={{ background: t.bg, border: `1px solid ${t.bgAct}44`, borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                  {lista.map(a => (
+                                    <div key={a.personal_id} style={{ background: '#fff', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: t.txt, background: t.bg, borderRadius: 6, padding: '2px 8px' }}>{a.zona?.nombre || '—'}</span>
+                                    </div>
+                                  ))}
+                                  {addingFor?.patKey === 'pat-' + i && addingFor?.turno === t.key ? (
+                                    <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: lista.length > 0 ? 4 : 0 }}>
+                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
+                                        {personalDB.map(p => (
+                                          <button key={p.id} onClick={() => setAddPersonalId(p.id)} style={{ padding: '8px 12px', borderRadius: 8, textAlign: 'left', border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`, background: addPersonalId === p.id ? t.bg : '#f8fafc', color: addPersonalId === p.id ? t.bgAct : '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.12s' }}>
+                                            {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
+                                      <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
+                                        {zonas.map(z => (
+                                          <button key={z.id} onClick={() => setAddZonaId(z.id)} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`, background: addZonaId === z.id ? t.bg : '#f8fafc', color: addZonaId === z.id ? t.bgAct : '#475569', fontWeight: 600, fontSize: 12, cursor: 'pointer', transition: 'all 0.12s', whiteSpace: 'nowrap' }}>{z.nombre}</button>
+                                        ))}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: 6 }}>
+                                        <button onClick={handleAddAsignacion} disabled={!addPersonalId} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: addPersonalId ? t.bgAct : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: addPersonalId ? 'pointer' : 'not-allowed' }}>
+                                          ✓ Guardar ({dia.count} {dia.count === 1 ? 'día' : 'días'})
                                         </button>
-                                      ))}
-                                  </div>
-                                  <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                                  <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
-                                    {zonas.map(z => (
-                                      <button
-                                        key={z.id}
-                                        onClick={() => setAddZonaId(z.id)}
-                                        style={{
-                                          flexShrink: 0, padding: '6px 12px', borderRadius: 16,
-                                          border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`,
-                                          background: addZonaId === z.id ? t.bg : '#f8fafc',
-                                          color: addZonaId === z.id ? t.bgAct : '#475569',
-                                          fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                                          transition: 'all 0.12s', whiteSpace: 'nowrap',
-                                        }}
-                                      >{z.nombre}</button>
-                                    ))}
-                                  </div>
-                                  <div style={{ display: 'flex', gap: 6 }}>
+                                        <button onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕</button>
+                                      </div>
+                                    </div>
+                                  ) : lista.length === 0 && (
                                     <button
-                                      onClick={handleAddAsignacion}
-                                      disabled={!addPersonalId}
-                                      style={{
-                                        flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                                        background: addPersonalId ? t.bgAct : '#cbd5e1',
-                                        color: '#fff', fontWeight: 700, fontSize: 13,
-                                        cursor: addPersonalId ? 'pointer' : 'not-allowed',
-                                      }}
-                                    >✓ Guardar</button>
-                                    <button
-                                      onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }}
-                                      style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-                                    >✕</button>
-                                  </div>
+                                      onClick={() => { setAddingFor({ isos: dia.isos, patKey: 'pat-' + i, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
+                                      style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: `1.5px dashed ${t.bgAct}88`, background: 'transparent', color: t.bgAct, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                                    >➕ Agregar persona</button>
+                                  )}
                                 </div>
-                              ) : t.lista.length === 0 && (
-                                <button
-                                  onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
-                                  style={{
-                                    width: '100%', padding: '6px 0', borderRadius: 7,
-                                    border: `1.5px dashed ${t.bgAct}88`,
-                                    background: 'transparent', color: t.bgAct,
-                                    fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                                  }}
-                                >➕ Agregar persona</button>
                               )}
-
                             </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })
+              : fechasSemana.map((fecha, i) => {
+                  const iso        = fechasISO[i]
+                  const esHoy      = iso === hoyISO
+                  const asigsDia   = asigs.filter(a => a.fecha === iso)
+                  const asigManana = asigsDia.filter(a => a.turno === 'mañana')
+                  const asigNoche  = asigsDia.filter(a => a.turno === 'noche')
+                  const turnoOpen  = turnosAbiertos[iso] ?? null
+                  const totalDia   = asigsDia.length
+
+                  const turnos = [
+                    { key: 'mañana', emoji: '☀️', label: 'Mañana', lista: asigManana, bg: '#fef3c7', bgAct: '#d97706', txt: '#92400e', txtAct: '#fff' },
+                    { key: 'noche',  emoji: '🌙', label: 'Noche',  lista: asigNoche,  bg: '#ede9fe', bgAct: '#6d28d9', txt: '#4c1d95', txtAct: '#fff' },
+                  ].filter(t => !filtroTurno || t.key === filtroTurno)
+
+                  return (
+                    <div key={iso} className="card" style={{
+                      borderLeft: `4px solid ${esHoy ? 'var(--primary)' : 'var(--border)'}`,
+                      padding: '12px 14px',
+                      opacity: totalDia === 0 ? 0.55 : 1,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: esHoy ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_FULL[i]}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
+                        {esHoy && <span className="badge badge-blue">Hoy</span>}
+                        {totalDia === 0 && <span style={{ fontSize: 11, color: 'var(--text-light)', marginLeft: 'auto' }}>Sin asignaciones</span>}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {turnos.filter(t => turnoOpen === null || turnoOpen === t.key).map(t => {
+                          const abierto = turnoOpen === t.key
+                          return (
+                            <div key={t.key}>
+                              <button
+                                onClick={() => toggleTurno(iso, t.key)}
+                                style={{
+                                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  padding: '8px 12px',
+                                  borderRadius: abierto ? '8px 8px 0 0' : 8,
+                                  border: 'none', cursor: 'pointer',
+                                  background: abierto ? t.bgAct : t.bg,
+                                  transition: 'all 0.15s',
+                                }}
+                              >
+                                <span style={{ fontWeight: 700, fontSize: 13, color: abierto ? t.txtAct : t.txt }}>
+                                  {t.emoji} {t.label}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{
+                                    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                                    background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct,
+                                    color: '#fff',
+                                  }}>{t.lista.length}</span>
+                                  <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
+                                </div>
+                              </button>
+                              {abierto && (
+                                <div style={{
+                                  background: t.bg, border: `1px solid ${t.bgAct}44`, borderTop: 'none',
+                                  borderRadius: '0 0 8px 8px', padding: '8px 10px',
+                                  display: 'flex', flexDirection: 'column', gap: 5,
+                                }}>
+                                  {t.lista.map(a => (
+                                    <div key={a.id} style={{
+                                      background: '#fff', borderRadius: 7, padding: '6px 10px',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    }}>
+                                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{getNombre(a)}</span>
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: t.txt, background: t.bg, borderRadius: 6, padding: '2px 8px' }}>
+                                        {a.zona?.nombre || '—'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {addingFor?.iso === iso && addingFor?.turno === t.key ? (
+                                    <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: t.lista.length > 0 ? 4 : 0 }}>
+                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
+                                        {personalDB.map(p => (
+                                          <button
+                                            key={p.id}
+                                            onClick={() => setAddPersonalId(p.id)}
+                                            style={{
+                                              padding: '8px 12px', borderRadius: 8, textAlign: 'left',
+                                              border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
+                                              background: addPersonalId === p.id ? t.bg : '#f8fafc',
+                                              color: addPersonalId === p.id ? t.bgAct : '#475569',
+                                              fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                              transition: 'all 0.12s',
+                                            }}
+                                          >
+                                            {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
+                                      <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
+                                        {zonas.map(z => (
+                                          <button
+                                            key={z.id}
+                                            onClick={() => setAddZonaId(z.id)}
+                                            style={{
+                                              flexShrink: 0, padding: '6px 12px', borderRadius: 16,
+                                              border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`,
+                                              background: addZonaId === z.id ? t.bg : '#f8fafc',
+                                              color: addZonaId === z.id ? t.bgAct : '#475569',
+                                              fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                                              transition: 'all 0.12s', whiteSpace: 'nowrap',
+                                            }}
+                                          >{z.nombre}</button>
+                                        ))}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: 6 }}>
+                                        <button
+                                          onClick={handleAddAsignacion}
+                                          disabled={!addPersonalId}
+                                          style={{
+                                            flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                                            background: addPersonalId ? t.bgAct : '#cbd5e1',
+                                            color: '#fff', fontWeight: 700, fontSize: 13,
+                                            cursor: addPersonalId ? 'pointer' : 'not-allowed',
+                                          }}
+                                        >✓ Guardar</button>
+                                        <button
+                                          onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }}
+                                          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                                        >✕</button>
+                                      </div>
+                                    </div>
+                                  ) : t.lista.length === 0 && (
+                                    <button
+                                      onClick={() => { setAddingFor({ iso, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
+                                      style={{
+                                        width: '100%', padding: '6px 0', borderRadius: 7,
+                                        border: `1.5px dashed ${t.bgAct}88`,
+                                        background: 'transparent', color: t.bgAct,
+                                        fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                                      }}
+                                    >➕ Agregar persona</button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })
+            }
 
             {/* Footer info para captura — solo cuando hay rango personalizado */}
             {(rangoPersonalizado || filtroTurno) && (
