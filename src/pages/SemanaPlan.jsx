@@ -59,6 +59,7 @@ export default function SemanaPlan() {
   const [addZonaId, setAddZonaId] = useState('')
   const [openPersonKey, setOpenPersonKey] = useState(null)
   const [draftPatron, setDraftPatron] = useState([])
+  const [guardadoOk, setGuardadoOk] = useState(false)
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -186,6 +187,8 @@ export default function SemanaPlan() {
     })
     setDraftPatron([])
     setTick(t => t + 1)
+    setGuardadoOk(true)
+    setTimeout(() => setGuardadoOk(false), 3000)
   }
 
   function handleAddAsignacion() {
@@ -501,6 +504,8 @@ export default function SemanaPlan() {
                           const listaRaw = dia.asigs.filter(a => a.turno === t.key)
                           const lista = [...new Map(listaRaw.map(a => [a.personal_id, a])).values()]
                           const abierto = turnoOpenPat === t.key
+                          const draft = draftPatron.find(d => d.patKey === 'pat-' + i && d.turno === t.key)
+                          const badgeNombre = draft ? draft.nombre : (lista.length === 1 ? getNombre(lista[0]) : null)
                           return (
                             <div key={t.key}>
                               <button
@@ -513,7 +518,11 @@ export default function SemanaPlan() {
                               >
                                 <span style={{ fontWeight: 700, fontSize: 13, color: abierto ? t.txtAct : t.txt }}>{t.emoji} {t.label}</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff' }}>{lista.length}</span>
+                                  {badgeNombre ? (
+                                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{badgeNombre}</span>
+                                  ) : (
+                                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff' }}>{lista.length}</span>
+                                  )}
                                   <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
                                 </div>
                               </button>
@@ -526,16 +535,13 @@ export default function SemanaPlan() {
                                     </div>
                                   ))}
                                   {/* Borrador pendiente */}
-                                  {(() => {
-                                    const draft = draftPatron.find(d => d.patKey === 'pat-' + i && d.turno === t.key)
-                                    return draft ? (
-                                      <div style={{ background: '#fef9c3', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px dashed #d97706' }}>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: '#78350f' }}>⏳ {draft.nombre}</span>
-                                        <button onClick={() => setDraftPatron(prev => prev.filter(d => !(d.patKey === draft.patKey && d.turno === draft.turno)))}
-                                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 13, fontWeight: 700, padding: '0 4px' }}>✕</button>
-                                      </div>
-                                    ) : null
-                                  })()}
+                                  {draft ? (
+                                    <div style={{ background: '#fef9c3', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px dashed #d97706' }}>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: '#78350f' }}>⏳ {draft.nombre}</span>
+                                      <button onClick={() => setDraftPatron(prev => prev.filter(d => !(d.patKey === draft.patKey && d.turno === draft.turno)))}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 13, fontWeight: 700, padding: '0 4px' }}>✕</button>
+                                    </div>
+                                  ) : null}
                                   {addingFor?.patKey === 'pat-' + i && addingFor?.turno === t.key ? (
                                     <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: lista.length > 0 ? 4 : 0 }}>
                                       <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
@@ -559,7 +565,7 @@ export default function SemanaPlan() {
                                         <button onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕</button>
                                       </div>
                                     </div>
-                                  ) : (lista.length === 0 && !draftPatron.find(d => d.patKey === 'pat-' + i && d.turno === t.key)) && (
+                                  ) : (lista.length === 0 && !draft) && (
                                     <button
                                       onClick={() => { setAddingFor({ isos: dia.isos, patKey: 'pat-' + i, turno: t.key }); setAddPersonalId(''); setAddZonaId(zonaFiltro || '') }}
                                       style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: `1.5px dashed ${t.bgAct}88`, background: 'transparent', color: t.bgAct, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
@@ -905,6 +911,19 @@ export default function SemanaPlan() {
         )}
 
       </div>
+
+      {/* Toast de éxito */}
+      {guardadoOk && (
+        <div style={{
+          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, background: '#22c55e', color: '#fff', borderRadius: 12,
+          padding: '12px 24px', fontWeight: 700, fontSize: 14,
+          boxShadow: '0 8px 24px rgba(34,197,94,0.5)',
+          display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
+        }}>
+          ✓ Se guardó exitosamente
+        </div>
+      )}
 
       {/* ── Modal: elegir turno para captura ── */}
       {elegirTurnoCaptura !== null && (
