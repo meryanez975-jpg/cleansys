@@ -962,21 +962,6 @@ export default function SemanaPlan() {
                   style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
               </div>
 
-              {/* Buscador de fecha */}
-              <input
-                type="date"
-                placeholder="Buscar fecha..."
-                onChange={e => {
-                  if (!e.target.value) return
-                  const d = new Date(e.target.value + 'T12:00:00')
-                  const day = d.getDay()
-                  const diff = day === 0 ? -6 : 1 - day
-                  d.setDate(d.getDate() + diff)
-                  d.setHours(0, 0, 0, 0)
-                  setSemanaConteo(new Date(d))
-                }}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
-              />
 
               {/* Cards por turno */}
               {turnosConfig.map(turno => {
