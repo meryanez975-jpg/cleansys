@@ -174,6 +174,21 @@ export function marcarSalida(asignacion_id, notas = '', imagen = null) {
   ))
 }
 
+export function marcarCompletado(asignacion_id, completado) {
+  const all = leer('registros')
+  const existing = all.find(r => r.asignacion_id === asignacion_id)
+  if (existing) {
+    escribir('registros', all.map(r =>
+      r.asignacion_id === asignacion_id
+        ? { ...r, completado, hora_salida: completado ? (r.hora_salida || new Date().toISOString()) : null }
+        : r
+    ))
+  } else if (completado) {
+    const now = new Date().toISOString()
+    escribir('registros', [...all, { id: genId(), asignacion_id, hora_entrada: now, hora_salida: now, completado: true, notas: '' }])
+  }
+}
+
 // ── MATERIALES ────────────────────────────────────
 export function getMateriales() {
   try {

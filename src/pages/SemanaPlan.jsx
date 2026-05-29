@@ -69,6 +69,7 @@ export default function SemanaPlan() {
   const [openPersonKey, setOpenPersonKey] = useState(null)
   const [draftPatron, setDraftPatron] = useState([])
   const [guardadoOk, setGuardadoOk] = useState(false)
+  const [filtroFechaConteo, setFiltroFechaConteo] = useState(null)
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
@@ -925,52 +926,78 @@ export default function SemanaPlan() {
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>🧮 Conteo semanal</p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rangoTexto}</p>
             </div>
+
+            {/* Filtro de fecha */}
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
+              <button
+                onClick={() => setFiltroFechaConteo(null)}
+                style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: !filtroFechaConteo ? 'var(--primary)' : 'var(--primary-light)', color: !filtroFechaConteo ? '#fff' : 'var(--primary-dark)' }}
+              >Todos</button>
+              {fechasSemana.filter(f => asigsTodas.some(a => a.fecha === fechaISO(f))).map(fecha => {
+                const iso = fechaISO(fecha)
+                const d = fecha.getDay()
+                const dI = d === 0 ? 6 : d - 1
+                const sel = filtroFechaConteo === iso
+                return (
+                  <button key={iso} onClick={() => setFiltroFechaConteo(iso)}
+                    style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, background: sel ? 'var(--primary)' : 'var(--primary-light)', color: sel ? '#fff' : 'var(--primary-dark)', whiteSpace: 'nowrap' }}
+                  >{DIAS_CORTO[dI]} {fecha.getDate()}</button>
+                )
+              })}
+            </div>
+
+            {/* Cards por turno */}
             {(() => {
+              const asigsFiltradas = filtroFechaConteo
+                ? asigsTodas.filter(a => a.fecha === filtroFechaConteo)
+                : asigsTodas
               const turnosConfig = [
-                { key: 'mañana', emoji: '☀️', label: 'Mañana', headerBg: '#d97706', rowBg: '#fef3c7', txt: '#92400e' },
-                { key: 'noche',  emoji: '🌙', label: 'Noche',  headerBg: '#6d28d9', rowBg: '#ede9fe', txt: '#4c1d95' },
+                { key: 'mañana', emoji: '☀️', label: 'Mañana', headerBg: '#d97706', rowBg: '#fef3c7' },
+                { key: 'noche',  emoji: '🌙', label: 'Noche',  headerBg: '#6d28d9', rowBg: '#ede9fe' },
               ]
               return turnosConfig.map(turno => {
-                const asigsTurno = asigsTodas.filter(a => a.turno === turno.key)
-                if (asigsTurno.length === 0) return null
-                // Group by weekday → personal_id
-                const byDia = {}
-                asigsTurno.forEach(a => {
-                  const d = new Date(a.fecha + 'T12:00:00').getDay()
-                  const dI = d === 0 ? 6 : d - 1
-                  if (!byDia[dI]) byDia[dI] = {}
-                  const pid = a.personal_id
-                  if (!byDia[dI][pid]) byDia[dI][pid] = { nombre: personalMap[pid] || a.personalNombre || '—', asigs: [] }
-                  byDia[dI][pid].asigs.push(a)
-                })
-                const dias = Object.entries(byDia).sort(([a], [b]) => Number(a) - Number(b))
+                const lista = [...asigsFiltradas.filter(a => a.turno === turno.key)]
+                  .sort((a, b) => a.fecha.localeCompare(b.fecha))
+                if (lista.length === 0) return null
                 return (
                   <div key={turno.key} style={{ background: 'var(--bg-card)', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
                     <div style={{ background: turno.headerBg, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 16 }}>{turno.emoji}</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{turno.label}</span>
                     </div>
-                    {dias.map(([dIStr, personas]) => {
-                      const dI = Number(dIStr)
-                      return Object.values(personas).map((persona, pi) => {
-                        const total = persona.asigs.length
-                        const completados = persona.asigs.filter(a =>
-                          allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
-                        ).length
-                        return (
-                          <div key={dI + '-' + pi} style={{
-                            display: 'flex', alignItems: 'center',
-                            padding: '10px 16px', borderBottom: '1px solid ' + turno.rowBg,
-                            background: '#fff',
-                          }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', width: 70, flexShrink: 0 }}>{DIAS_FULL[dI]}</span>
-                            <span style={{ flex: 1, fontSize: 13, color: '#475569', paddingLeft: 8 }}>{persona.nombre.split(' ')[0]}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: completados > 0 ? '#15803d' : '#cbd5e1' }}>
-                              {rangoPersonalizado ? `${completados}/${total}` : (completados > 0 ? '✓' : '—')}
-                            </span>
-                          </div>
-                        )
-                      })
+                    {lista.map(a => {
+                      const dF = new Date(a.fecha + 'T12:00:00')
+                      const dJ = dF.getDay()
+                      const dI = dJ === 0 ? 6 : dJ - 1
+                      const dLabel = `${DIAS_CORTO[dI]} ${dF.getDate()}`
+                      const nombre = personalMap[a.personal_id] || a.personalNombre || '—'
+                      const reg = allRegistros.find(r => r.asignacion_id === a.id)
+                      const completado = reg?.completado === true
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => { store.marcarCompletado(a.id, !completado); setTick(t => t + 1) }}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center',
+                            padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
+                            background: completado ? '#f0fdf4' : '#fff',
+                            border: 'none', cursor: 'pointer', textAlign: 'left',
+                            transition: 'background 0.15s',
+                          }}
+                        >
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', width: 46, flexShrink: 0 }}>{dLabel}</span>
+                          <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : '#1e293b', fontWeight: completado ? 700 : 500, paddingLeft: 10 }}>
+                            {nombre.split(' ')[0]}
+                          </span>
+                          <span style={{
+                            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                            border: completado ? 'none' : '2px solid #cbd5e1',
+                            background: completado ? '#22c55e' : '#f8fafc',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 13, color: '#fff', fontWeight: 800,
+                          }}>{completado ? '✓' : ''}</span>
+                        </button>
+                      )
                     })}
                   </div>
                 )
