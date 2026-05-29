@@ -900,16 +900,83 @@ export default function SemanaPlan() {
           </div>
         )}
 
-        {/* ── Vista: Sin tareas ── */}
+        {/* ── Vista: Conteo semanal ── */}
         {vista === 'sinTarea' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sinTarea.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Todo el personal tiene tareas asignadas</p>
-            ) : sinTarea.map((p, i) => (
-              <div key={i} className="card" style={{ padding: '12px 14px' }}>
-                <span style={{ fontWeight: 600, fontSize: 13, color: '#475569' }}>💤 {p.nombre}</span>
-              </div>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>🧮 Conteo semanal</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rangoTexto}</p>
+            </div>
+            <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid var(--border)', background: '#fff' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 320 }}>
+                <thead>
+                  <tr style={{ background: 'var(--primary-light)' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700, color: 'var(--primary-dark)', borderBottom: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--primary-light)', minWidth: 80 }}>Nombre</th>
+                    {DIAS_CORTO.map((d, i) => (
+                      <th key={d} style={{ textAlign: 'center', padding: '7px 3px', fontSize: 10, fontWeight: 700, color: 'var(--primary-dark)', borderBottom: '1px solid var(--border)', minWidth: 32 }}>
+                        {d}
+                        {!rangoPersonalizado && <div style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-muted)' }}>{fechasSemana[i]?.getDate()}</div>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const sectorMap = {}
+                    personalDB.forEach(p => {
+                      const s = p.sector?.trim() || 'Otros'
+                      if (!sectorMap[s]) sectorMap[s] = []
+                      sectorMap[s].push(p)
+                    })
+                    return Object.entries(sectorMap).sort().flatMap(([sector, personas]) => [
+                      <tr key={'sec-' + sector}>
+                        <td colSpan={8} style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, color: 'var(--primary-dark)', textTransform: 'uppercase', letterSpacing: '0.06em', background: '#eff6ff', borderTop: '1px solid #dbeafe' }}>
+                          {sector}
+                        </td>
+                      </tr>,
+                      ...personas.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(p => {
+                        const dayHasAsig = DIAS_FULL.map((_, di) => {
+                          const isosDelDia = fechasISO.filter(iso => {
+                            const d = new Date(iso + 'T12:00:00').getDay()
+                            return (d === 0 ? 6 : d - 1) === di
+                          })
+                          return isosDelDia.some(iso => asigsTodas.some(a => a.personal_id === p.id && a.fecha === iso))
+                        })
+                        const hasAny = dayHasAsig.some(Boolean)
+                        return (
+                          <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: hasAny ? 700 : 400, color: hasAny ? 'var(--text)' : 'var(--text-muted)', position: 'sticky', left: 0, background: '#fff', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.nombre.split(' ')[0]}
+                            </td>
+                            {dayHasAsig.map((has, di) => (
+                              <td key={di} style={{ textAlign: 'center', padding: '5px 2px' }}>
+                                <span style={{ fontSize: has ? 13 : 11, color: has ? '#15803d' : '#cbd5e1', fontWeight: has ? 700 : 400 }}>{has ? '✓' : '—'}</span>
+                              </td>
+                            ))}
+                          </tr>
+                        )
+                      }),
+                    ])
+                  })()}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)' }}>
+                    <td style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', position: 'sticky', left: 0, background: '#f8fafc' }}>Total ✅</td>
+                    {DIAS_FULL.map((_, di) => {
+                      const count = new Set(
+                        asigsTodas.filter(a => {
+                          const d = new Date(a.fecha + 'T12:00:00').getDay()
+                          return (d === 0 ? 6 : d - 1) === di
+                        }).map(a => a.personal_id)
+                      ).size
+                      return (
+                        <td key={di} style={{ textAlign: 'center', padding: '6px 2px', fontSize: 12, fontWeight: 700, color: count > 0 ? '#15803d' : '#94a3b8' }}>{count || '—'}</td>
+                      )
+                    })}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         )}
 
