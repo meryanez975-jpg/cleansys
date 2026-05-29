@@ -925,82 +925,57 @@ export default function SemanaPlan() {
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>🧮 Conteo semanal</p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rangoTexto}</p>
             </div>
-            <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid var(--border)', background: '#fff' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 320 }}>
-                <thead>
-                  <tr style={{ background: 'var(--primary-light)' }}>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700, color: 'var(--primary-dark)', borderBottom: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--primary-light)', minWidth: 80 }}>Nombre</th>
-                    {DIAS_CORTO.map((d, i) => (
-                      <th key={d} style={{ textAlign: 'center', padding: '7px 3px', fontSize: 10, fontWeight: 700, color: 'var(--primary-dark)', borderBottom: '1px solid var(--border)', minWidth: 32 }}>
-                        {d}
-                        {!rangoPersonalizado && <div style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-muted)' }}>{fechasSemana[i]?.getDate()}</div>}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const idsConAsig = new Set(asigsTodas.map(a => a.personal_id))
-                    const sectorMap = {}
-                    personalDB.forEach(p => {
-                      if (!idsConAsig.has(p.id)) return
-                      const s = p.sector?.trim() || 'Otros'
-                      if (!sectorMap[s]) sectorMap[s] = []
-                      sectorMap[s].push(p)
-                    })
-                    return Object.entries(sectorMap).sort().flatMap(([sector, personas]) => [
-                      <tr key={'sec-' + sector}>
-                        <td colSpan={8} style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, color: 'var(--primary-dark)', textTransform: 'uppercase', letterSpacing: '0.06em', background: '#eff6ff', borderTop: '1px solid #dbeafe' }}>
-                          {sector}
-                        </td>
-                      </tr>,
-                      ...personas.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(p => {
-                        const dayDone = DIAS_FULL.map((_, di) => {
-                          const isosDelDia = fechasISO.filter(iso => {
-                            const d = new Date(iso + 'T12:00:00').getDay()
-                            return (d === 0 ? 6 : d - 1) === di
-                          })
-                          return isosDelDia.some(iso => {
-                            const asig = asigsTodas.find(a => a.personal_id === p.id && a.fecha === iso)
-                            return asig && allRegistros.some(r => r.asignacion_id === asig.id && r.completado === true)
-                          })
-                        })
-                        const hasAny = dayDone.some(Boolean)
+            {(() => {
+              const turnosConfig = [
+                { key: 'mañana', emoji: '☀️', label: 'Mañana', headerBg: '#d97706', rowBg: '#fef3c7', txt: '#92400e' },
+                { key: 'noche',  emoji: '🌙', label: 'Noche',  headerBg: '#6d28d9', rowBg: '#ede9fe', txt: '#4c1d95' },
+              ]
+              return turnosConfig.map(turno => {
+                const asigsTurno = asigsTodas.filter(a => a.turno === turno.key)
+                if (asigsTurno.length === 0) return null
+                // Group by weekday → personal_id
+                const byDia = {}
+                asigsTurno.forEach(a => {
+                  const d = new Date(a.fecha + 'T12:00:00').getDay()
+                  const dI = d === 0 ? 6 : d - 1
+                  if (!byDia[dI]) byDia[dI] = {}
+                  const pid = a.personal_id
+                  if (!byDia[dI][pid]) byDia[dI][pid] = { nombre: personalMap[pid] || a.personalNombre || '—', asigs: [] }
+                  byDia[dI][pid].asigs.push(a)
+                })
+                const dias = Object.entries(byDia).sort(([a], [b]) => Number(a) - Number(b))
+                return (
+                  <div key={turno.key} style={{ background: 'var(--bg-card)', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
+                    <div style={{ background: turno.headerBg, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 16 }}>{turno.emoji}</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{turno.label}</span>
+                    </div>
+                    {dias.map(([dIStr, personas]) => {
+                      const dI = Number(dIStr)
+                      return Object.values(personas).map((persona, pi) => {
+                        const total = persona.asigs.length
+                        const completados = persona.asigs.filter(a =>
+                          allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
+                        ).length
                         return (
-                          <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 500, color: 'var(--text)', position: 'sticky', left: 0, background: '#fff', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {p.nombre.split(' ')[0]}
-                            </td>
-                            {dayDone.map((done, di) => (
-                              <td key={di} style={{ textAlign: 'center', padding: '5px 2px' }}>
-                                <span style={{ fontSize: done ? 13 : 11, color: done ? '#15803d' : '#cbd5e1', fontWeight: done ? 700 : 400 }}>{done ? '✓' : '—'}</span>
-                              </td>
-                            ))}
-                          </tr>
+                          <div key={dI + '-' + pi} style={{
+                            display: 'flex', alignItems: 'center',
+                            padding: '10px 16px', borderBottom: '1px solid ' + turno.rowBg,
+                            background: '#fff',
+                          }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', width: 70, flexShrink: 0 }}>{DIAS_FULL[dI]}</span>
+                            <span style={{ flex: 1, fontSize: 13, color: '#475569', paddingLeft: 8 }}>{persona.nombre.split(' ')[0]}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: completados > 0 ? '#15803d' : '#cbd5e1' }}>
+                              {rangoPersonalizado ? `${completados}/${total}` : (completados > 0 ? '✓' : '—')}
+                            </span>
+                          </div>
                         )
-                      }),
-                    ])
-                  })()}
-                </tbody>
-                <tfoot>
-                  <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)' }}>
-                    <td style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', position: 'sticky', left: 0, background: '#f8fafc' }}>Total ✅</td>
-                    {DIAS_FULL.map((_, di) => {
-                      const count = new Set(
-                        asigsTodas.filter(a => {
-                          const d = new Date(a.fecha + 'T12:00:00').getDay()
-                          return (d === 0 ? 6 : d - 1) === di &&
-                            allRegistros.some(r => r.asignacion_id === a.id && r.completado === true)
-                        }).map(a => a.personal_id)
-                      ).size
-                      return (
-                        <td key={di} style={{ textAlign: 'center', padding: '6px 2px', fontSize: 12, fontWeight: 700, color: count > 0 ? '#15803d' : '#94a3b8' }}>{count || '—'}</td>
-                      )
+                      })
                     })}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                  </div>
+                )
+              })
+            })()}
           </div>
         )}
 
