@@ -40,7 +40,10 @@ async function pullFromSupabase() {
       .select('*')
       .eq('activo', true)
     if (all) {
-      localStorage.setItem('cleansys_asignaciones', JSON.stringify(all))
+      // Preservar asignaciones locales que no llegaron a Supabase (push fallido)
+      const remoteDownloadedIds = new Set(all.map(a => a.id))
+      const stillLocal = existing.filter(a => !remoteDownloadedIds.has(a.id) && a.activo !== false)
+      localStorage.setItem('cleansys_asignaciones', JSON.stringify([...all, ...stillLocal]))
     }
     return true
   } catch (e) {

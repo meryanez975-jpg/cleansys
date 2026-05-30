@@ -979,35 +979,48 @@ export default function SemanaPlan() {
               </div>
 
 
-              {/* Cards por turno */}
-              {turnosConfig.map(turno => {
-                const lista = [...asigsConteo.filter(a => a.turno === turno.key)]
-                  .sort((a, b) => a.fecha.localeCompare(b.fecha))
-                if (lista.length === 0) return null
-                return (
-                  <div key={turno.key} style={{ background: 'var(--bg-card)', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
-                    <div style={{ background: turno.headerBg, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 16 }}>{turno.emoji}</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{turno.label}</span>
-                    </div>
-                    {lista.map(a => {
-                      const dF = new Date(a.fecha + 'T12:00:00')
-                      const dJ = dF.getDay()
-                      const dI = dJ === 0 ? 6 : dJ - 1
-                      const dLabel = `${DIAS_CORTO[dI]} ${dF.getDate()}`
+              {/* Cards por turno — siempre 7 días */}
+              {turnosConfig.map(turno => (
+                <div key={turno.key} style={{ background: 'var(--bg-card)', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
+                  <div style={{ background: turno.headerBg, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{turno.emoji}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{turno.label}</span>
+                  </div>
+                  {isosConteo.map((iso, idx) => {
+                    const dF2 = addDays(semanaConteo, idx)
+                    const dJ2 = dF2.getDay()
+                    const dI2 = dJ2 === 0 ? 6 : dJ2 - 1
+                    const dLabel = `${DIAS_CORTO[dI2]} ${dF2.getDate()}`
+                    const esHoy = iso === hoyISO
+                    const asigsDia = asigsConteo.filter(a => a.fecha === iso && a.turno === turno.key)
+
+                    if (asigsDia.length === 0) {
+                      return (
+                        <div key={iso} style={{
+                          display: 'flex', alignItems: 'center',
+                          padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
+                          background: esHoy ? '#f0f9ff' : '#fafafa',
+                        }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: esHoy ? '#3b82f6' : '#94a3b8', width: 50, flexShrink: 0 }}>{dLabel}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: '#cbd5e1', paddingLeft: 8, fontStyle: 'italic' }}>Sin asignar</span>
+                          <span style={{ width: 22, height: 22, borderRadius: 6, border: '1.5px dashed #e2e8f0', flexShrink: 0 }} />
+                        </div>
+                      )
+                    }
+
+                    return asigsDia.map(a => {
                       const nombre = a.personalNombre || personalMap[a.personal_id] || '—'
                       const reg = allRegistros.find(r => r.asignacion_id === a.id)
                       const completado = reg?.completado === true
                       const empezado = reg?.hora_entrada && !reg?.completado
-                      const esHoy = a.fecha === hoyISO
-                      const estadoBg = completado ? '#f0fdf4' : empezado ? '#fff5f5' : '#fff'
+                      const estadoBg = completado ? '#f0fdf4' : empezado ? '#fff5f5' : esHoy ? '#f0f9ff' : '#fff'
                       return (
                         <div key={a.id} style={{
                           display: 'flex', alignItems: 'center',
                           padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
                           background: estadoBg,
                         }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', width: 50, flexShrink: 0 }}>{dLabel}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: esHoy ? '#3b82f6' : '#64748b', width: 50, flexShrink: 0 }}>{dLabel}</span>
                           <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : empezado ? '#dc2626' : '#1e293b', fontWeight: completado || empezado ? 700 : 500, paddingLeft: 8 }}>
                             {nombre.split(' ')[0]}
                           </span>
@@ -1022,14 +1035,10 @@ export default function SemanaPlan() {
                           )}
                         </div>
                       )
-                    })}
-                  </div>
-                )
-              })}
-
-              {asigsConteo.length === 0 && (
-                <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', padding: '20px 0' }}>Sin asignaciones esta semana</p>
-              )}
+                    })
+                  })}
+                </div>
+              ))}
             </div>
           )
         })()}
