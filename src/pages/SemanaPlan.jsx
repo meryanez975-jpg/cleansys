@@ -353,7 +353,9 @@ export default function SemanaPlan() {
             <p className="header-title">
               {zonaFiltro ? (zonas.find(z => z.id === zonaFiltro)?.nombre ?? 'Semana de trabajo') : 'Semana de trabajo'}
             </p>
-            <p className="header-sub">{formatMes(lunesBase)}</p>
+            <p className="header-sub">
+            Hoy, {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
           </div>
         </div>
 
@@ -492,14 +494,6 @@ export default function SemanaPlan() {
               >
                 📅 {rangoPersonalizado ? 'Cambiar fechas' : 'Seleccionar fechas'}
               </button>
-              {rangoPersonalizado && (
-                <button
-                  onClick={() => confirmarSiHayDraft(() => { setRangoPersonalizado(null); setShowDatePicker(false) })}
-                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 12 }}
-                >
-                  ✕ Ver semana
-                </button>
-              )}
             </div>
 
             {/* Formulario de rango */}
@@ -592,10 +586,12 @@ export default function SemanaPlan() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   {badgeNombre ? (
                                     <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{badgeNombre}</span>
-                                  ) : (
+                                  ) : lista.length > 0 ? (
                                     <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct, color: '#fff' }}>{lista.length}</span>
+                                  ) : (
+                                    <span style={{ fontSize: 14, fontWeight: 800, padding: '1px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.35)', color: abierto ? '#fff' : t.txt, border: `1.5px dashed ${t.bgAct}88` }}>+</span>
                                   )}
-                                  {(!badgeNombre || abierto) && <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>}
+                                  <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
                                 </div>
                               </button>
                               {abierto && (
