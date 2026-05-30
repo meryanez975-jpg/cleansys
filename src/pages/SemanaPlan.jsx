@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas'
 import MenuDrawer from '../components/MenuDrawer'
 import ZonaModal from '../components/ZonaModal'
 import PersonalModal from '../components/PersonalModal'
+import ModalConfirmSalida from '../components/ModalConfirmSalida'
 import { useZonas } from '../hooks/useZonas'
 import { usePersonal } from '../hooks/usePersonal'
 import { usePersonalComidas } from '../hooks/usePersonalComidas'
@@ -70,6 +71,7 @@ export default function SemanaPlan() {
   const [openPersonKey, setOpenPersonKey] = useState(null)
   const [draftPatron, setDraftPatron] = useState([])
   const [guardadoOk, setGuardadoOk] = useState(false)
+  const [confirmSalida, setConfirmSalida] = useState(null) // acción pendiente o null
   const [semanaConteo, setSemanaConteo] = useState(() => {
     const hoy = new Date()
     const d = hoy.getDay()
@@ -194,10 +196,7 @@ export default function SemanaPlan() {
 
   function confirmarSiHayDraft(accion) {
     if (draftPatron.length === 0) { accion(); return }
-    if (window.confirm('Tenés cambios sin guardar en el patrón.\n¿Querés salir de todos modos?')) {
-      setDraftPatron([])
-      accion()
-    }
+    setConfirmSalida(() => accion)
   }
 
   function abrirEdicion(a) {
@@ -339,7 +338,7 @@ export default function SemanaPlan() {
         {/* Header */}
         <div className="header">
           <button
-            onClick={() => setShowMenu(true)}
+            onClick={() => confirmarSiHayDraft(() => setShowMenu(true))}
             style={{
               background: 'var(--primary-light)', border: 'none',
               borderRadius: 'var(--radius-sm)', cursor: 'pointer', padding: '10px 12px',
@@ -821,19 +820,13 @@ export default function SemanaPlan() {
                   {draftPatron.reduce((sum, d) => sum + d.isos.length, 0)} asignaciones en total
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={guardarPatronCompleto} style={{
-                  flex: 1, padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: '#22c55e', color: '#fff', fontWeight: 800, fontSize: 14,
-                  boxShadow: '0 4px 14px rgba(34,197,94,0.4)',
-                }}>
-                  ✓ Guardar todo el patrón
-                </button>
-                <button onClick={() => setDraftPatron([])} style={{
-                  padding: '13px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: 'rgba(255,255,255,0.15)', color: '#fff', fontWeight: 700, fontSize: 13,
-                }}>✕</button>
-              </div>
+              <button onClick={guardarPatronCompleto} style={{
+                width: '100%', padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: '#22c55e', color: '#fff', fontWeight: 800, fontSize: 14,
+                boxShadow: '0 4px 14px rgba(34,197,94,0.4)',
+              }}>
+                ✓ Guardar todo el patrón
+              </button>
             </div>
           )}
 
@@ -1109,7 +1102,7 @@ export default function SemanaPlan() {
       {showMenu && (
         <MenuDrawer
           onClose={() => setShowMenu(false)}
-          onIr={path => { setShowMenu(false); navigate(path) }}
+          onIr={path => { setShowMenu(false); confirmarSiHayDraft(() => navigate(path)) }}
           onAbrirPersonal={() => { setShowMenu(false); setShowPersonal(true) }}
           onAbrirZonas={() => { setShowMenu(false); setShowZonas(true) }}
           zonas={zonas}
@@ -1134,6 +1127,13 @@ export default function SemanaPlan() {
           onEditar={editarPersonal}
           onEliminar={eliminarPersonal}
           onClose={() => { setShowPersonal(false); refetchPersonal() }}
+        />
+      )}
+
+      {confirmSalida && (
+        <ModalConfirmSalida
+          onConfirmar={() => { setDraftPatron([]); confirmSalida(); setConfirmSalida(null) }}
+          onCancelar={() => setConfirmSalida(null)}
         />
       )}
     </div>
