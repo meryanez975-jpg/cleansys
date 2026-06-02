@@ -257,18 +257,22 @@ export function getCambiosMateriales() {
   } catch { return [] }
 }
 
-export function registrarCambioMaterial(material_id, materialNombre, notas = '') {
+export function registrarCambioMaterial(material_id, materialNombre, fecha = '') {
   const all = getCambiosMateriales()
   const nuevo = {
     id: genId(),
     material_id,
     materialNombre,
-    fecha: new Date().toISOString().split('T')[0],
-    notas,
+    fecha: fecha || new Date().toISOString().split('T')[0],
     registrado_en: new Date().toISOString(),
   }
   localStorage.setItem('cleansys_cambios_materiales', JSON.stringify([nuevo, ...all]))
   return nuevo
+}
+
+export function removeCambioMaterial(id) {
+  const all = getCambiosMateriales()
+  localStorage.setItem('cleansys_cambios_materiales', JSON.stringify(all.filter(c => c.id !== id)))
 }
 
 // ── SUPERVISORES ──────────────────────────────────

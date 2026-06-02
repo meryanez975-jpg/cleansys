@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMateriales } from '../hooks/useMateriales'
 import { useGuardiaNavegacion } from '../hooks/useGuardiaNavegacion'
 import ModalConfirmSalida from '../components/ModalConfirmSalida'
+import { useZonas } from '../hooks/useZonas'
 import * as store from '../data/store'
 
 function hoy() {
@@ -28,6 +29,7 @@ const UNIDADES = ['unidad', 'litros', 'kg', 'paquete', 'caja', 'rollo', 'bolsa']
 export default function Materiales() {
   const navigate = useNavigate()
   const { materiales, agregar, editar, eliminar } = useMateriales()
+  const { zonas } = useZonas()
 
   const [vista, setVista]               = useState('agregados') // 'agregados' | 'contabilidad'
   const [hayCambios, setHayCambios]     = useState(false)
@@ -46,18 +48,58 @@ export default function Materiales() {
   const [foto, setFoto]             = useState(null)
   const [error, setError]           = useState('')
   const [fotoVisor, setFotoVisor]   = useState(null)
+  const [showOtroInput, setShowOtroInput]     = useState(false)
+  const [otroNombre, setOtroNombre]           = useState('')
+  const [sectoresAbiertos, setSectoresAbiertos]   = useState({})
+  const [productosAbiertos, setProductosAbiertos] = useState({})
+  const [customSectores, setCustomSectores] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cleansys_sectores_custom') || '[]') }
+    catch { return [] }
+  })
+
+  function guardarCustomSector(nombre) {
+    if (!nombre || customSectores.includes(nombre)) return
+    const nuevos = [...customSectores, nombre]
+    setCustomSectores(nuevos)
+    localStorage.setItem('cleansys_sectores_custom', JSON.stringify(nuevos))
+  }
 
   // Contabilidad
   const [cambios, setCambios]             = useState(() => store.getCambiosMateriales())
-  const [notaCambio, setNotaCambio]       = useState('')
+  const [fechaCambio, setFechaCambio]     = useState(hoy())
   const [showModalCambio, setShowModalCambio] = useState(null)
+  const [contMes, setContMes]             = useState(new Date().getMonth())
+  const [contAnio, setContAnio]           = useState(new Date().getFullYear())
+  const [confirmEliminar, setConfirmEliminar] = useState(null) // { tipo: 'material'|'cambio', id, nombre }
 
   function refetchCambios() { setCambios(store.getCambiosMateriales()) }
+
+  function mesContAnterior() {
+    if (contMes === 0) { setContMes(11); setContAnio(y => y - 1) }
+    else setContMes(m => m - 1)
+  }
+  function mesContSiguiente() {
+    if (contMes === 11) { setContMes(0); setContAnio(y => y + 1) }
+    else setContMes(m => m + 1)
+  }
+
+  function confirmarEliminar() {
+    if (!confirmEliminar) return
+    if (confirmEliminar.tipo === 'material') {
+      eliminar(confirmEliminar.id)
+      setHayCambios(true)
+    } else {
+      store.removeCambioMaterial(confirmEliminar.id)
+      refetchCambios()
+    }
+    setConfirmEliminar(null)
+  }
 
   function abrirNuevo() {
     setEditando(null)
     setNombre(''); setSector(''); setCantidad(''); setUnidad('unidad')
     setFechaCompra(hoy()); setFechaRepos(''); setFoto(null); setError('')
+    setShowOtroInput(false); setOtroNombre('')
     setShowForm(true)
   }
 
@@ -66,6 +108,7 @@ export default function Materiales() {
     setNombre(m.nombre); setSector(m.sector || ''); setCantidad(String(m.cantidad))
     setUnidad(m.unidad || 'unidad'); setFechaCompra(m.fechaCompra || hoy())
     setFechaRepos(m.fechaReposicion || ''); setFoto(m.foto || null); setError('')
+    setShowOtroInput(false); setOtroNombre('')
     setShowForm(true)
   }
 
@@ -102,10 +145,8 @@ export default function Materiales() {
     setShowForm(false)
   }
 
-  function handleEliminar(id) {
-    if (!window.confirm('¿Eliminar este material?')) return
-    eliminar(id)
-    setHayCambios(true)
+  function handleEliminar(id, nombre) {
+    setConfirmEliminar({ tipo: 'material', id, nombre })
   }
 
   function handleGuardarTodo() {
@@ -116,10 +157,10 @@ export default function Materiales() {
 
   function handleRegistrarCambio() {
     if (!showModalCambio) return
-    store.registrarCambioMaterial(showModalCambio.id, showModalCambio.nombre, notaCambio)
+    store.registrarCambioMaterial(showModalCambio.id, showModalCambio.nombre, fechaCambio)
     refetchCambios()
     setShowModalCambio(null)
-    setNotaCambio('')
+    setFechaCambio(hoy())
   }
 
   const vencidos = materiales.filter(m => estadoMaterial(m.fechaReposicion)?.label === 'Vencido').length
@@ -188,136 +229,224 @@ export default function Materiales() {
         )}
 
         {/* ── AGREGADOS ── */}
-        {vista === 'agregados' && (
-          <>
-            {materiales.length === 0 ? (
-              <div className="card text-center" style={{ padding: 48 }}>
-                <p style={{ fontSize: 40, marginBottom: 14 }}>🧴</p>
-                <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 8 }}>Sin materiales cargados</p>
-                <p className="text-muted">Presioná "+ Agregar" para empezar el inventario</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {materiales.map(m => {
-                  const estado = estadoMaterial(m.fechaReposicion)
-                  return (
-                    <div key={m.id} className="card" style={{ borderLeft: `4px solid ${estado?.color || 'var(--border)'}`, padding: 0, overflow: 'hidden' }}>
-                      {m.foto && (
-                        <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setFotoVisor(m.foto)}>
-                          <img src={m.foto} alt="foto" style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', borderBottom: '1px solid var(--border)' }} />
-                          <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.45)', color: '#fff', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                            🔍 Ver foto
+        {vista === 'agregados' && (() => {
+          const grupos = materiales.reduce((acc, m) => {
+            const s = m.sector || 'Sin sector'
+            if (!acc[s]) acc[s] = []
+            acc[s].push(m)
+            return acc
+          }, {})
+          return (
+            <>
+              {materiales.length === 0 ? (
+                <div className="card text-center" style={{ padding: 48 }}>
+                  <p style={{ fontSize: 40, marginBottom: 14 }}>🧴</p>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 8 }}>Sin materiales cargados</p>
+                  <p className="text-muted">Presioná "+ Agregar" para empezar el inventario</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {Object.entries(grupos).map(([sec, mats]) => {
+                    const abierto = !!sectoresAbiertos['ag-' + sec]
+                    return (
+                      <div key={sec}>
+                        <button
+                          onClick={() => setSectoresAbiertos(p => ({ ...p, ['ag-' + sec]: !p['ag-' + sec] }))}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 16px', borderRadius: abierto ? '12px 12px 0 0' : 12,
+                            border: 'none', cursor: 'pointer',
+                            background: abierto ? '#6d28d9' : '#ede9fe',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, fontSize: 14, color: abierto ? '#fff' : '#6d28d9' }}>🏷️ {sec}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: abierto ? 'rgba(255,255,255,0.8)' : '#7c3aed' }}>
+                            {mats.length} {mats.length === 1 ? 'producto' : 'productos'}
+                          </span>
+                        </button>
+                        {abierto && (
+                          <div style={{ border: '1px solid #ede9fe', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            {mats.map(m => {
+                              const estado   = estadoMaterial(m.fechaReposicion)
+                              const prodOpen = !!productosAbiertos['ag-' + m.id]
+                              return (
+                                <div key={m.id} style={{ borderLeft: `4px solid ${estado?.color || '#a78bfa'}`, background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
+                                  <button
+                                    onClick={() => setProductosAbiertos(p => ({ ...p, ['ag-' + m.id]: !p['ag-' + m.id] }))}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                  >
+                                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{m.nombre}</span>
+                                    {estado && <span style={{ background: estado.bg, color: estado.color, fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase' }}>{estado.label}</span>}
+                                  </button>
+                                  {prodOpen && (
+                                    <div style={{ padding: '0 14px 12px' }}>
+                                      {m.foto && (
+                                        <div style={{ position: 'relative', cursor: 'pointer', marginBottom: 8 }} onClick={() => setFotoVisor(m.foto)}>
+                                          <img src={m.foto} alt="foto" style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 8 }} />
+                                          <div style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.45)', color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>🔍 Ver foto</div>
+                                        </div>
+                                      )}
+                                      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>📦 {m.cantidad} {m.unidad}</p>
+                                      {m.fechaCompra && <p style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 10 }}>🛒 {new Date(m.fechaCompra + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+                                      <div style={{ display: 'flex', gap: 6 }}>
+                                        <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => abrirEditar(m)}>✏️ Editar</button>
+                                        <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleEliminar(m.id, m.nombre)}>🗑 Eliminar</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
-                        </div>
-                      )}
-                      <div className="flex-between" style={{ padding: '12px 14px' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{m.nombre}</span>
-                            {m.sector && (
-                              <span style={{ fontSize: 11, fontWeight: 700, background: '#ede9fe', color: '#6d28d9', borderRadius: 999, padding: '2px 10px' }}>{m.sector}</span>
-                            )}
-                            {estado && (
-                              <span style={{ background: estado.bg, color: estado.color, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 10px', textTransform: 'uppercase' }}>{estado.label}</span>
-                            )}
-                          </div>
-                          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>📦 {m.cantidad} {m.unidad}</p>
-                          <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-light)', flexWrap: 'wrap' }}>
-                            {m.fechaCompra && <span>🛒 {new Date(m.fechaCompra + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-                            {m.fechaReposicion && <span>🔄 {new Date(m.fechaReposicion + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 12, flexShrink: 0 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(m)}>✏️</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleEliminar(m.id)}>🗑</button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {hayCambios && materiales.length > 0 && (
-              <button className="btn btn-success btn-block btn-lg" style={{ marginTop: 16 }} onClick={handleGuardarTodo}>
-                Guardar cambios
-              </button>
-            )}
-          </>
-        )}
-
-        {/* ── CONTABILIDAD ── */}
-        {vista === 'contabilidad' && (
-          <>
-            {materiales.length === 0 ? (
-              <div className="card text-center" style={{ padding: 40 }}>
-                <p style={{ fontSize: 36, marginBottom: 10 }}>📊</p>
-                <p style={{ fontWeight: 700, color: 'var(--text)' }}>No hay productos cargados</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {materiales.map(m => {
-                  const estado      = estadoMaterial(m.fechaReposicion)
-                  const diasUso     = diasDesde(m.fechaCompra)
-                  const historial   = cambios.filter(c => c.material_id === m.id)
-                  const ultimoCambio = historial[0]
-
-                  return (
-                    <div key={m.id} className="card" style={{ padding: '14px 16px', borderLeft: `4px solid ${estado?.color || 'var(--border)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <div>
-                          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{m.nombre}</span>
-                          {m.sector && (
-                            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, background: '#ede9fe', color: '#6d28d9', borderRadius: 999, padding: '2px 10px' }}>{m.sector}</span>
-                          )}
-                        </div>
-                        {estado && (
-                          <span style={{ background: estado.bg, color: estado.color, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 10px', textTransform: 'uppercase' }}>{estado.label}</span>
                         )}
                       </div>
+                    )
+                  })}
+                </div>
+              )}
+              {materiales.length > 0 && (
+                <button className="btn btn-success btn-block btn-lg" style={{ marginTop: 16 }} onClick={handleGuardarTodo}>✓ Guardar</button>
+              )}
+            </>
+          )
+        })()}
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                        <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                          <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary-dark)', margin: 0 }}>{diasUso ?? '—'}</p>
-                          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>días en uso</p>
-                        </div>
-                        <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                          <p style={{ fontSize: 22, fontWeight: 800, color: '#059669', margin: 0 }}>{historial.length}</p>
-                          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>cambios registrados</p>
-                        </div>
-                      </div>
-
-                      {ultimoCambio && (
-                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12 }}>
-                          <span style={{ fontWeight: 700, color: '#059669' }}>Último cambio: </span>
-                          <span style={{ color: '#065f46' }}>
-                            {new Date(ultimoCambio.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          {ultimoCambio.notas && <span style={{ color: 'var(--text-muted)' }}> · {ultimoCambio.notas}</span>}
-                        </div>
-                      )}
-
-                      {historial.length > 1 && historial.slice(1).map(c => (
-                        <div key={c.id} style={{ fontSize: 12, color: 'var(--text-muted)', padding: '4px 0', borderTop: '1px solid var(--border)' }}>
-                          🔄 {new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          {c.notas && ` · ${c.notas}`}
-                        </div>
-                      ))}
-
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ width: '100%', marginTop: 8, fontSize: 13, fontWeight: 700, color: '#059669', borderColor: '#34d399' }}
-                        onClick={() => { setShowModalCambio(m); setNotaCambio('') }}
-                      >
-                        + Registrar cambio de producto
-                      </button>
-                    </div>
-                  )
-                })}
+        {/* ── CONTABILIDAD ── */}
+        {vista === 'contabilidad' && (() => {
+          const mesStr    = `${contAnio}-${String(contMes + 1).padStart(2, '0')}`
+          const mesNombre = new Date(contAnio, contMes, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+          const grupos = materiales.reduce((acc, m) => {
+            const s = m.sector || 'Sin sector'
+            if (!acc[s]) acc[s] = []
+            acc[s].push(m)
+            return acc
+          }, {})
+          return (
+            <>
+              {/* Navegador de mes */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'var(--bg-card)', border: '1.5px solid var(--border)',
+                borderRadius: 12, padding: '10px 8px', marginBottom: 12,
+              }}>
+                <button
+                  onClick={mesContAnterior}
+                  style={{
+                    background: '#dcfce7', border: 'none', borderRadius: 8,
+                    padding: '8px 20px', cursor: 'pointer',
+                    color: '#059669', fontWeight: 700, fontSize: 20,
+                  }}
+                >‹</button>
+                <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', textTransform: 'capitalize' }}>
+                  {mesNombre}
+                </span>
+                <button
+                  onClick={mesContSiguiente}
+                  style={{
+                    background: '#dcfce7', border: 'none', borderRadius: 8,
+                    padding: '8px 20px', cursor: 'pointer',
+                    color: '#059669', fontWeight: 700, fontSize: 20,
+                  }}
+                >›</button>
               </div>
-            )}
-          </>
-        )}
+
+              {materiales.length === 0 ? (
+                <div className="card text-center" style={{ padding: 40 }}>
+                  <p style={{ fontSize: 36, marginBottom: 10 }}>📊</p>
+                  <p style={{ fontWeight: 700, color: 'var(--text)' }}>No hay productos cargados</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {Object.entries(grupos).map(([sec, mats]) => {
+                    const abierto = !!sectoresAbiertos['ct-' + sec]
+                    return (
+                      <div key={sec}>
+                        <button
+                          onClick={() => setSectoresAbiertos(p => ({ ...p, ['ct-' + sec]: !p['ct-' + sec] }))}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 16px', borderRadius: abierto ? '12px 12px 0 0' : 12,
+                            border: 'none', cursor: 'pointer',
+                            background: abierto ? '#059669' : '#dcfce7',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, fontSize: 14, color: abierto ? '#fff' : '#059669' }}>🏷️ {sec}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: abierto ? 'rgba(255,255,255,0.8)' : '#16a34a' }}>
+                            {mats.length} {mats.length === 1 ? 'producto' : 'productos'}
+                          </span>
+                        </button>
+                        {abierto && (
+                          <div style={{ border: '1px solid #dcfce7', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            {mats.map(m => {
+                              const cambiosMes = cambios.filter(c => c.material_id === m.id && c.fecha.startsWith(mesStr))
+                              const prodOpen   = !!productosAbiertos['ct-' + m.id]
+                              return (
+                                <div key={m.id} style={{ background: '#fff', borderBottom: '1px solid #f0fdf4' }}>
+                                  <button
+                                    onClick={() => setProductosAbiertos(p => ({ ...p, ['ct-' + m.id]: !p['ct-' + m.id] }))}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                  >
+                                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{m.nombre}</span>
+                                    {cambiosMes.length > 0 && (
+                                      <span style={{ fontSize: 11, fontWeight: 700, background: '#dcfce7', color: '#059669', borderRadius: 999, padding: '2px 8px' }}>
+                                        {cambiosMes.length} este mes
+                                      </span>
+                                    )}
+                                  </button>
+                                  {prodOpen && (
+                                    <div style={{ padding: '0 16px 12px' }}>
+                                      <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <span style={{ fontSize: 28, fontWeight: 800, color: cambiosMes.length > 0 ? '#059669' : '#94a3b8', lineHeight: 1 }}>{cambiosMes.length}</span>
+                                        <div>
+                                          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>cambio{cambiosMes.length !== 1 ? 's' : ''} en este mes</p>
+                                          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, textTransform: 'capitalize' }}>{mesNombre}</p>
+                                        </div>
+                                      </div>
+                                      {cambiosMes.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+                                          {cambiosMes.map(c => (
+                                            <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f0fdf4', borderRadius: 8 }}>
+                                              <span style={{ fontSize: 13, fontWeight: 700, color: '#059669' }}>
+                                                📅 {new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                              </span>
+                                              <button
+                                                onClick={() => setConfirmEliminar({ tipo: 'cambio', id: c.id, nombre: `cambio del ${new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })}` })}
+                                                style={{
+                                                  background: '#fee2e2', border: '1.5px solid #fecaca',
+                                                  borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                                                  color: '#dc2626', fontWeight: 700, fontSize: 12,
+                                                }}
+                                              >
+                                                🗑️
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <button
+                                        className="btn btn-ghost btn-sm"
+                                        style={{ width: '100%', fontSize: 13, fontWeight: 700, color: '#059669', borderColor: '#34d399' }}
+                                        onClick={() => { setShowModalCambio(m); setFechaCambio(hoy()) }}
+                                      >
+                                        + Registrar cambio
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )
+        })()}
 
       </div>
 
@@ -334,8 +463,98 @@ export default function Materiales() {
 
             <div className="input-group">
               <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: '#6d28d9' }}>🏷️ Sector</label>
-              <input className="input" placeholder="Ej: Baño, Cocina, Tienda..." value={sector} onChange={e => setSector(e.target.value)}
-                style={{ fontSize: 15, fontWeight: sector ? 700 : 400, borderColor: sector ? '#a78bfa' : undefined }} />
+              {(() => {
+                const sectoresGestion = zonas.map(z => z.nombre)
+                const sectoresCustom  = [...new Set([
+                  ...customSectores,
+                  ...materiales.map(m => m.sector).filter(s => s && !sectoresGestion.includes(s)),
+                ])]
+                const chipStyle = (activo) => ({
+                  padding: '7px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
+                  border: `2px solid ${activo ? '#6d28d9' : '#e2e8f0'}`,
+                  background: activo ? '#ede9fe' : '#f8fafc',
+                  color: activo ? '#6d28d9' : '#64748b',
+                  fontWeight: activo ? 700 : 500, transition: 'all 0.12s',
+                })
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                    {/* Sección: sectores de gestión */}
+                    {sectoresGestion.length > 0 && (
+                      <div>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          De gestión
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {sectoresGestion.map(n => (
+                            <button key={n} type="button" style={chipStyle(sector === n)}
+                              onClick={() => { setSector(sector === n ? '' : n); setShowOtroInput(false) }}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Divisor */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Solo materiales
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                    </div>
+
+                    {/* Sección: sectores solo de materiales */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {sectoresCustom.map(n => (
+                        <button key={n} type="button" style={chipStyle(sector === n)}
+                          onClick={() => { setSector(sector === n ? '' : n); setShowOtroInput(false) }}>
+                          {n}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => { setShowOtroInput(v => !v); setSector(''); setOtroNombre('') }}
+                        style={chipStyle(showOtroInput)}
+                      >
+                        + Nuevo
+                      </button>
+                    </div>
+
+                    {showOtroInput && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          className="input"
+                          placeholder="Nombre del sector de material..."
+                          value={otroNombre}
+                          onChange={e => setOtroNombre(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && otroNombre.trim()) {
+                              const n = otroNombre.trim()
+                              setSector(n); guardarCustomSector(n); setShowOtroInput(false)
+                            }
+                          }}
+                          autoFocus
+                          style={{ flex: 1, fontSize: 13 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (otroNombre.trim()) {
+                              const n = otroNombre.trim()
+                              setSector(n); guardarCustomSector(n); setShowOtroInput(false)
+                            }
+                          }}
+                          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#6d28d9', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                        >
+                          ✓
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -354,11 +573,6 @@ export default function Materiales() {
             <div className="input-group">
               <label className="input-label">Fecha de compra</label>
               <input type="date" className="input" value={fechaCompra} onChange={e => setFechaCompra(e.target.value)} />
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Fecha de reposición estimada</label>
-              <input type="date" className="input" value={fechaRepos} onChange={e => setFechaRepos(e.target.value)} />
             </div>
 
             <div className="input-group">
@@ -390,6 +604,53 @@ export default function Materiales() {
         </div>
       )}
 
+      {/* Modal confirmar eliminación */}
+      {confirmEliminar && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 600,
+          background: 'rgba(30,58,95,0.5)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }} onClick={() => setConfirmEliminar(null)}>
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: 18, padding: '28px 24px',
+            width: '100%', maxWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            textAlign: 'center',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>
+              {confirmEliminar.tipo === 'material' ? '🧴' : '📅'}
+            </div>
+            <p style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', marginBottom: 8 }}>
+              {confirmEliminar.tipo === 'material' ? '¿Eliminar material?' : '¿Eliminar registro?'}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+              Se eliminará <strong>{confirmEliminar.nombre}</strong>. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={confirmarEliminar}
+                style={{
+                  width: '100%', padding: '13px 0', borderRadius: 10, cursor: 'pointer',
+                  background: '#dc2626', border: 'none',
+                  color: '#fff', fontWeight: 700, fontSize: 15,
+                }}
+              >
+                Sí, eliminar
+              </button>
+              <button
+                onClick={() => setConfirmEliminar(null)}
+                style={{
+                  width: '100%', padding: '12px 0', borderRadius: 10, cursor: 'pointer',
+                  background: 'var(--bg)', border: '1.5px solid var(--border)',
+                  color: 'var(--text)', fontWeight: 700, fontSize: 14,
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal registrar cambio */}
       {showModalCambio && (
         <div className="modal-overlay">
@@ -397,8 +658,8 @@ export default function Materiales() {
             <p className="modal-title">Registrar cambio</p>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 16 }}>📦 {showModalCambio.nombre}</p>
             <div className="input-group">
-              <label className="input-label">Nota (opcional)</label>
-              <input className="input" placeholder="Ej: Se terminó, se reemplazó..." value={notaCambio} onChange={e => setNotaCambio(e.target.value)} autoFocus />
+              <label className="input-label">Fecha</label>
+              <input type="date" className="input" value={fechaCambio} onChange={e => setFechaCambio(e.target.value)} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleRegistrarCambio}>✓ Registrar</button>

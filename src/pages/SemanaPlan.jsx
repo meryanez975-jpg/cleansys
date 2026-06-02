@@ -38,6 +38,18 @@ function turnoDePersona(turnoSupabase) {
   return null
 }
 
+const DIAS_NORM = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+function normStr(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim() }
+function esDiaLibre(persona, diaIdx) {
+  if (!persona.diaLibre) return false
+  return normStr(persona.diaLibre) === DIAS_NORM[diaIdx]
+}
+function diaIdxDeISO(iso) {
+  const d = new Date(iso + 'T12:00:00')
+  const dow = d.getDay()
+  return dow === 0 ? 6 : dow - 1
+}
+
 export default function SemanaPlan() {
   const navigate = useNavigate()
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
@@ -69,6 +81,8 @@ export default function SemanaPlan() {
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
   const [openPersonKey, setOpenPersonKey] = useState(null)
+  const [swapPersonaKey, setSwapPersonaKey] = useState(null)
+  const [swapPersonalId, setSwapPersonalId] = useState('')
   const [draftPatron, setDraftPatron] = useState([])
   const [guardadoOk, setGuardadoOk] = useState(false)
   const [confirmSalida, setConfirmSalida] = useState(null) // acción pendiente o null
@@ -201,14 +215,36 @@ export default function SemanaPlan() {
 
   function abrirEdicion(a) {
     setEditandoId(a.id)
-    setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '', fecha: a.fecha || '' })
+    setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '', fecha: a.fecha || '', personal_id: a.personal_id || '' })
   }
 
   function guardarEdicion(id) {
-    store.editAsignacion(id, { zona_id: editForm.zona_id, turno: editForm.turno, fecha: editForm.fecha })
+    const p = personalDB.find(x => x.id === editForm.personal_id)
+    const datos = {
+      zona_id:       editForm.zona_id,
+      turno:         editForm.turno,
+      fecha:         editForm.fecha,
+      personal_id:   editForm.personal_id,
+      personalNombre: p?.nombre || '',
+      personalSector: p?.sector || '',
+    }
+    store.editAsignacion(id, datos)
     setEditandoId(null)
     setTick(t => t + 1)
-    supabase.from('limpieza_asignaciones').update({ zona_id: editForm.zona_id, turno: editForm.turno, fecha: editForm.fecha }).eq('id', id).then(() => {})
+    supabase.from('limpieza_asignaciones').update(datos).eq('id', id).then(() => {})
+  }
+
+  function swapPersona(asigs, newPersonalId) {
+    const p = personalDB.find(x => x.id === newPersonalId)
+    if (!p) return
+    const datos = { personal_id: newPersonalId, personalNombre: p.nombre, personalSector: p.sector || '' }
+    asigs.forEach(a => {
+      store.editAsignacion(a.id, datos)
+      supabase.from('limpieza_asignaciones').update(datos).eq('id', a.id).then(() => {})
+    })
+    setSwapPersonaKey(null)
+    setSwapPersonalId('')
+    setTick(t => t + 1)
   }
 
   function eliminarAsig(id) {
@@ -482,7 +518,9 @@ export default function SemanaPlan() {
               <button
                 onClick={() => {
                   setShowDatePicker(v => !v)
-                  setInputInicio(rangoPersonalizado ? fechaISO(rangoPersonalizado.inicio) : '')
+                  const hoy = new Date()
+                  const primeroDeMes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`
+                  setInputInicio(primeroDeMes)
                   setInputFin(rangoPersonalizado ? fechaISO(rangoPersonalizado.fin) : '')
                 }}
                 style={{
@@ -505,14 +543,7 @@ export default function SemanaPlan() {
                     <input
                       type="date"
                       value={inputInicio}
-                      onChange={e => {
-                        const val = e.target.value
-                        setInputInicio(val)
-                        if (val && inputFin) {
-                          setRangoPersonalizado({ inicio: new Date(val + 'T12:00:00'), fin: new Date(inputFin + 'T12:00:00') })
-                          setShowDatePicker(false)
-                        }
-                      }}
+                      onChange={e => setInputInicio(e.target.value)}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
                     />
                   </div>
@@ -521,18 +552,29 @@ export default function SemanaPlan() {
                     <input
                       type="date"
                       value={inputFin}
-                      onChange={e => {
-                        const val = e.target.value
-                        setInputFin(val)
-                        if (inputInicio && val) {
-                          setRangoPersonalizado({ inicio: new Date(inputInicio + 'T12:00:00'), fin: new Date(val + 'T12:00:00') })
-                          setShowDatePicker(false)
-                        }
-                      }}
+                      onChange={e => setInputFin(e.target.value)}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
                     />
                   </div>
                 </div>
+                <button
+                  onClick={() => {
+                    if (!inputInicio || !inputFin) return
+                    const inicio = new Date(inputInicio + 'T12:00:00')
+                    const fin = new Date(inputFin + 'T12:00:00')
+                    if (inicio > fin) return
+                    setRangoPersonalizado({ inicio, fin })
+                    setShowDatePicker(false)
+                  }}
+                  disabled={!inputInicio || !inputFin}
+                  style={{
+                    width: '100%', padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: inputInicio && inputFin ? 'var(--primary)' : '#cbd5e1',
+                    color: '#fff', fontWeight: 700, fontSize: 13,
+                  }}
+                >
+                  Aplicar
+                </button>
               </div>
             )}
           </div>
@@ -591,7 +633,6 @@ export default function SemanaPlan() {
                                   ) : (
                                     <span style={{ fontSize: 14, fontWeight: 800, padding: '1px 8px', borderRadius: 10, background: abierto ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.35)', color: abierto ? '#fff' : t.txt, border: `1.5px dashed ${t.bgAct}88` }}>+</span>
                                   )}
-                                  <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
                                 </div>
                               </button>
                               {abierto && (
@@ -602,36 +643,33 @@ export default function SemanaPlan() {
                                       <span style={{ fontSize: 11, fontWeight: 700, color: t.txt, background: t.bg, borderRadius: 6, padding: '2px 8px' }}>{a.zona?.nombre || '—'}</span>
                                     </div>
                                   ))}
-                                  {/* Borrador pendiente */}
-                                  {draft ? (
+                                  {draft && (
                                     <div style={{ background: '#fef9c3', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px dashed #d97706' }}>
-                                      <span style={{ fontSize: 12, fontWeight: 700, color: '#78350f' }}>⏳ {draft.nombre}</span>
+                                      <span style={{ fontSize: 13, fontWeight: 600, color: '#78350f' }}>{draft.nombre}</span>
                                       <button onClick={() => setDraftPatron(prev => prev.filter(d => !(d.patKey === draft.patKey && d.turno === draft.turno)))}
                                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 13, fontWeight: 700, padding: '0 4px' }}>✕</button>
                                     </div>
-                                  ) : null}
+                                  )}
                                   {addingFor?.patKey === 'pat-' + i && addingFor?.turno === t.key ? (
                                     <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: lista.length > 0 ? 4 : 0 }}>
-                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
-                                        {personalDB.map(p => (
-                                          <button key={p.id} onClick={() => setAddPersonalId(p.id)} style={{ padding: '8px 12px', borderRadius: 8, textAlign: 'left', border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`, background: addPersonalId === p.id ? t.bg : '#f8fafc', color: addPersonalId === p.id ? t.bgAct : '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.12s' }}>
-                                            {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
+                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Elegir persona</p>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                                        {personalDB.filter(p => !esDiaLibre(p, i)).map(p => (
+                                          <button key={p.id} onClick={() => {
+                                            setDraftPatron(prev => {
+                                              const filtrado = prev.filter(d => !(d.patKey === 'pat-' + i && d.turno === addingFor.turno))
+                                              return [...filtrado, { patKey: 'pat-' + i, isos: addingFor.isos, turno: addingFor.turno, personalId: p.id, nombre: p.nombre || '', zonaId: zonaFiltro || '' }]
+                                            })
+                                            setAddingFor(null)
+                                            setAddPersonalId('')
+                                            setAddZonaId('')
+                                            setTurnosAbiertos(prev => ({ ...prev, ['pat-' + i]: null }))
+                                          }} style={{ padding: '8px 12px', borderRadius: 8, textAlign: 'left', border: '2px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.12s' }}>
+                                            {p.nombre}
                                           </button>
                                         ))}
                                       </div>
-                                      <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                                      <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
-                                        {zonas.map(z => (
-                                          <button key={z.id} onClick={() => setAddZonaId(z.id)} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: `2px solid ${addZonaId === z.id ? t.bgAct : '#e2e8f0'}`, background: addZonaId === z.id ? t.bg : '#f8fafc', color: addZonaId === z.id ? t.bgAct : '#475569', fontWeight: 600, fontSize: 12, cursor: 'pointer', transition: 'all 0.12s', whiteSpace: 'nowrap' }}>{z.nombre}</button>
-                                        ))}
-                                      </div>
-                                      <div style={{ display: 'flex', gap: 6 }}>
-                                        <button onClick={agregarAlDraft} disabled={!addPersonalId} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: addPersonalId ? t.bgAct : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: addPersonalId ? 'pointer' : 'not-allowed' }}>
-                                          ➕ Agregar al plan
-                                        </button>
-                                        <button onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕</button>
-                                      </div>
+                                      <button onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }} style={{ marginTop: 8, width: '100%', padding: '8px 0', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕ Cancelar</button>
                                     </div>
                                   ) : (lista.length === 0 && !draft) && (
                                     <button
@@ -699,7 +737,6 @@ export default function SemanaPlan() {
                                     background: abierto ? 'rgba(255,255,255,0.25)' : t.bgAct,
                                     color: '#fff',
                                   }}>{t.lista.length}</span>
-                                  <span style={{ fontSize: 11, color: abierto ? t.txtAct : t.txt }}>{abierto ? '▲' : '▼'}</span>
                                 </div>
                               </button>
                               {abierto && (
@@ -723,7 +760,7 @@ export default function SemanaPlan() {
                                     <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: t.lista.length > 0 ? 4 : 0 }}>
                                       <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
-                                        {personalDB.map(p => (
+                                        {personalDB.filter(p => !esDiaLibre(p, diaIdxDeISO(iso))).map(p => (
                                           <button
                                             key={p.id}
                                             onClick={() => setAddPersonalId(p.id)}
@@ -861,31 +898,69 @@ export default function SemanaPlan() {
                       const isOpen = openPersonKey === persona.pKey
                       const tColor = persona.turno === 'mañana' ? '#d97706' : '#6d28d9'
                       const tBg    = persona.turno === 'mañana' ? '#fef3c7' : '#ede9fe'
+                      const swapOpen = swapPersonaKey === persona.pKey
                       return (
                         <div key={persona.pKey} style={{ marginBottom: 4 }}>
-                          <button
-                            onClick={() => setOpenPersonKey(isOpen ? null : persona.pKey)}
-                            style={{
-                              width: '100%', background: isOpen ? tBg : '#f8fafc',
-                              borderRadius: isOpen ? '8px 8px 0 0' : 8,
-                              padding: '8px 10px', border: 'none',
-                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              cursor: 'pointer', transition: 'all 0.15s',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {/* Encabezado de la persona */}
+                          <div style={{
+                            background: isOpen ? tBg : '#f8fafc',
+                            borderRadius: isOpen ? '8px 8px 0 0' : 8,
+                            display: 'flex', alignItems: 'center',
+                            border: 'none', overflow: 'hidden',
+                          }}>
+                            <button
+                              onClick={() => { setOpenPersonKey(isOpen ? null : persona.pKey); setSwapPersonaKey(null); setSwapPersonalId('') }}
+                              style={{ flex: 1, background: 'transparent', border: 'none', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                            >
                               <span style={{ fontSize: 14 }}>{persona.turno === 'mañana' ? '☀️' : '🌙'}</span>
                               <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{persona.nombre}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            </button>
+                            {/* Botón editar persona — al lado del nombre */}
+                            <button
+                              onClick={e => { e.stopPropagation(); setOpenPersonKey(persona.pKey); setSwapPersonaKey(swapOpen ? null : persona.pKey); setSwapPersonalId('') }}
+                              title="Cambiar persona"
+                              style={{ background: swapOpen ? tColor : 'transparent', border: 'none', padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: swapOpen ? '#fff' : tColor, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s', borderRadius: 6 }}
+                            >✏️</button>
+                            <button
+                              onClick={() => { setOpenPersonKey(isOpen ? null : persona.pKey); setSwapPersonaKey(null); setSwapPersonalId('') }}
+                              style={{ background: 'transparent', border: 'none', padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                            >
                               <span style={{ fontSize: 11, fontWeight: 700, color: tColor, background: tBg, padding: '2px 8px', borderRadius: 8 }}>
                                 {persona.asigs.length} {persona.asigs.length === 1 ? 'día' : 'días'}
                               </span>
                               <span style={{ fontSize: 11, color: '#64748b' }}>{isOpen ? '▲' : '▼'}</span>
-                            </div>
-                          </button>
+                            </button>
+                          </div>
+
                           {isOpen && (
                             <div style={{ background: tBg, borderRadius: '0 0 8px 8px', padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+                              {/* Selector de reemplazo — solo visible cuando se abre el ✏️ */}
+                              {swapOpen && (
+                                <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: `2px solid ${tColor}`, marginBottom: 4 }}>
+                                  <p style={{ fontSize: 11, fontWeight: 700, color: tColor, marginBottom: 8 }}>Cambiar persona en todos los días</p>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
+                                    {personalDB.map(p => {
+                                      const sel = swapPersonalId === p.id
+                                      return (
+                                        <button key={p.id} onClick={() => setSwapPersonalId(p.id)}
+                                          style={{ padding: '7px 10px', borderRadius: 7, textAlign: 'left', border: `2px solid ${sel ? tColor : '#e2e8f0'}`, background: sel ? tBg : '#f8fafc', color: sel ? tColor : '#475569', fontWeight: sel ? 700 : 500, fontSize: 13, cursor: 'pointer', transition: 'all 0.12s' }}>
+                                          {sel ? '✓ ' : ''}{p.nombre}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button onClick={() => swapPersona(persona.asigs, swapPersonalId)} disabled={!swapPersonalId}
+                                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: swapPersonalId ? 'pointer' : 'not-allowed', background: swapPersonalId ? tColor : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13 }}>
+                                      ✓ Guardar cambio
+                                    </button>
+                                    <button onClick={() => { setSwapPersonaKey(null); setSwapPersonalId('') }}
+                                      style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕</button>
+                                  </div>
+                                </div>
+                              )}
+
                               {[...persona.asigs].sort((a, b) => a.fecha.localeCompare(b.fecha)).map(a => {
                                 const dF2 = new Date(a.fecha + 'T12:00:00')
                                 const dJ2 = dF2.getDay()
@@ -893,46 +968,10 @@ export default function SemanaPlan() {
                                 const dLabel = `${DIAS_CORTO[dI2]} ${dF2.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
                                 return (
                                   <div key={a.id}>
-                                    {editandoId === a.id ? (
-                                      <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: '2px solid #86efac', marginBottom: 2 }}>
-                                        <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>Editar asignación</p>
-                                        <div style={{ marginBottom: 10 }}>
-                                          <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Día</p>
-                                          <input type="date" value={editForm.fecha} onChange={e => setEditForm(f => ({ ...f, fecha: e.target.value }))}
-                                            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #86efac', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }} />
-                                        </div>
-                                        <div style={{ marginBottom: 10 }}>
-                                          <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Turno</p>
-                                          <div style={{ display: 'flex', gap: 6 }}>
-                                            <button onClick={() => setEditForm(f => ({ ...f, turno: 'mañana' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: editForm.turno === 'mañana' ? '#d97706' : '#fef3c7', color: editForm.turno === 'mañana' ? '#fff' : '#92400e', transition: 'all 0.15s' }}>☀️ Mañana</button>
-                                            <button onClick={() => setEditForm(f => ({ ...f, turno: 'noche' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: editForm.turno === 'noche' ? '#6d28d9' : '#ede9fe', color: editForm.turno === 'noche' ? '#fff' : '#4c1d95', transition: 'all 0.15s' }}>🌙 Noche</button>
-                                          </div>
-                                        </div>
-                                        <div style={{ marginBottom: 10 }}>
-                                          <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
-                                          <select value={editForm.zona_id} onChange={e => setEditForm(f => ({ ...f, zona_id: e.target.value }))}
-                                            style={{ width: '100%', fontSize: 13, padding: '9px 12px', borderRadius: 10, border: '2px solid #a78bfa', background: 'linear-gradient(135deg, #ede9fe, #fdf4ff)', color: '#5b21b6', fontWeight: 700, cursor: 'pointer' }}>
-                                            <option value="">— Sin zona —</option>
-                                            {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-                                          </select>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                          <button onClick={() => guardarEdicion(a.id)} style={{ flex: 1, background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Guardar</button>
-                                          <button onClick={() => setEditandoId(null)} style={{ flex: 1, background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✕ Cancelar</button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div style={{ background: '#fff', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>{dLabel}</span>
-                                          {a.zona?.nombre && <span style={{ fontSize: 11, color: '#64748b' }}>· {a.zona.nombre}</span>}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 5 }}>
-                                          <button onClick={() => abrirEdicion(a)} style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#15803d', fontWeight: 600 }}>✏️</button>
-                                          <button onClick={() => eliminarAsig(a.id)} style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>✕</button>
-                                        </div>
-                                      </div>
-                                    )}
+                                    <div style={{ background: '#fff', borderRadius: 7, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>{dLabel}</span>
+                                      {a.zona?.nombre && <span style={{ fontSize: 11, color: '#64748b' }}>· {a.zona.nombre}</span>}
+                                    </div>
                                   </div>
                                 )
                               })}

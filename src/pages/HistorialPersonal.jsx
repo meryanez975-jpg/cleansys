@@ -2,39 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 
-// ── helpers de fecha ──────────────────────────────────────────────
-function hoy() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-function mesActualStr() { return hoy().slice(0, 7) }
-
-function diasEnMes(mes) {
-  const [y, m] = mes.split('-').map(Number)
-  return new Date(y, m, 0).getDate()
-}
-function formatMesLargo(mes) {
-  const [y, m] = mes.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
-}
-function fechasDeSemanaActual() {
-  const d = new Date()
-  const dow = d.getDay()
-  const lunes = new Date(d)
-  lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
-  return Array.from({ length: 7 }, (_, i) => {
-    const x = new Date(lunes)
-    x.setDate(lunes.getDate() + i)
-    return x.toISOString().split('T')[0]
-  })
-}
-function fechasDeRangoISO(desde, hasta) {
-  if (!desde || !hasta || desde > hasta) return []
-  const fechas = []
-  const d = new Date(desde + 'T12:00:00')
-  const h = new Date(hasta + 'T12:00:00')
-  while (d <= h) { fechas.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1) }
-  return fechas
+function formatMesLargo(anio, mes) {
+  return new Date(anio, mes, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 }
 function formatFecha(iso) {
   return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', {
@@ -46,18 +15,15 @@ function formatHora(isoStr) {
   return new Date(isoStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
 
-// ── componente principal ──────────────────────────────────────────
 export default function HistorialPersonal() {
   const navigate = useNavigate()
+  const now = new Date()
 
-  const [histFiltro, setHistFiltro] = useState('mes')
-  const [histDesde, setHistDesde]   = useState(hoy())
-  const [histHasta, setHistHasta]   = useState(hoy())
-  const [histAnio, setHistAnio]     = useState(new Date().getFullYear())
+  const [histMes, setHistMes]   = useState(now.getMonth())   // 0-11
+  const [histAnio, setHistAnio] = useState(now.getFullYear())
   const [selId, setSelId]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
-  const [showFiltros, setShowFiltros] = useState(false)
-  const [turnoFiltro, setTurnoFiltro] = useState(null)
+  const [categoriaFiltro, setCategoriaFiltro] = useState(null)
   const [personalSupabase, setPersonalSupabase] = useState([])
   const [loadingPersonal, setLoadingPersonal]   = useState(true)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -71,25 +37,17 @@ export default function HistorialPersonal() {
       })
   }, [])
 
-  // Conjunto de fechas según filtro activo
-  const fechasFiltro = useMemo(() => {
-    if (histFiltro === 'hoy')   return new Set([hoy()])
-    if (histFiltro === 'semana') return new Set(fechasDeSemanaActual())
-    if (histFiltro === 'mes') {
-      const mes   = mesActualStr()
-      const total = diasEnMes(mes)
-      const [y, m] = mes.split('-')
-      const arr = Array.from({ length: total }, (_, i) =>
-        `${y}-${m}-${String(i + 1).padStart(2, '0')}`
-      )
-      return new Set(arr)
-    }
-    if (histFiltro === 'rango') return new Set(fechasDeRangoISO(histDesde, histHasta))
-    if (histFiltro === 'anio')  return null  // null = comparar con startsWith
-    return new Set()
-  }, [histFiltro, histDesde, histHasta, histAnio])
+  function mesAnterior() {
+    if (histMes === 0) { setHistMes(11); setHistAnio(y => y - 1) }
+    else setHistMes(m => m - 1)
+    setSelId(null)
+  }
+  function mesSiguiente() {
+    if (histMes === 11) { setHistMes(0); setHistAnio(y => y + 1) }
+    else setHistMes(m => m + 1)
+    setSelId(null)
+  }
 
-  // Todas las asignaciones y registros
   const { allAsigs, allRegs, allZonas } = useMemo(() => {
     try {
       return {
@@ -98,7 +56,7 @@ export default function HistorialPersonal() {
         allZonas: JSON.parse(localStorage.getItem('cleansys_zonas') || '[]'),
       }
     } catch { return { allAsigs: [], allRegs: [], allZonas: [] } }
-  }, [histFiltro, histDesde, histHasta, histAnio, tick])
+  }, [histMes, histAnio, tick])
 
   function eliminarTodo() {
     localStorage.removeItem('cleansys_asignaciones')
@@ -109,43 +67,30 @@ export default function HistorialPersonal() {
   }
 
   function asigsFiltradas(personal_id) {
-    return allAsigs.filter(a => {
-      if (a.personal_id !== personal_id) return false
-      if (histFiltro === 'anio') return a.fecha.startsWith(String(histAnio))
-      return fechasFiltro.has(a.fecha)
-    }).map(a => ({
-      ...a,
-      zona: allZonas.find(z => z.id === a.zona_id) || null,
-      registro: allRegs.find(r => r.asignacion_id === a.id) || null,
-    })).sort((a, b) => b.fecha.localeCompare(a.fecha))
+    const prefix = `${histAnio}-${String(histMes + 1).padStart(2, '0')}-`
+    return allAsigs
+      .filter(a => a.personal_id === personal_id && a.fecha.startsWith(prefix))
+      .map(a => ({
+        ...a,
+        zona: allZonas.find(z => z.id === a.zona_id) || null,
+        registro: allRegs.find(r => r.asignacion_id === a.id) || null,
+      }))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
   }
 
-  // Helper: mapea el turno de Supabase al turno de cleansys
-  function turnoDePersona(turnoSupabase) {
-    if (!turnoSupabase) return null
-    const t = turnoSupabase.toLowerCase()
-    if (t === 'mañana' || t === 'diurno') return 'mañana'
-    if (t === 'tarde'  || t === 'noche')  return 'noche'
-    return null
+  function categoriaDe(p) {
+    const asigs = asigsFiltradas(p.id)
+    if (asigs.length === 0) return 'sinAsignacion'
+    return asigs.some(a => a.registro?.completado) ? 'cumplieron' : 'noCumplieron'
   }
 
-  // Personal que coincide con la búsqueda y el filtro de turno
   const personalFiltrado = personalSupabase.filter(p => {
     if (!p.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
-    if (turnoFiltro && turnoDePersona(p.turno) !== turnoFiltro) return false
+    if (categoriaFiltro && categoriaDe(p) !== categoriaFiltro) return false
     return true
   })
 
-  // Etiqueta del período activo
-  const labelPeriodo = (() => {
-    if (histFiltro === 'hoy')    return 'Hoy'
-    if (histFiltro === 'semana') return 'Esta semana'
-    if (histFiltro === 'mes')    return formatMesLargo(mesActualStr())
-    if (histFiltro === 'rango' && histDesde && histHasta)
-      return `${histDesde} → ${histHasta}`
-    if (histFiltro === 'anio')   return String(histAnio)
-    return ''
-  })()
+  const labelPeriodo = formatMesLargo(histAnio, histMes)
 
   return (
     <>
@@ -165,171 +110,92 @@ export default function HistorialPersonal() {
             style={{
               background: '#fee2e2', border: '1.5px solid #fecaca',
               borderRadius: 10, padding: '8px 12px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center',
               color: '#dc2626', fontWeight: 700, fontSize: 13,
-              transition: 'all 0.15s',
             }}
           >
             🗑️
           </button>
         </div>
 
-        {/* Buscador + botón filtro */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input
-            className="input"
-            placeholder="Buscar persona..."
-            value={busqueda}
-            onChange={e => { setBusqueda(e.target.value); setSelId(null) }}
-            style={{ flex: 1, margin: 0 }}
-          />
+        {/* Navegador de mes/año */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'var(--bg-card)', border: '1.5px solid var(--border)',
+          borderRadius: 12, padding: '10px 8px', marginBottom: 12,
+        }}>
           <button
-            onClick={() => setShowFiltros(v => !v)}
+            onClick={mesAnterior}
             style={{
-              padding: '0 14px', borderRadius: 10, cursor: 'pointer',
-              border: `2px solid ${showFiltros ? 'var(--primary)' : 'var(--border)'}`,
-              background: showFiltros ? 'var(--primary)' : 'var(--bg-card)',
-              color: showFiltros ? '#fff' : 'var(--text)',
-              fontWeight: 700, fontSize: 15, flexShrink: 0,
-              display: 'flex', alignItems: 'center', gap: 6,
-              transition: 'all 0.15s',
+              background: 'var(--primary-light)', border: 'none', borderRadius: 8,
+              padding: '8px 20px', cursor: 'pointer',
+              color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20,
             }}
-          >
-            🔍
-            <span style={{ fontSize: 12 }}>{labelPeriodo}</span>
-          </button>
+          >‹</button>
+          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', textTransform: 'capitalize' }}>
+            {labelPeriodo}
+          </span>
+          <button
+            onClick={mesSiguiente}
+            style={{
+              background: 'var(--primary-light)', border: 'none', borderRadius: 8,
+              padding: '8px 20px', cursor: 'pointer',
+              color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20,
+            }}
+          >›</button>
         </div>
 
-        {/* Botones de turno — siempre visibles */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: showFiltros ? 0 : 12 }}>
+        {/* Buscador */}
+        <input
+          className="input"
+          placeholder="Buscar persona..."
+          value={busqueda}
+          onChange={e => { setBusqueda(e.target.value); setSelId(null) }}
+          style={{ marginBottom: 8 }}
+        />
+
+        {/* Chips de categoría */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[
-            { key: 'mañana', label: '☀️ Mañana' },
-            { key: 'noche',  label: '🌙 Noche' },
-          ].map(({ key, label }) => {
-            const activo = turnoFiltro === key
-            const esMañana = key === 'mañana'
+            { key: 'cumplieron',    label: '✅ Cumplieron',    color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+            { key: 'noCumplieron',  label: '❌ No cumplieron', color: '#dc2626', bg: '#fee2e2', border: '#fca5a5' },
+            { key: 'sinAsignacion', label: '➖ Sin asig.',     color: '#64748b', bg: '#f1f5f9', border: '#cbd5e1' },
+          ].map(({ key, label, color, bg, border }) => {
+            const activo = categoriaFiltro === key
             return (
               <button
                 key={key}
-                onClick={() => { setTurnoFiltro(activo ? null : key); setSelId(null) }}
+                onClick={() => { setCategoriaFiltro(activo ? null : key); setSelId(null) }}
                 style={{
-                  flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
-                  fontWeight: 700, fontSize: 14,
-                  border: `2px solid ${activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--border)'}`,
-                  background: activo ? (esMañana ? 'var(--manana-bg)' : 'var(--noche-bg)') : 'var(--bg-card)',
-                  color: activo ? (esMañana ? 'var(--manana-badge)' : 'var(--noche-badge)') : 'var(--text)',
+                  flex: 1, padding: '9px 4px', borderRadius: 10, cursor: 'pointer',
+                  fontWeight: 700, fontSize: 11, lineHeight: 1.3,
+                  border: `2px solid ${activo ? border : 'var(--border)'}`,
+                  background: activo ? bg : 'var(--bg-card)',
+                  color: activo ? color : 'var(--text)',
                   transition: 'all 0.15s',
                 }}
-              >
-                {label}
-              </button>
+              >{label}</button>
             )
           })}
         </div>
 
-        {/* Panel de filtros desplegable */}
-        {showFiltros && (
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: '0 0 12px 12px', padding: '10px 14px 14px',
-            marginBottom: 12, boxShadow: 'var(--shadow)',
-            display: 'flex', flexDirection: 'column', gap: 6,
-          }}>
-            {[
-              { key: 'hoy',    label: 'Hoy' },
-              { key: 'semana', label: 'Esta semana' },
-              { key: 'mes',    label: 'Este mes' },
-              { key: 'anio',   label: 'Año' },
-              { key: 'rango',  label: 'Rango de fechas' },
-            ].map(({ key, label }) => {
-              const activo = histFiltro === key
-              return (
-                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <button
-                    onClick={() => {
-                      setHistFiltro(key)
-                      setSelId(null)
-                      if (key !== 'rango' && key !== 'anio') setShowFiltros(false)
-                    }}
-                    style={{
-                      width: '100%', padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
-                      fontWeight: 700, fontSize: 14, textAlign: 'left',
-                      border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
-                      background: activo ? 'var(--primary)' : 'transparent',
-                      color: activo ? '#fff' : 'var(--text)',
-                      transition: 'all 0.15s',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    }}
-                  >
-                    {label}
-                    {activo && <span style={{ fontSize: 12 }}>✓</span>}
-                  </button>
-
-                  {/* Selector de año inline */}
-                  {activo && key === 'anio' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center', padding: '4px 0' }}>
-                      <button
-                        onClick={() => { setHistAnio(y => y - 1); setSelId(null) }}
-                        style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 18px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 18 }}
-                      >‹</button>
-                      <span style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)', minWidth: 60, textAlign: 'center' }}>
-                        {histAnio}
-                      </span>
-                      <button
-                        onClick={() => { setHistAnio(y => y + 1); setSelId(null) }}
-                        style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 18px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 18 }}
-                      >›</button>
-                    </div>
-                  )}
-
-                  {/* Inputs de rango inline */}
-                  {activo && key === 'rango' && (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <input
-                        type="date" value={histDesde}
-                        onChange={e => { setHistDesde(e.target.value); setSelId(null) }}
-                        style={{
-                          flex: 1, padding: '8px 10px', borderRadius: 8,
-                          border: '2px solid var(--border)', fontSize: 13,
-                          background: 'var(--bg)', color: 'var(--text)',
-                        }}
-                      />
-                      <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>→</span>
-                      <input
-                        type="date" value={histHasta}
-                        onChange={e => {
-                          setHistHasta(e.target.value)
-                          setSelId(null)
-                          if (histDesde && e.target.value) setShowFiltros(false)
-                        }}
-                        style={{
-                          flex: 1, padding: '8px 10px', borderRadius: 8,
-                          border: '2px solid var(--border)', fontSize: 13,
-                          background: 'var(--bg)', color: 'var(--text)',
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Lista de personal */}
+        {/* Lista plana */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loadingPersonal && (
             <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
           )}
-          {!loadingPersonal && personalFiltrado.length === 0 && (
+          {!loadingPersonal && !categoriaFiltro && (
+            <p className="text-muted text-center" style={{ padding: 32, fontSize: 14 }}>
+              Seleccioná un filtro para ver el personal
+            </p>
+          )}
+          {!loadingPersonal && categoriaFiltro && personalFiltrado.length === 0 && (
             <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
           )}
-
-          {personalFiltrado.map(p => {
+          {!loadingPersonal && categoriaFiltro && personalFiltrado.map(p => {
             const asigs    = asigsFiltradas(p.id)
             const cantidad = asigs.length
             const abierto  = selId === p.id
-
             return (
               <div key={p.id}>
                 <button
@@ -344,7 +210,6 @@ export default function HistorialPersonal() {
                     boxShadow: 'var(--shadow)', transition: 'all 0.15s',
                   }}
                 >
-                  {/* Avatar */}
                   <div style={{
                     width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
                     background: abierto ? 'rgba(255,255,255,0.2)' : 'var(--primary-light)',
@@ -380,7 +245,6 @@ export default function HistorialPersonal() {
                   </span>
                 </button>
 
-                {/* Detalle expandido */}
                 {abierto && (
                   <div style={{
                     background: 'var(--bg-card)',
@@ -400,18 +264,16 @@ export default function HistorialPersonal() {
                         </p>
                         {asigs.map(a => {
                           const reg = a.registro
-                          const completado = reg?.completado
-                          const enCurso   = reg && !reg.completado
+                          const completado  = reg?.completado
+                          const enCurso     = reg && !reg.completado
                           const statusColor = completado ? '#15803d' : enCurso ? '#b45309' : '#9ca3af'
                           const statusBg    = completado ? '#dcfce7'  : enCurso ? '#fef3c7' : '#f3f4f6'
                           const statusLabel = completado ? 'Completado' : enCurso ? 'En curso' : 'Sin registro'
-
                           return (
                             <div key={a.id} style={{
                               background: a.turno === 'mañana' ? 'var(--manana-bg)' : 'var(--noche-bg)',
                               borderRadius: 8, padding: '8px 12px',
                             }}>
-                              {/* fecha + estado */}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textTransform: 'capitalize' }}>
                                   {formatFecha(a.fecha)}
@@ -424,8 +286,6 @@ export default function HistorialPersonal() {
                                   {statusLabel}
                                 </span>
                               </div>
-
-                              {/* zona + turno */}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                                   🏢 {a.zona?.nombre || '—'}
@@ -437,8 +297,6 @@ export default function HistorialPersonal() {
                                   {a.turno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
                                 </span>
                               </div>
-
-                              {/* horarios */}
                               {reg && (reg.hora_entrada || reg.hora_salida) && (
                                 <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 12 }}>
                                   {reg.hora_entrada && (
