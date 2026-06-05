@@ -241,173 +241,97 @@ export default function HistorialPersonal() {
               </p>
             </div>
           )}
-          {!loadingPersonal && filtroZona && personalFiltrado.length === 0 && (
-            <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
-          )}
-          {!loadingPersonal && filtroZona && personalFiltrado.map(p => {
-            const asigs    = asigsFiltradas(p.id)
-            const cantidad = asigs.length
-            const abierto  = selId === p.id
+          {!loadingPersonal && filtroZona && (() => {
+            const DIAS_NOMBRE = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+            const dias = fechasSemana.map((fecha, i) => {
+              const asigsDia = allAsigs
+                .filter(a => a.fecha === fecha && a.zona_id === filtroZona && a.activo !== false)
+                .map(a => ({
+                  ...a,
+                  persona:  personalSupabase.find(p => p.id === a.personal_id) || null,
+                  registro: allRegs.find(r => r.asignacion_id === a.id) || null,
+                }))
+              return {
+                nombre: DIAS_NOMBRE[i],
+                fecha,
+                manana: asigsDia.find(a => a.turno === 'mañana') || null,
+                noche:  asigsDia.find(a => a.turno !== 'mañana') || null,
+              }
+            })
+
+            function slotOk(asig) {
+              if (!categoriaFiltro) return true
+              if (!asig) return false
+              return categoriaFiltro === 'cumplieron' ? !!asig.registro?.completado : !asig.registro?.completado
+            }
+
+            function Slot({ asig, label, emoji }) {
+              if (!asig) {
+                if (categoriaFiltro) return null
+                return (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: 'var(--bg)', border: '1.5px dashed var(--border)',
+                    borderRadius: 8, padding: '8px 12px', opacity: 0.45,
+                  }}>
+                    <span style={{ fontSize: 14 }}>{emoji}</span>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{label} · sin asignación</p>
+                  </div>
+                )
+              }
+              if (!slotOk(asig)) return null
+              const completado = asig.registro?.completado
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  background: completado ? '#f0fdf4' : '#fff1f2',
+                  border: `1.5px solid ${completado ? '#bbf7d0' : '#fecdd3'}`,
+                  borderRadius: 8, padding: '8px 12px',
+                }}>
+                  <span style={{ fontSize: 16 }}>{completado ? '✅' : '❌'}</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                      {asig.persona?.nombre || '—'}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {emoji} {label}{asig.persona?.sector ? ` · ${asig.persona.sector}` : ''}
+                    </p>
+                  </div>
+                  {asig.registro?.hora_entrada && (
+                    <p style={{ fontSize: 11, color: '#15803d', fontWeight: 600, textAlign: 'right' }}>
+                      {formatHora(asig.registro.hora_entrada)}<br/>→ {formatHora(asig.registro.hora_salida)}
+                    </p>
+                  )}
+                </div>
+              )
+            }
+
+            const diasVisibles = dias.filter(d => !categoriaFiltro || slotOk(d.manana) || slotOk(d.noche))
+
+            if (diasVisibles.length === 0) return (
+              <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
+            )
+
             return (
-              <div key={p.id}>
-                <button
-                  onClick={() => setSelId(abierto ? null : p.id)}
-                  style={{
-                    width: '100%',
-                    background: abierto ? 'var(--primary)' : 'var(--bg-card)',
-                    border: `1.5px solid ${abierto ? 'var(--primary)' : 'var(--border)'}`,
-                    borderRadius: abierto ? '10px 10px 0 0' : 10,
-                    padding: '12px 16px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    boxShadow: 'var(--shadow)', transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{
-                    width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                    background: abierto ? 'rgba(255,255,255,0.2)' : 'var(--primary-light)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: 15,
-                    color: abierto ? '#fff' : 'var(--primary-dark)',
-                  }}>
-                    {p.nombre.charAt(0).toUpperCase()}
-                  </div>
-
-                  <div style={{ flex: 1, textAlign: 'left' }}>
-                    <p style={{ fontWeight: 600, fontSize: 14, color: abierto ? '#fff' : 'var(--text)' }}>
-                      {p.nombre}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {diasVisibles.map(dia => (
+                  <div key={dia.fecha}>
+                    <p style={{
+                      fontSize: 12, fontWeight: 700, color: 'var(--text)',
+                      textTransform: 'capitalize', marginBottom: 6,
+                      paddingBottom: 5, borderBottom: '1.5px solid var(--border)',
+                    }}>
+                      {dia.nombre} · {new Date(dia.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
                     </p>
-                    {p.sector && (
-                      <p style={{ fontSize: 12, color: abierto ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>
-                        {p.sector}
-                      </p>
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <Slot asig={dia.manana} label="Mañana" emoji="☀️" />
+                      <Slot asig={dia.noche}  label="Noche"  emoji="🌙" />
+                    </div>
                   </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontWeight: 700, fontSize: 20, color: abierto ? '#fff' : (cantidad > 0 ? 'var(--primary)' : 'var(--text-light)') }}>
-                      {cantidad}
-                    </p>
-                    <p style={{ fontSize: 11, color: abierto ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>
-                      vez{cantidad !== 1 ? 'es' : ''}
-                    </p>
-                  </div>
-
-                  <span style={{ color: abierto ? '#fff' : 'var(--text-muted)', fontSize: 14 }}>
-                    {abierto ? '▲' : '▼'}
-                  </span>
-                </button>
-
-                {abierto && (
-                  <div style={{
-                    background: 'var(--bg-card)',
-                    border: '1.5px solid var(--primary)',
-                    borderTop: 'none',
-                    borderRadius: '0 0 10px 10px',
-                    padding: '12px 16px',
-                  }}>
-                    {(() => {
-                      const DIAS_SEMANA = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
-                      const asigsFiltradas2 = asigs.filter(a => {
-                        if (!categoriaFiltro) return true
-                        const completado = a.registro?.completado
-                        if (categoriaFiltro === 'cumplieron')   return completado
-                        if (categoriaFiltro === 'noCumplieron') return !completado
-                        return true
-                      })
-                      const porDia = DIAS_SEMANA.map((nombre, i) => {
-                        const asigsDia = asigsFiltradas2.filter(a => {
-                          const d = new Date(a.fecha + 'T12:00:00').getDay()
-                          return (d === 0 ? 6 : d - 1) === i
-                        }).sort((a, b) => a.fecha.localeCompare(b.fecha))
-                        return {
-                          nombre,
-                          manana: asigsDia.filter(a => a.turno === 'mañana'),
-                          noche:  asigsDia.filter(a => a.turno !== 'mañana'),
-                        }
-                      })
-
-                      const totalNoCumplieron = asigs.filter(a => !a.registro?.completado).length
-                      const totalCumplieron   = asigs.filter(a =>  a.registro?.completado).length
-
-                      if (asigs.length === 0) return (
-                        <p className="text-muted" style={{ textAlign: 'center', padding: '12px 0' }}>
-                          Sin limpieza en este período
-                        </p>
-                      )
-
-                      function SlotTurno({ asig, turnoLabel, emoji }) {
-                        if (!asig) return (
-                          <div style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            background: 'var(--bg)', border: '1.5px dashed var(--border)',
-                            borderRadius: 8, padding: '7px 12px', opacity: 0.5,
-                          }}>
-                            <span style={{ fontSize: 14 }}>{emoji}</span>
-                            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{turnoLabel} · sin asignación</p>
-                          </div>
-                        )
-                        const reg = asig.registro
-                        const noCumplió = !reg?.completado
-                        return (
-                          <div style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            background: noCumplió ? '#fff1f2' : '#f0fdf4',
-                            border: `1.5px solid ${noCumplió ? '#fecdd3' : '#bbf7d0'}`,
-                            borderRadius: 8, padding: '7px 12px',
-                          }}>
-                            <span style={{ fontSize: 14 }}>{noCumplió ? '❌' : '✅'}</span>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
-                                {emoji} {turnoLabel}
-                              </p>
-                              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                🏢 {asig.zona?.nombre || '—'}
-                              </p>
-                            </div>
-                            {reg?.hora_entrada && (
-                              <p style={{ fontSize: 10, color: '#15803d', fontWeight: 600 }}>
-                                {formatHora(reg.hora_entrada)} → {formatHora(reg.hora_salida)}
-                              </p>
-                            )}
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {/* Resumen */}
-                          <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                            <div style={{ flex: 1, background: '#dcfce7', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
-                              <p style={{ fontSize: 18, fontWeight: 800, color: '#15803d' }}>{totalCumplieron}</p>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#15803d' }}>✅ Cumplidos</p>
-                            </div>
-                            <div style={{ flex: 1, background: '#fee2e2', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
-                              <p style={{ fontSize: 18, fontWeight: 800, color: '#dc2626' }}>{totalNoCumplieron}</p>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#dc2626' }}>❌ No cumplió</p>
-                            </div>
-                          </div>
-
-                          {/* Por día Lunes–Domingo */}
-                          {porDia.map(dia => (
-                            <div key={dia.nombre}>
-                              <p style={{
-                                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-                                textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5,
-                              }}>{dia.nombre}</p>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                                <SlotTurno asig={dia.manana[0]} turnoLabel="Mañana" emoji="☀️" />
-                                <SlotTurno asig={dia.noche[0]}  turnoLabel="Noche"  emoji="🌙" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
+                ))}
               </div>
             )
-          })}
+          })()}
         </div>
 
       </div>
