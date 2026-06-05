@@ -122,7 +122,7 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
             icono="🏢"
             texto="Zonas de limpieza"
             sub="Agregar, editar y eliminar zonas"
-            onClick={() => onAbrirZonas && accion(onAbrirZonas)}
+            onClick={() => ir('/zonas')}
           />
 
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
