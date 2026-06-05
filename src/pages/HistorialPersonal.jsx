@@ -178,9 +178,8 @@ export default function HistorialPersonal() {
         {/* Chips de categoría — solo visibles si hay zona seleccionada */}
         {filtroZona && <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[
-            { key: 'cumplieron',    label: '✅ Cumplieron',    color: '#15803d', bg: '#dcfce7', border: '#86efac' },
-            { key: 'noCumplieron',  label: '❌ No cumplieron', color: '#dc2626', bg: '#fee2e2', border: '#fca5a5' },
-            { key: 'sinAsignacion', label: '➖ Sin asig.',     color: '#64748b', bg: '#f1f5f9', border: '#cbd5e1' },
+            { key: 'cumplieron',   label: '✅ Cumplieron',    color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+            { key: 'noCumplieron', label: '❌ No cumplieron', color: '#dc2626', bg: '#fee2e2', border: '#fca5a5' },
           ].map(({ key, label, color, bg, border }) => {
             const activo = categoriaFiltro === key
             return (
