@@ -466,6 +466,65 @@ export default function SemanaPlan() {
               </div>
             </div>
 
+            {/* Accesos rápidos */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Accesos rápidos
+            </p>
+
+            <button
+              onClick={() => setVista('semana')}
+              style={{
+                width: '100%', border: 'none', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                padding: '18px 20px',
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)',
+                boxShadow: '0 4px 16px rgba(29,78,216,0.3)',
+                display: 'flex', alignItems: 'center', gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 28 }}>📅</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>Ver semana</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Asignaciones de la semana completa</p>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20 }}>›</span>
+            </button>
+
+            <button
+              onClick={() => setVista('limpieza')}
+              style={{
+                width: '100%', border: 'none', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                padding: '18px 20px',
+                background: 'linear-gradient(135deg, #15803d 0%, #22c55e 100%)',
+                boxShadow: '0 4px 16px rgba(21,128,61,0.3)',
+                display: 'flex', alignItems: 'center', gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 28 }}>🧹</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>Estado de limpieza</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Ver quién cumplió y quién no</p>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20 }}>›</span>
+            </button>
+
+            <button
+              onClick={() => setVista('sinTarea')}
+              style={{
+                width: '100%', border: 'none', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                padding: '18px 20px',
+                background: 'linear-gradient(135deg, #475569 0%, #64748b 100%)',
+                boxShadow: '0 4px 16px rgba(71,85,105,0.25)',
+                display: 'flex', alignItems: 'center', gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 28 }}>🧮</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>Conteo semanal</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Cuántas limpiezas por persona</p>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20 }}>›</span>
+            </button>
+
           </div>
         )}
 
