@@ -131,8 +131,37 @@ export default function SemanaPlan() {
     }
   }, [rangoPersonalizado])
 
+  // Detectar personas inactivas con asignaciones futuras
+  useEffect(() => {
+    async function checkInactivos() {
+      const hoyISO = fechaISO(new Date())
+      const { data: todos } = await supabase.from('com_personal').select('id, nombre, activo')
+      if (!todos) return
+      const inactivosIds = todos.filter(p => !p.activo).map(p => p.id)
+      if (inactivosIds.length === 0) return
+      const { data: futuras } = await supabase
+        .from('limpieza_asignaciones')
+        .select('id, personal_id, fecha, turno, zona_id')
+        .gte('fecha', hoyISO)
+        .eq('activo', true)
+        .in('personal_id', inactivosIds)
+      if (!futuras || futuras.length === 0) return
+      const porPersona = {}
+      futuras.forEach(a => {
+        if (!porPersona[a.personal_id]) {
+          const p = todos.find(x => x.id === a.personal_id)
+          porPersona[a.personal_id] = { nombre: p?.nombre || '?', asigs: [] }
+        }
+        porPersona[a.personal_id].asigs.push(a)
+      })
+      setAlertasInactivos(Object.values(porPersona))
+    }
+    checkInactivos()
+  }, [])
+
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
-  const { personal, agregar: agregarPersonal, editar: editarPersonal, eliminar: eliminarPersonal, refetch: refetchPersonal } = usePersonal()
+  const { personal, refetch: refetchPersonal } = usePersonal()
+  const [alertasInactivos, setAlertasInactivos] = useState([])
   const { personal: personalDB } = usePersonalComidas(null)
 
   useEffect(() => {
@@ -471,6 +500,39 @@ export default function SemanaPlan() {
               </div>
             </div>
 
+
+            {/* Alertas de personal inactivo */}
+            {alertasInactivos.map(({ nombre, asigs }) => (
+              <div key={nombre} style={{
+                background: '#fff7ed',
+                border: '2px solid #f97316',
+                borderRadius: 14, padding: '14px 16px',
+                display: 'flex', gap: 12, alignItems: 'flex-start',
+              }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>⚠️</span>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: '#9a3412', marginBottom: 4 }}>
+                    {nombre} ya no está disponible
+                  </p>
+                  <p style={{ fontSize: 13, color: '#c2410c', lineHeight: 1.5 }}>
+                    Tiene <strong>{asigs.length} turno{asigs.length !== 1 ? 's' : ''}</strong> próximo{asigs.length !== 1 ? 's' : ''} sin cubrir. Reasignalo antes de esas fechas.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {asigs.slice(0, 5).map(a => (
+                      <span key={a.id} style={{
+                        background: '#fed7aa', borderRadius: 8,
+                        padding: '3px 9px', fontSize: 11, fontWeight: 600, color: '#9a3412',
+                      }}>
+                        {new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} · {a.turno}
+                      </span>
+                    ))}
+                    {asigs.length > 5 && (
+                      <span style={{ fontSize: 11, color: '#c2410c', fontWeight: 600 }}>+{asigs.length - 5} más</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
 
           </div>
         )}
@@ -1191,15 +1253,6 @@ export default function SemanaPlan() {
         />
       )}
 
-      {showPersonal && (
-        <PersonalModal
-          personal={personal}
-          onAgregar={agregarPersonal}
-          onEditar={editarPersonal}
-          onEliminar={eliminarPersonal}
-          onClose={() => { setShowPersonal(false); refetchPersonal() }}
-        />
-      )}
 
       {confirmSalida && (
         <ModalConfirmSalida
