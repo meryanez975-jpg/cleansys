@@ -298,7 +298,13 @@ export default function HistorialPersonal() {
                         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>
                           {cantidad} limpieza{cantidad !== 1 ? 's' : ''} — {labelPeriodo}
                         </p>
-                        {asigs.map(a => {
+                        {asigs.filter(a => {
+                          if (!categoriaFiltro) return true
+                          const completado = a.registro?.completado
+                          if (categoriaFiltro === 'cumplieron')    return completado
+                          if (categoriaFiltro === 'noCumplieron')  return !completado
+                          return true
+                        }).map(a => {
                           const reg = a.registro
                           const completado  = reg?.completado
                           const enCurso     = reg && !reg.completado
