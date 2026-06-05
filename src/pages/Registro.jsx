@@ -374,15 +374,21 @@ export default function Registro() {
                         </div>
                         {/* Botón compartir */}
                         <button
-                          onClick={() => compartirWhatsApp({
-                            nombre: empleadoSeleccionado?.nombre,
-                            zona: a.zona?.nombre,
-                            turno: a.turno,
-                            fecha: fechaHoy,
-                            horaEntrada: reg.hora_entrada,
-                            horaSalida: reg.hora_salida,
-                            notas: reg.notas,
-                          })}
+                          onClick={() => {
+                            compartirWhatsApp({
+                              nombre: empleadoSeleccionado?.nombre,
+                              zona: a.zona?.nombre,
+                              turno: a.turno,
+                              fecha: fechaHoy,
+                              horaEntrada: reg.hora_entrada,
+                              horaSalida: reg.hora_salida,
+                              notas: reg.notas,
+                            })
+                            setTimeout(() => {
+                              setEmpleadoId(null)
+                              localStorage.removeItem('cleansys_reg_emp')
+                            }, 800)
+                          }}
                           style={{
                             width: '100%', padding: '12px 0', borderRadius: 10, cursor: 'pointer',
                             background: 'linear-gradient(135deg, #25d366, #128c7e)',
