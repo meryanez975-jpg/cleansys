@@ -471,6 +471,41 @@ export default function SemanaPlan() {
               </div>
             </div>
 
+            <button
+              onClick={() => setVista('semana')}
+              style={{
+                width: '100%', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                padding: '18px 20px',
+                background: 'rgba(255,255,255,0.13)',
+                border: '1.5px solid rgba(255,255,255,0.22)',
+                display: 'flex', alignItems: 'center', gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 30 }}>📅</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>Ver semana</p>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>Asignaciones de la semana completa</p>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</span>
+            </button>
+
+            <button
+              onClick={() => setVista('limpieza')}
+              style={{
+                width: '100%', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                padding: '18px 20px',
+                background: 'rgba(255,255,255,0.13)',
+                border: '1.5px solid rgba(255,255,255,0.22)',
+                display: 'flex', alignItems: 'center', gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 30 }}>🧹</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>Estado de limpieza</p>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>Ver quién cumplió y quién no</p>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</span>
+            </button>
 
           </div>
         )}
