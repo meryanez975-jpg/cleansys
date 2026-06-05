@@ -368,7 +368,10 @@ export default function SemanaPlan() {
   }
 
   return (
-    <div className="page">
+    <div className="page" style={vista === 'inicio' ? {
+      background: 'linear-gradient(160deg, #1e3a8a 0%, #3b82f6 40%, #7c3aed 100%)',
+      minHeight: '100vh',
+    } : {}}>
       <div className="container">
 
         {/* Header */}
@@ -376,22 +379,23 @@ export default function SemanaPlan() {
           <button
             onClick={() => confirmarSiHayDraft(() => setShowMenu(true))}
             style={{
-              background: 'var(--primary-light)', border: 'none',
+              background: vista === 'inicio' ? 'rgba(255,255,255,0.15)' : 'var(--primary-light)',
+              border: 'none',
               borderRadius: 'var(--radius-sm)', cursor: 'pointer', padding: '10px 12px',
               display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--primary-dark)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: vista === 'inicio' ? '#fff' : 'var(--primary-dark)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: vista === 'inicio' ? '#fff' : 'var(--primary-dark)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: vista === 'inicio' ? '#fff' : 'var(--primary-dark)', borderRadius: 2 }} />
           </button>
           <div style={{ flex: 1 }}>
-            <p className="header-title">
+            <p className="header-title" style={vista === 'inicio' ? { color: '#fff' } : {}}>
               {zonaFiltro ? (zonas.find(z => z.id === zonaFiltro)?.nombre ?? 'Semana de trabajo') : 'Semana de trabajo'}
             </p>
-            <p className="header-sub">
-            Hoy, {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
+            <p className="header-sub" style={vista === 'inicio' ? { color: 'rgba(255,255,255,0.7)' } : {}}>
+              Hoy, {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
           </div>
         </div>
 
@@ -401,11 +405,12 @@ export default function SemanaPlan() {
 
             {/* Tarjeta principal de bienvenida */}
             <div style={{
-              background: 'linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%)',
+              background: 'rgba(255,255,255,0.12)',
+              border: '1.5px solid rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(12px)',
               borderRadius: 'var(--radius)',
               padding: '24px 20px',
               color: '#fff',
-              boxShadow: '0 6px 24px rgba(29,78,216,0.3)',
             }}>
               <p style={{ fontSize: 13, fontWeight: 600, opacity: 0.75, textTransform: 'capitalize' }}>
                 {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
