@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
+import { getTareasZona } from '../data/store'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -212,21 +213,19 @@ export default function Registro() {
   const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
   const [busqueda, setBusqueda]           = useState('')
   const [confirmando, setConfirmando]     = useState(null)
-  const [checkBasura, setCheckBasura]     = useState(false)
-  const [checkCartones, setCheckCartones] = useState(false)
+  const [checksZona, setChecksZona]       = useState({})
 
   function buildNotas() {
-    const items = []
-    if (checkBasura)   items.push('Saqué la basura')
-    if (checkCartones) items.push('Acomodé cartones')
-    return items.join(' · ')
+    return Object.entries(checksZona)
+      .filter(([, v]) => v)
+      .map(([k]) => k)
+      .join(' · ')
   }
 
   function handleConfirmarSalida(asigId) {
     marcarSalida(asigId, buildNotas())
     setConfirmando(null)
-    setCheckBasura(false)
-    setCheckCartones(false)
+    setChecksZona({})
   }
 
   const empleadoSeleccionado = personal.find(p => p.id === empleadoId)
@@ -401,21 +400,24 @@ export default function Registro() {
 
                         {confirmando === a.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {/* Checkboxes */}
-                            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>¿Qué hiciste?</p>
-                            <CheckItem
-                              checked={checkBasura}
-                              onChange={setCheckBasura}
-                              label="Saqué la basura"
-                              emoji="🗑️"
-                            />
-                            <CheckItem
-                              checked={checkCartones}
-                              onChange={setCheckCartones}
-                              label="Acomodé cartones"
-                              emoji="📦"
-                            />
-
+                            {(() => {
+                              const tareas = getTareasZona(a.zona_id)
+                              if (tareas.length === 0) return null
+                              return (
+                                <>
+                                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>¿Qué hiciste?</p>
+                                  {tareas.map((tarea, i) => (
+                                    <CheckItem
+                                      key={i}
+                                      checked={!!checksZona[tarea]}
+                                      onChange={v => setChecksZona(prev => ({ ...prev, [tarea]: v }))}
+                                      label={tarea}
+                                      emoji="✅"
+                                    />
+                                  ))}
+                                </>
+                              )
+                            })()}
 
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
@@ -425,7 +427,7 @@ export default function Registro() {
                               >
                                 ✓ Confirmar salida
                               </button>
-                              <button className="btn btn-ghost" onClick={() => { setConfirmando(null); setCheckBasura(false); setCheckCartones(false) }}>
+                              <button className="btn btn-ghost" onClick={() => { setConfirmando(null); setChecksZona({}) }}>
                                 Cancelar
                               </button>
                             </div>

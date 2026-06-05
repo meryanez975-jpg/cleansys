@@ -284,3 +284,21 @@ export function cambiarPin(id, nuevoPin) {
   const all = leer('supervisores')
   escribir('supervisores', all.map(s => s.id === id ? { ...s, pin: nuevoPin } : s))
 }
+
+// ── TAREAS POR ZONA ───────────────────────────────
+export function getTareasZona(zona_id) {
+  try {
+    const raw = localStorage.getItem('cleansys_zonas_tareas')
+    if (!raw) return []
+    return JSON.parse(raw)[zona_id] || []
+  } catch { return [] }
+}
+
+export function setTareasZona(zona_id, tareas) {
+  try {
+    const raw = localStorage.getItem('cleansys_zonas_tareas')
+    const map = raw ? JSON.parse(raw) : {}
+    map[zona_id] = tareas
+    localStorage.setItem('cleansys_zonas_tareas', JSON.stringify(map))
+  } catch {}
+}
