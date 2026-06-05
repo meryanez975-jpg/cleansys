@@ -155,46 +155,25 @@ export default function HistorialPersonal() {
         </div>
 
         {/* Selector de zona */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Zona de limpieza
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {allZonas.filter(z => z.activo !== false).map(z => {
-              const activo = filtroZona === z.id
-              const prefix = `${histAnio}-${String(histMes + 1).padStart(2, '0')}-`
-              const cantPersonas = personalSupabase.filter(p =>
-                allAsigs.some(a => a.personal_id === p.id && a.zona_id === z.id && a.fecha.startsWith(prefix))
-              ).length
-              return (
-                <button
-                  key={z.id}
-                  onClick={() => { setFiltroZona(activo ? null : z.id); setSelId(null); setCategoriaFiltro(null) }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
-                    background: activo ? 'var(--primary)' : 'var(--bg-card)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                    background: activo ? 'rgba(255,255,255,0.2)' : 'var(--primary-light)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                  }}>🏢</div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: 14, color: activo ? '#fff' : 'var(--text)' }}>{z.nombre}</p>
-                    <p style={{ fontSize: 12, color: activo ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)' }}>
-                      {cantPersonas} persona{cantPersonas !== 1 ? 's' : ''} este mes
-                    </p>
-                  </div>
-                  {activo && <span style={{ color: '#fff', fontSize: 16 }}>✓</span>}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        {/* Selector de zona como dropdown */}
+        <select
+          value={filtroZona || ''}
+          onChange={e => { setFiltroZona(e.target.value || null); setSelId(null); setCategoriaFiltro(null) }}
+          style={{
+            width: '100%', padding: '12px 14px', marginBottom: 12,
+            borderRadius: 10, border: '1.5px solid var(--border)',
+            background: 'var(--bg-card)', color: 'var(--text)',
+            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            appearance: 'none', WebkitAppearance: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center',
+          }}
+        >
+          <option value=''>🏢 Filtrar por zona...</option>
+          {allZonas.filter(z => z.activo !== false).map(z => (
+            <option key={z.id} value={z.id}>🏢 {z.nombre}</option>
+          ))}
+        </select>
 
         {/* Chips de categoría */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
