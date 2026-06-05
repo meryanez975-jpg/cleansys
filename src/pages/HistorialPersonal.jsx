@@ -305,11 +305,7 @@ export default function HistorialPersonal() {
                     borderRadius: '0 0 10px 10px',
                     padding: '12px 16px',
                   }}>
-                    {asigs.length === 0 ? (
-                      <p className="text-muted" style={{ textAlign: 'center', padding: '12px 0' }}>
-                        Sin limpieza en este período
-                      </p>
-                    ) : (() => {
+                    {(() => {
                       const DIAS_SEMANA = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
                       const asigsFiltradas2 = asigs.filter(a => {
                         if (!categoriaFiltro) return true
@@ -318,16 +314,64 @@ export default function HistorialPersonal() {
                         if (categoriaFiltro === 'noCumplieron') return !completado
                         return true
                       })
-                      const porDia = DIAS_SEMANA.map((nombre, i) => ({
-                        nombre,
-                        asigs: asigsFiltradas2.filter(a => {
+                      const porDia = DIAS_SEMANA.map((nombre, i) => {
+                        const asigsDia = asigsFiltradas2.filter(a => {
                           const d = new Date(a.fecha + 'T12:00:00').getDay()
                           return (d === 0 ? 6 : d - 1) === i
                         }).sort((a, b) => a.fecha.localeCompare(b.fecha))
-                      })).filter(d => d.asigs.length > 0)
+                        return {
+                          nombre,
+                          manana: asigsDia.filter(a => a.turno === 'mañana'),
+                          noche:  asigsDia.filter(a => a.turno !== 'mañana'),
+                        }
+                      })
 
                       const totalNoCumplieron = asigs.filter(a => !a.registro?.completado).length
                       const totalCumplieron   = asigs.filter(a =>  a.registro?.completado).length
+
+                      if (asigs.length === 0) return (
+                        <p className="text-muted" style={{ textAlign: 'center', padding: '12px 0' }}>
+                          Sin limpieza en este período
+                        </p>
+                      )
+
+                      function SlotTurno({ asig, turnoLabel, emoji }) {
+                        if (!asig) return (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            background: 'var(--bg)', border: '1.5px dashed var(--border)',
+                            borderRadius: 8, padding: '7px 12px', opacity: 0.5,
+                          }}>
+                            <span style={{ fontSize: 14 }}>{emoji}</span>
+                            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{turnoLabel} · sin asignación</p>
+                          </div>
+                        )
+                        const reg = asig.registro
+                        const noCumplió = !reg?.completado
+                        return (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            background: noCumplió ? '#fff1f2' : '#f0fdf4',
+                            border: `1.5px solid ${noCumplió ? '#fecdd3' : '#bbf7d0'}`,
+                            borderRadius: 8, padding: '7px 12px',
+                          }}>
+                            <span style={{ fontSize: 14 }}>{noCumplió ? '❌' : '✅'}</span>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+                                {emoji} {turnoLabel}
+                              </p>
+                              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                🏢 {asig.zona?.nombre || '—'}
+                              </p>
+                            </div>
+                            {reg?.hora_entrada && (
+                              <p style={{ fontSize: 10, color: '#15803d', fontWeight: 600 }}>
+                                {formatHora(reg.hora_entrada)} → {formatHora(reg.hora_salida)}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      }
 
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -343,43 +387,16 @@ export default function HistorialPersonal() {
                             </div>
                           </div>
 
-                          {/* Por día de semana */}
+                          {/* Por día Lunes–Domingo */}
                           {porDia.map(dia => (
                             <div key={dia.nombre}>
                               <p style={{
                                 fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-                                textTransform: 'uppercase', letterSpacing: '0.06em',
-                                marginBottom: 6,
+                                textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5,
                               }}>{dia.nombre}</p>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                                {dia.asigs.map(a => {
-                                  const reg = a.registro
-                                  const completado = reg?.completado
-                                  const noCumplió  = !completado
-                                  return (
-                                    <div key={a.id} style={{
-                                      display: 'flex', alignItems: 'center', gap: 10,
-                                      background: noCumplió ? '#fff1f2' : '#f0fdf4',
-                                      border: `1.5px solid ${noCumplió ? '#fecdd3' : '#bbf7d0'}`,
-                                      borderRadius: 8, padding: '8px 12px',
-                                    }}>
-                                      <span style={{ fontSize: 16 }}>{noCumplió ? '❌' : '✅'}</span>
-                                      <div style={{ flex: 1 }}>
-                                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textTransform: 'capitalize' }}>
-                                          {new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                                        </p>
-                                        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                          {a.turno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'} · 🏢 {a.zona?.nombre || '—'}
-                                        </p>
-                                      </div>
-                                      {reg?.hora_entrada && (
-                                        <p style={{ fontSize: 11, color: '#15803d', fontWeight: 600 }}>
-                                          {formatHora(reg.hora_entrada)} → {formatHora(reg.hora_salida)}
-                                        </p>
-                                      )}
-                                    </div>
-                                  )
-                                })}
+                                <SlotTurno asig={dia.manana[0]} turnoLabel="Mañana" emoji="☀️" />
+                                <SlotTurno asig={dia.noche[0]}  turnoLabel="Noche"  emoji="🌙" />
                               </div>
                             </div>
                           ))}
