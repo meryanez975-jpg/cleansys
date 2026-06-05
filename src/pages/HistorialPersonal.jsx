@@ -369,8 +369,6 @@ export default function HistorialPersonal() {
                         </div>
                       )
                     })()}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
