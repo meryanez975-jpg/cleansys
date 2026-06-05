@@ -14,6 +14,7 @@ export default function GestionZonas() {
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [editando, setEditando]       = useState(null)
   const [error, setError]             = useState('')
+  const [showFabForm, setShowFabForm] = useState(false)
   const [confirmEliminar, setConfirmEliminar] = useState(null)
   const [expandidoTareas, setExpandidoTareas] = useState(null)
   const [nuevaTarea, setNuevaTarea]   = useState('')
@@ -66,31 +67,6 @@ export default function GestionZonas() {
           </div>
         </div>
 
-        {/* Formulario agregar */}
-        <div className="card" style={{ marginBottom: 20 }}>
-          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>
-            Agregar nueva zona
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              className="input"
-              placeholder="Ej: Cocina, Depósito, Pasillo..."
-              value={nuevoNombre}
-              onChange={e => { setNuevoNombre(e.target.value); setError('') }}
-              onKeyDown={e => e.key === 'Enter' && handleCrear()}
-              style={{ flex: 1 }}
-              autoFocus
-            />
-            <button
-              className="btn btn-primary"
-              onClick={handleCrear}
-              disabled={!nuevoNombre.trim()}
-            >
-              + Agregar
-            </button>
-          </div>
-          {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 8 }}>{error}</p>}
-        </div>
 
         {/* Lista de zonas */}
         {zonas.length === 0 ? (
@@ -252,6 +228,77 @@ export default function GestionZonas() {
           </div>
         )}
       </div>
+
+      {/* FAB — botón flotante abajo a la derecha */}
+      <button
+        onClick={() => { setShowFabForm(true); setNuevoNombre(''); setError('') }}
+        style={{
+          position: 'fixed', bottom: 28, right: 24,
+          width: 56, height: 56, borderRadius: '50%',
+          background: 'var(--primary)',
+          border: 'none', cursor: 'pointer',
+          boxShadow: '0 4px 18px rgba(29,78,216,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 28, color: '#fff', fontWeight: 700,
+          zIndex: 100,
+        }}
+      >
+        +
+      </button>
+
+      {/* Sheet para agregar zona */}
+      {showFabForm && (
+        <div
+          onClick={() => setShowFabForm(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.3)',
+            zIndex: 200,
+            display: 'flex', alignItems: 'flex-end',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', background: 'var(--bg-card)',
+              borderRadius: '18px 18px 0 0',
+              padding: '20px 20px 36px',
+              boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
+            }}
+          >
+            <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 14 }}>
+              Nueva zona de limpieza
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="input"
+                placeholder="Ej: Cocina, Depósito, Pasillo..."
+                value={nuevoNombre}
+                onChange={e => { setNuevoNombre(e.target.value); setError('') }}
+                onKeyDown={e => e.key === 'Enter' && handleCrear()}
+                style={{ flex: 1 }}
+                autoFocus
+              />
+              <button
+                className="btn btn-primary"
+                onClick={() => { handleCrear(); setShowFabForm(false) }}
+                disabled={!nuevoNombre.trim()}
+              >
+                + Agregar
+              </button>
+            </div>
+            {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 8 }}>{error}</p>}
+            <button
+              className="btn btn-ghost btn-block"
+              style={{ marginTop: 12 }}
+              onClick={() => setShowFabForm(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
