@@ -175,8 +175,8 @@ export default function HistorialPersonal() {
           ))}
         </select>
 
-        {/* Chips de categoría */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        {/* Chips de categoría — solo visibles si hay zona seleccionada */}
+        {filtroZona && <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[
             { key: 'cumplieron',    label: '✅ Cumplieron',    color: '#15803d', bg: '#dcfce7', border: '#86efac' },
             { key: 'noCumplieron',  label: '❌ No cumplieron', color: '#dc2626', bg: '#fee2e2', border: '#fca5a5' },
@@ -198,14 +198,14 @@ export default function HistorialPersonal() {
               >{label}</button>
             )
           })}
-        </div>
+        </div>}
 
         {/* Lista plana */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loadingPersonal && (
             <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
           )}
-          {!loadingPersonal && !categoriaFiltro && !filtroZona && (
+          {!loadingPersonal && !filtroZona && (
             <div style={{
               textAlign: 'center', padding: '40px 24px',
               background: 'var(--bg-card)', borderRadius: 16,
@@ -218,17 +218,17 @@ export default function HistorialPersonal() {
                 fontSize: 28, margin: '0 auto 16px',
               }}>📋</div>
               <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 6 }}>
-                ¿Qué querés ver?
+                Elegí una zona
               </p>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Elegí una <strong>zona</strong> arriba o filtrá por<br />✅ cumplidos, ❌ no cumplidos o ➖ sin asignación
+                Seleccioná una zona arriba para ver quién limpió.<br />Después podés filtrar por ✅ ❌ ➖
               </p>
             </div>
           )}
-          {!loadingPersonal && (categoriaFiltro || filtroZona) && personalFiltrado.length === 0 && (
+          {!loadingPersonal && filtroZona && personalFiltrado.length === 0 && (
             <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
           )}
-          {!loadingPersonal && (categoriaFiltro || filtroZona) && personalFiltrado.map(p => {
+          {!loadingPersonal && filtroZona && personalFiltrado.map(p => {
             const asigs    = asigsFiltradas(p.id)
             const cantidad = asigs.length
             const abierto  = selId === p.id
