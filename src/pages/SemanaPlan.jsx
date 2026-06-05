@@ -423,23 +423,44 @@ export default function SemanaPlan() {
               </p>
 
               {/* Resumen hoy */}
-              <div style={{
-                marginTop: 16,
-                background: 'rgba(255,255,255,0.15)',
-                borderRadius: 10,
-                padding: '12px 14px',
-              }}>
+              <div style={{ marginTop: 16 }}>
                 {asigHoy.length === 0 ? (
-                  <p style={{ fontSize: 13, fontWeight: 600 }}>💤 Sin asignaciones para hoy</p>
+                  <div style={{
+                    background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '12px 14px',
+                  }}>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>💤 Sin asignaciones para hoy</p>
+                  </div>
                 ) : (
                   <>
-                    <p style={{ fontSize: 13, fontWeight: 700 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.75, marginBottom: 8 }}>
                       📋 {asigHoy.length} asignación{asigHoy.length !== 1 ? 'es' : ''} para hoy
                     </p>
-                    <p style={{ fontSize: 12, opacity: 0.85, marginTop: 4, display: 'flex', gap: 12 }}>
-                      {asigHoyManana > 0 && <span>☀️ {asigHoyManana} mañana</span>}
-                      {asigHoyNoche  > 0 && <span>🌙 {asigHoyNoche} noche</span>}
-                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{
+                        flex: 1, borderRadius: 12, padding: '12px 14px',
+                        background: 'rgba(251,191,36,0.22)',
+                        border: '1.5px solid rgba(251,191,36,0.45)',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                      }}>
+                        <span style={{ fontSize: 22 }}>☀️</span>
+                        <div>
+                          <p style={{ fontSize: 22, fontWeight: 800, color: '#fef9c3', lineHeight: 1 }}>{asigHoyManana}</p>
+                          <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Mañana</p>
+                        </div>
+                      </div>
+                      <div style={{
+                        flex: 1, borderRadius: 12, padding: '12px 14px',
+                        background: 'rgba(99,102,241,0.30)',
+                        border: '1.5px solid rgba(129,140,248,0.45)',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                      }}>
+                        <span style={{ fontSize: 22 }}>🌙</span>
+                        <div>
+                          <p style={{ fontSize: 22, fontWeight: 800, color: '#e0e7ff', lineHeight: 1 }}>{asigHoyNoche}</p>
+                          <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Noche</p>
+                        </div>
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
