@@ -237,64 +237,105 @@ export default function Registro() {
   // ── PANTALLA 1: elegir nombre ──────────────────────────────────
   if (!empleadoId) {
     return (
-      <div className="page" style={{ justifyContent: 'center', minHeight: '100vh' }}>
-        <div className="container">
-          <div className="header">
-            <div>
-              <p className="header-title">Registro Personal</p>
-              <p className="header-sub">
-                {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </p>
-            </div>
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(160deg, #1e3a8a 0%, #3b82f6 45%, #7c3aed 100%)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: '40px 16px 40px',
+      }}>
+        <div style={{ width: '100%', maxWidth: 480 }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 32, textAlign: 'center' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.18)',
+              border: '2px solid rgba(255,255,255,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 30, margin: '0 auto 16px',
+            }}>👤</div>
+            <p style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginBottom: 4 }}>
+              ¿Quién sos?
+            </p>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', textTransform: 'capitalize' }}>
+              {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
           </div>
 
-          <div className="card">
-            <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>¿Quién sos?</p>
-            <p className="text-muted" style={{ marginBottom: 16 }}>Elegí tu nombre para ver tus tareas</p>
+          {/* Card de búsqueda */}
+          <div style={{
+            background: 'rgba(255,255,255,0.12)',
+            border: '1.5px solid rgba(255,255,255,0.22)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: 20,
+            padding: '24px 20px',
+          }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: 12, textAlign: 'center' }}>
+              Escribí tu nombre para buscarte
+            </p>
             <input
-              className="input"
               placeholder="Buscar nombre..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              style={{ marginBottom: 12 }}
               autoFocus
+              style={{
+                width: '100%', padding: '13px 16px', marginBottom: 14,
+                borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff', fontSize: 15, fontFamily: 'Inter, sans-serif',
+                outline: 'none',
+              }}
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
               {loadingPersonal ? (
-                <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
+                <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Cargando personal...</p>
               ) : !busqueda.trim() ? (
-                <p className="text-muted text-center" style={{ padding: 20 }}>Escribí tu nombre para buscarte</p>
+                <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Escribí al menos una letra</p>
               ) : personalFiltrado.length === 0 ? (
-                <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
+                <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Sin resultados</p>
               ) : (
                 personalFiltrado.map(p => {
                   const tieneHoy = asignaciones.some(a => a.personal_id === p.id)
                   return (
-                    <button key={p.id} onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }} style={{
-                      background: tieneHoy ? 'var(--primary-light)' : 'var(--bg)',
-                      border: `1.5px solid ${tieneHoy ? 'var(--primary)' : 'var(--border)'}`,
-                      borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
-                      textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
-                    }}>
+                    <button
+                      key={p.id}
+                      onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }}
+                      style={{
+                        background: tieneHoy ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+                        border: `1.5px solid ${tieneHoy ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)'}`,
+                        borderRadius: 12, padding: '12px 14px', cursor: 'pointer',
+                        textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
+                      }}
+                    >
                       <div style={{
-                        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                        background: tieneHoy ? 'var(--primary)' : 'var(--border)',
+                        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                        background: tieneHoy ? '#fff' : 'rgba(255,255,255,0.2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: tieneHoy ? '#fff' : 'var(--text-muted)', fontWeight: 700, fontSize: 15,
+                        color: tieneHoy ? 'var(--primary)' : '#fff',
+                        fontWeight: 800, fontSize: 16,
                       }}>
                         {p.nombre.charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{p.nombre}</p>
-                        {p.sector && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.sector}</p>}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>{p.nombre}</p>
+                        {p.sector && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>{p.sector}</p>}
                       </div>
-                      {tieneHoy && <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>Tarea hoy</span>}
+                      {tieneHoy && (
+                        <span style={{
+                          background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
+                          borderRadius: 20, padding: '3px 10px',
+                          fontSize: 11, fontWeight: 700, color: '#fff',
+                        }}>
+                          Tarea hoy
+                        </span>
+                      )}
                     </button>
                   )
                 })
               )}
             </div>
           </div>
+
         </div>
       </div>
     )
