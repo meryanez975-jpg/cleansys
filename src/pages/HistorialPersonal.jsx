@@ -24,6 +24,8 @@ export default function HistorialPersonal() {
   const [selId, setSelId]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
+  const [filtroTurno, setFiltroTurno]   = useState(null)  // null | 'mañana' | 'noche'
+  const [filtroSector, setFiltroSector] = useState(null)  // null | string
   const [personalSupabase, setPersonalSupabase] = useState([])
   const [loadingPersonal, setLoadingPersonal]   = useState(true)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -69,7 +71,12 @@ export default function HistorialPersonal() {
   function asigsFiltradas(personal_id) {
     const prefix = `${histAnio}-${String(histMes + 1).padStart(2, '0')}-`
     return allAsigs
-      .filter(a => a.personal_id === personal_id && a.fecha.startsWith(prefix))
+      .filter(a => {
+        if (a.personal_id !== personal_id) return false
+        if (!a.fecha.startsWith(prefix)) return false
+        if (filtroTurno && a.turno !== filtroTurno) return false
+        return true
+      })
       .map(a => ({
         ...a,
         zona: allZonas.find(z => z.id === a.zona_id) || null,
@@ -84,9 +91,12 @@ export default function HistorialPersonal() {
     return asigs.some(a => a.registro?.completado) ? 'cumplieron' : 'noCumplieron'
   }
 
+  const sectoresUnicos = [...new Set(personalSupabase.map(p => p.sector).filter(Boolean))].sort()
+
   const personalFiltrado = personalSupabase.filter(p => {
     if (!p.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
     if (categoriaFiltro && categoriaDe(p) !== categoriaFiltro) return false
+    if (filtroSector && p.sector !== filtroSector) return false
     return true
   })
 
@@ -154,6 +164,53 @@ export default function HistorialPersonal() {
           style={{ marginBottom: 8 }}
         />
 
+        {/* Chips de turno */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          {[
+            { key: 'mañana', label: '☀️ Mañana', color: '#b45309', bg: '#fef3c7', border: '#fcd34d' },
+            { key: 'noche',  label: '🌙 Noche',  color: '#1d4ed8', bg: '#dbeafe', border: '#93c5fd' },
+          ].map(({ key, label, color, bg, border }) => {
+            const activo = filtroTurno === key
+            return (
+              <button
+                key={key}
+                onClick={() => { setFiltroTurno(activo ? null : key); setSelId(null) }}
+                style={{
+                  flex: 1, padding: '9px 4px', borderRadius: 10, cursor: 'pointer',
+                  fontWeight: 700, fontSize: 12,
+                  border: `2px solid ${activo ? border : 'var(--border)'}`,
+                  background: activo ? bg : 'var(--bg-card)',
+                  color: activo ? color : 'var(--text)',
+                  transition: 'all 0.15s',
+                }}
+              >{label}</button>
+            )
+          })}
+        </div>
+
+        {/* Chips de sector */}
+        {sectoresUnicos.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
+            {sectoresUnicos.map(sec => {
+              const activo = filtroSector === sec
+              return (
+                <button
+                  key={sec}
+                  onClick={() => { setFiltroSector(activo ? null : sec); setSelId(null) }}
+                  style={{
+                    flexShrink: 0, padding: '7px 14px', borderRadius: 20, cursor: 'pointer',
+                    fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap',
+                    border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
+                    background: activo ? 'var(--primary)' : 'var(--bg-card)',
+                    color: activo ? '#fff' : 'var(--text)',
+                    transition: 'all 0.15s',
+                  }}
+                >{sec}</button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Chips de categoría */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[
@@ -195,6 +252,8 @@ export default function HistorialPersonal() {
           {!loadingPersonal && categoriaFiltro && personalFiltrado.map(p => {
             const asigs    = asigsFiltradas(p.id)
             const cantidad = asigs.length
+            const manana   = asigs.filter(a => a.turno === 'mañana').length
+            const noche    = asigs.filter(a => a.turno === 'noche').length
             const abierto  = selId === p.id
             return (
               <div key={p.id}>
@@ -232,12 +291,22 @@ export default function HistorialPersonal() {
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontWeight: 700, fontSize: 20, color: abierto ? '#fff' : (cantidad > 0 ? 'var(--primary)' : 'var(--text-light)') }}>
+                    <p style={{ fontWeight: 700, fontSize: 18, color: abierto ? '#fff' : (cantidad > 0 ? 'var(--primary)' : 'var(--text-light)') }}>
                       {cantidad}
                     </p>
-                    <p style={{ fontSize: 11, color: abierto ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>
-                      vez{cantidad !== 1 ? 'es' : ''}
-                    </p>
+                    {cantidad > 0 && !filtroTurno && (
+                      <p style={{ fontSize: 10, color: abierto ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {manana > 0 && `☀️${manana}`}{manana > 0 && noche > 0 && ' · '}{noche > 0 && `🌙${noche}`}
+                      </p>
+                    )}
+                    {cantidad > 0 && filtroTurno && (
+                      <p style={{ fontSize: 10, color: abierto ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)' }}>
+                        {filtroTurno === 'mañana' ? '☀️ mañana' : '🌙 noche'}
+                      </p>
+                    )}
+                    {cantidad === 0 && (
+                      <p style={{ fontSize: 11, color: abierto ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>veces</p>
+                    )}
                   </div>
 
                   <span style={{ color: abierto ? '#fff' : 'var(--text-muted)', fontSize: 14 }}>
