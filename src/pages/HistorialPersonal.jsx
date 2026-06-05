@@ -35,7 +35,6 @@ export default function HistorialPersonal() {
 
   const [histMes, setHistMes]   = useState(now.getMonth())
   const [histAnio, setHistAnio] = useState(now.getFullYear())
-  const [modoVista, setModoVista] = useState('mes')  // 'mes' | 'semana'
   const [lunesSemana, setLunesSemana] = useState(getLunesDeHoy)
   const [selId, setSelId]           = useState(null)
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
@@ -85,7 +84,7 @@ export default function HistorialPersonal() {
   const fechasSemana = Array.from({ length: 7 }, (_, i) => fechaISO(addDays(lunesSemana, i)))
 
   function enPeriodo(fecha) {
-    if (modoVista === 'semana') return fechasSemana.includes(fecha)
+    if (filtroZona) return fechasSemana.includes(fecha)
     return fecha.startsWith(`${histAnio}-${String(histMes + 1).padStart(2, '0')}-`)
   }
 
@@ -120,7 +119,7 @@ export default function HistorialPersonal() {
     return true
   })
 
-  const labelPeriodo = modoVista === 'semana' ? formatSemana(lunesSemana) : formatMesLargo(histAnio, histMes)
+  const labelPeriodo = filtroZona ? formatSemana(lunesSemana) : formatMesLargo(histAnio, histMes)
 
   return (
     <>
@@ -148,36 +147,26 @@ export default function HistorialPersonal() {
           </button>
         </div>
 
-        {/* Toggle Mes / Semana */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-          {['mes', 'semana'].map(m => (
-            <button key={m} onClick={() => { setModoVista(m); setSelId(null); setCategoriaFiltro(null) }} style={{
-              flex: 1, padding: '9px 4px', borderRadius: 10, cursor: 'pointer',
-              fontWeight: 700, fontSize: 13, border: 'none',
-              background: modoVista === m ? 'var(--primary)' : 'var(--bg-card)',
-              color: modoVista === m ? '#fff' : 'var(--text)',
-              border: `1.5px solid ${modoVista === m ? 'var(--primary)' : 'var(--border)'}`,
-            }}>
-              {m === 'mes' ? '📅 Mes' : '📆 Semana'}
-            </button>
-          ))}
-        </div>
-
-        {/* Navegador de período */}
+        {/* Navegador — mes si no hay zona, semana si hay zona */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'var(--bg-card)', border: '1.5px solid var(--border)',
           borderRadius: 12, padding: '10px 8px', marginBottom: 12,
         }}>
           <button
-            onClick={() => { modoVista === 'mes' ? mesAnterior() : setLunesSemana(d => addDays(d, -7)); setSelId(null) }}
+            onClick={() => { filtroZona ? setLunesSemana(d => addDays(d, -7)) : mesAnterior(); setSelId(null) }}
             style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20 }}
           >‹</button>
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', textTransform: 'capitalize', textAlign: 'center' }}>
-            {labelPeriodo}
-          </span>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', textTransform: 'capitalize' }}>
+              {labelPeriodo}
+            </span>
+            {filtroZona && (
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>📆 Vista por semana</p>
+            )}
+          </div>
           <button
-            onClick={() => { modoVista === 'mes' ? mesSiguiente() : setLunesSemana(d => addDays(d, 7)); setSelId(null) }}
+            onClick={() => { filtroZona ? setLunesSemana(d => addDays(d, 7)) : mesSiguiente(); setSelId(null) }}
             style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20 }}
           >›</button>
         </div>
@@ -186,7 +175,7 @@ export default function HistorialPersonal() {
         {/* Selector de zona como dropdown */}
         <select
           value={filtroZona || ''}
-          onChange={e => { setFiltroZona(e.target.value || null); setSelId(null); setCategoriaFiltro(null) }}
+          onChange={e => { setFiltroZona(e.target.value || null); setSelId(null); setCategoriaFiltro(null); setLunesSemana(getLunesDeHoy()) }}
           style={{
             width: '100%', padding: '12px 14px', marginBottom: 12,
             borderRadius: 10, border: '1.5px solid var(--border)',
