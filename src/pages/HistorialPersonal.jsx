@@ -206,9 +206,24 @@ export default function HistorialPersonal() {
             <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
           )}
           {!loadingPersonal && !categoriaFiltro && !filtroZona && (
-            <p className="text-muted text-center" style={{ padding: 32, fontSize: 14 }}>
-              Seleccioná una zona o filtro para ver el personal
-            </p>
+            <div style={{
+              textAlign: 'center', padding: '40px 24px',
+              background: 'var(--bg-card)', borderRadius: 16,
+              border: '1.5px dashed var(--border)',
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'var(--primary-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 28, margin: '0 auto 16px',
+              }}>📋</div>
+              <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 6 }}>
+                ¿Qué querés ver?
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Elegí una <strong>zona</strong> arriba o filtrá por<br />✅ cumplidos, ❌ no cumplidos o ➖ sin asignación
+              </p>
+            </div>
           )}
           {!loadingPersonal && (categoriaFiltro || filtroZona) && personalFiltrado.length === 0 && (
             <p className="text-muted text-center" style={{ padding: 20 }}>Sin resultados</p>
