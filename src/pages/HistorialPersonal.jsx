@@ -14,16 +14,32 @@ function formatHora(isoStr) {
   if (!isoStr) return null
   return new Date(isoStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
+function fechaISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+}
+function getLunesDeHoy() {
+  const hoy = new Date(); const d = hoy.getDay()
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() + (d === 0 ? -6 : 1 - d)); lunes.setHours(0,0,0,0)
+  return lunes
+}
+function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
+function formatSemana(lunes) {
+  const dom = addDays(lunes, 6)
+  const opts = { day: 'numeric', month: 'short' }
+  return `${lunes.toLocaleDateString('es-AR', opts)} — ${dom.toLocaleDateString('es-AR', opts)}`
+}
 
 export default function HistorialPersonal() {
   const navigate = useNavigate()
   const now = new Date()
 
-  const [histMes, setHistMes]   = useState(now.getMonth())   // 0-11
+  const [histMes, setHistMes]   = useState(now.getMonth())
   const [histAnio, setHistAnio] = useState(now.getFullYear())
+  const [modoVista, setModoVista] = useState('mes')  // 'mes' | 'semana'
+  const [lunesSemana, setLunesSemana] = useState(getLunesDeHoy)
   const [selId, setSelId]           = useState(null)
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
-  const [filtroZona, setFiltroZona] = useState(null)  // null | zona_id
+  const [filtroZona, setFiltroZona] = useState(null)
   const [personalSupabase, setPersonalSupabase] = useState([])
   const [loadingPersonal, setLoadingPersonal]   = useState(true)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -66,12 +82,18 @@ export default function HistorialPersonal() {
     setShowConfirmDelete(false)
   }
 
+  const fechasSemana = Array.from({ length: 7 }, (_, i) => fechaISO(addDays(lunesSemana, i)))
+
+  function enPeriodo(fecha) {
+    if (modoVista === 'semana') return fechasSemana.includes(fecha)
+    return fecha.startsWith(`${histAnio}-${String(histMes + 1).padStart(2, '0')}-`)
+  }
+
   function asigsFiltradas(personal_id) {
-    const prefix = `${histAnio}-${String(histMes + 1).padStart(2, '0')}-`
     return allAsigs
       .filter(a => {
         if (a.personal_id !== personal_id) return false
-        if (!a.fecha.startsWith(prefix)) return false
+        if (!enPeriodo(a.fecha)) return false
         if (filtroZona && a.zona_id !== filtroZona) return false
         return true
       })
@@ -92,14 +114,13 @@ export default function HistorialPersonal() {
   const personalFiltrado = personalSupabase.filter(p => {
     if (categoriaFiltro && categoriaDe(p) !== categoriaFiltro) return false
     if (filtroZona) {
-      const prefix = `${histAnio}-${String(histMes + 1).padStart(2, '0')}-`
-      const tieneZona = allAsigs.some(a => a.personal_id === p.id && a.zona_id === filtroZona && a.fecha.startsWith(prefix))
+      const tieneZona = allAsigs.some(a => a.personal_id === p.id && a.zona_id === filtroZona && enPeriodo(a.fecha))
       if (!tieneZona) return false
     }
     return true
   })
 
-  const labelPeriodo = formatMesLargo(histAnio, histMes)
+  const labelPeriodo = modoVista === 'semana' ? formatSemana(lunesSemana) : formatMesLargo(histAnio, histMes)
 
   return (
     <>
@@ -127,30 +148,37 @@ export default function HistorialPersonal() {
           </button>
         </div>
 
-        {/* Navegador de mes/año */}
+        {/* Toggle Mes / Semana */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {['mes', 'semana'].map(m => (
+            <button key={m} onClick={() => { setModoVista(m); setSelId(null); setCategoriaFiltro(null) }} style={{
+              flex: 1, padding: '9px 4px', borderRadius: 10, cursor: 'pointer',
+              fontWeight: 700, fontSize: 13, border: 'none',
+              background: modoVista === m ? 'var(--primary)' : 'var(--bg-card)',
+              color: modoVista === m ? '#fff' : 'var(--text)',
+              border: `1.5px solid ${modoVista === m ? 'var(--primary)' : 'var(--border)'}`,
+            }}>
+              {m === 'mes' ? '📅 Mes' : '📆 Semana'}
+            </button>
+          ))}
+        </div>
+
+        {/* Navegador de período */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'var(--bg-card)', border: '1.5px solid var(--border)',
           borderRadius: 12, padding: '10px 8px', marginBottom: 12,
         }}>
           <button
-            onClick={mesAnterior}
-            style={{
-              background: 'var(--primary-light)', border: 'none', borderRadius: 8,
-              padding: '8px 20px', cursor: 'pointer',
-              color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20,
-            }}
+            onClick={() => { modoVista === 'mes' ? mesAnterior() : setLunesSemana(d => addDays(d, -7)); setSelId(null) }}
+            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20 }}
           >‹</button>
-          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', textTransform: 'capitalize' }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', textTransform: 'capitalize', textAlign: 'center' }}>
             {labelPeriodo}
           </span>
           <button
-            onClick={mesSiguiente}
-            style={{
-              background: 'var(--primary-light)', border: 'none', borderRadius: 8,
-              padding: '8px 20px', cursor: 'pointer',
-              color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20,
-            }}
+            onClick={() => { modoVista === 'mes' ? mesSiguiente() : setLunesSemana(d => addDays(d, 7)); setSelId(null) }}
+            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20 }}
           >›</button>
         </div>
 
