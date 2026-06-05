@@ -323,7 +323,7 @@ export default function HistorialPersonal() {
                             </div>
                             <div style={{ flex: 1, background: '#fee2e2', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
                               <p style={{ fontSize: 18, fontWeight: 800, color: '#dc2626' }}>{totalNoCumplieron}</p>
-                              <p style={{ fontSize: 10, fontWeight: 700, color: '#dc2626' }}>❌ Sin registro</p>
+                              <p style={{ fontSize: 10, fontWeight: 700, color: '#dc2626' }}>❌ No cumplió</p>
                             </div>
                           </div>
 
