@@ -254,15 +254,15 @@ export default function GestionZonas() {
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.3)',
             zIndex: 200,
-            display: 'flex', alignItems: 'flex-end',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              width: '100%', background: 'var(--bg-card)',
-              borderRadius: '18px 18px 0 0',
-              padding: '20px 20px 36px',
+              width: '90%', maxWidth: 400, background: 'var(--bg-card)',
+              borderRadius: 18,
+              padding: '24px 20px',
               boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
             }}
           >
