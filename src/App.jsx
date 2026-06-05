@@ -13,8 +13,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/semana" replace />} />
       <Route path="/registro" element={<Registro />} />
-      <Route path="/asignacion" element={<Asignacion />} />
-      <Route path="/asignacion/panel" element={<Asignacion />} />
+      <Route path="/asignacion" element={<Navigate to="/semana" replace />} />
+      <Route path="/asignacion/panel" element={<Navigate to="/semana" replace />} />
       <Route path="/semana" element={<SemanaPlan />} />
       <Route path="/materiales" element={<Materiales />} />
       <Route path="/historial" element={<HistorialPersonal />} />
