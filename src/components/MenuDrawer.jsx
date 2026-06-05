@@ -127,23 +127,6 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
 
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
 
-          <p style={{
-            fontSize: 11, fontWeight: 700, color: 'var(--text-light)',
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-            padding: '0 8px', marginBottom: 6,
-          }}>
-            Reportes
-          </p>
-
-          <MenuItem
-            icono="👤"
-            texto="Historial del personal"
-            sub="Cuántas veces limpió cada uno"
-            onClick={() => ir('/historial')}
-          />
-
-          <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
-
           <button
             onClick={handleLogout}
             style={{
