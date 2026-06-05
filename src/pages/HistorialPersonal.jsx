@@ -23,6 +23,14 @@ function getLunesDeHoy() {
   return lunes
 }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
+function getPrimerLunesDeMes(anio, mes) {
+  const primero = new Date(anio, mes, 1)
+  const dia = primero.getDay()
+  const offset = dia === 0 ? 1 : dia === 1 ? 0 : 8 - dia
+  const lunes = new Date(anio, mes, 1 + offset)
+  lunes.setHours(0, 0, 0, 0)
+  return lunes
+}
 function formatSemana(lunes) {
   const dom = addDays(lunes, 6)
   const opts = { day: 'numeric', month: 'short' }
@@ -175,7 +183,7 @@ export default function HistorialPersonal() {
         {/* Selector de zona como dropdown */}
         <select
           value={filtroZona || ''}
-          onChange={e => { setFiltroZona(e.target.value || null); setSelId(null); setCategoriaFiltro(null); setLunesSemana(getLunesDeHoy()) }}
+          onChange={e => { setFiltroZona(e.target.value || null); setSelId(null); setCategoriaFiltro(null); setLunesSemana(getPrimerLunesDeMes(histAnio, histMes)) }}
           style={{
             width: '100%', padding: '12px 14px', marginBottom: 12,
             borderRadius: 10, border: '1.5px solid var(--border)',
