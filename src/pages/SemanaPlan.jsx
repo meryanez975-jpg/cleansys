@@ -347,7 +347,7 @@ export default function SemanaPlan() {
     }
 
     setGuardandoPatron(true)
-    const { error } = await supabase.from('limpieza_asignaciones').upsert(rows)
+    const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno' })
     setGuardandoPatron(false)
 
     if (error) {
@@ -392,7 +392,7 @@ export default function SemanaPlan() {
     })
 
     if (rows.length > 0) {
-      const { error } = await supabase.from('limpieza_asignaciones').upsert(rows)
+      const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno' })
       if (error) { console.error('handleAddAsignacion error:', error); return }
       localStorage.setItem('cleansys_asignaciones', JSON.stringify([
         ...cached, ...rows.filter(r => !cached.some(c => c.id === r.id)),

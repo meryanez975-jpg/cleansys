@@ -84,8 +84,7 @@ export function useAsignaciones(fecha) {
       activo: true,
     }
 
-    // Supabase primero — igual que Menu Soft
-    const { error } = await supabase.from('limpieza_asignaciones').upsert(nueva)
+    const { error } = await supabase.from('limpieza_asignaciones').upsert(nueva, { onConflict: 'personal_id,fecha,turno' })
     if (error) return { error: error.message }
 
     // Actualizar caché local
