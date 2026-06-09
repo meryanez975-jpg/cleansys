@@ -86,6 +86,8 @@ export default function SemanaPlan() {
   const [openPersonKey, setOpenPersonKey] = useState(null)
   const [swapPersonaKey, setSwapPersonaKey] = useState(null)
   const [swapPersonalId, setSwapPersonalId] = useState('')
+  const [swapError, setSwapError] = useState('')
+  const [swapLoading, setSwapLoading] = useState(false)
   const [draftPatron, setDraftPatron] = useState([])
   const [guardadoOk, setGuardadoOk] = useState(false)
   const [guardandoPatron, setGuardandoPatron] = useState(false)
@@ -273,13 +275,41 @@ export default function SemanaPlan() {
 
   async function swapPersona(asigs, newPersonalId) {
     const p = personalDB.find(x => x.id === newPersonalId)
-    if (!p) return
-    const datos = { personal_id: newPersonalId, personalNombre: p.nombre, personalSector: p.sector || '' }
-    const { error } = await supabase.from('limpieza_asignaciones')
-      .update(datos)
+    if (!p || !asigs.length) return
+    setSwapError('')
+    setSwapLoading(true)
+
+    // 1. Desactivar asignaciones de la persona actual
+    const { error: errDel } = await supabase.from('limpieza_asignaciones')
+      .update({ activo: false })
       .in('id', asigs.map(a => a.id))
-    if (error) { console.error('swapPersona error:', error); return }
-    asigs.forEach(a => store.editAsignacion(a.id, datos))
+    if (errDel) { setSwapError('Error: ' + errDel.message); setSwapLoading(false); return }
+
+    // 2. Crear nuevas asignaciones para la nueva persona
+    const newRows = asigs.map(a => ({
+      id: genId(),
+      personal_id: newPersonalId,
+      zona_id: a.zona_id || null,
+      turno: a.turno,
+      fecha: a.fecha,
+      personalNombre: p.nombre,
+      personalSector: p.sector || '',
+      activo: true,
+    }))
+    const { error: errIns } = await supabase.from('limpieza_asignaciones')
+      .upsert(newRows, { onConflict: 'personal_id,fecha,turno' })
+    if (errIns) { setSwapError('Error: ' + errIns.message); setSwapLoading(false); return }
+
+    // 3. Actualizar caché local
+    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    const oldIds = new Set(asigs.map(a => a.id))
+    const updated = cached.map(a => oldIds.has(a.id) ? { ...a, activo: false } : a)
+    localStorage.setItem('cleansys_asignaciones', JSON.stringify([
+      ...updated,
+      ...newRows.filter(r => !updated.some(c => c.id === r.id)),
+    ]))
+
+    setSwapLoading(false)
     setSwapPersonaKey(null)
     setSwapPersonalId('')
     setTick(t => t + 1)
@@ -1085,12 +1115,17 @@ export default function SemanaPlan() {
                                       )
                                     })}
                                   </div>
+                                  {swapError && (
+                                    <div style={{ background: '#fee2e2', color: '#dc2626', borderRadius: 8, padding: '8px 10px', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                                      ⚠ {swapError}
+                                    </div>
+                                  )}
                                   <div style={{ display: 'flex', gap: 6 }}>
-                                    <button onClick={() => swapPersona(persona.asigs, swapPersonalId)} disabled={!swapPersonalId}
-                                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: swapPersonalId ? 'pointer' : 'not-allowed', background: swapPersonalId ? tColor : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13 }}>
-                                      ✓ Guardar cambio
+                                    <button onClick={() => swapPersona(persona.asigs, swapPersonalId)} disabled={!swapPersonalId || swapLoading}
+                                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: (swapPersonalId && !swapLoading) ? 'pointer' : 'not-allowed', background: (swapPersonalId && !swapLoading) ? tColor : '#cbd5e1', color: '#fff', fontWeight: 700, fontSize: 13 }}>
+                                      {swapLoading ? '⏳ Guardando...' : '✓ Guardar cambio'}
                                     </button>
-                                    <button onClick={() => { setSwapPersonaKey(null); setSwapPersonalId('') }}
+                                    <button onClick={() => { setSwapPersonaKey(null); setSwapPersonalId(''); setSwapError('') }}
                                       style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>✕</button>
                                   </div>
                                 </div>
