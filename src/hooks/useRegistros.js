@@ -1,28 +1,22 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '../supabase/client'
-import * as store from '../data/store'
 
-async function pushRegistro(registro) {
-  try {
-    await supabase.from('limpieza_registros').upsert({
-      id:            registro.id,
-      asignacion_id: registro.asignacion_id,
-      hora_entrada:  registro.hora_entrada  || null,
-      hora_salida:   registro.hora_salida   || null,
-      completado:    registro.completado    || false,
-      notas:         registro.notas         || '',
-    })
-  } catch (e) {
-    console.warn('Supabase sync registro failed:', e)
-  }
+function genId() {
+  return Math.random().toString(36).slice(2, 9) + Date.now().toString(36)
+}
+
+function getCached() {
+  try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] }
+}
+function setCached(data) {
+  localStorage.setItem('cleansys_registros', JSON.stringify(data))
 }
 
 export async function pullRegistros() {
   try {
     const { data, error } = await supabase.from('limpieza_registros').select('*')
     if (error || !data) return false
-    // Supabase es la fuente de verdad — los registros se pushean en tiempo real al marcar
-    localStorage.setItem('cleansys_registros', JSON.stringify(data))
+    setCached(data)
     return true
   } catch (e) {
     console.warn('pullRegistros error:', e)
@@ -30,46 +24,58 @@ export async function pullRegistros() {
   }
 }
 
-function getRegFromStorage(asignacion_id) {
-  const all = JSON.parse(localStorage.getItem('cleansys_registros') || '[]')
-  return all.find(r => r.asignacion_id === asignacion_id) || null
-}
-
 export function useRegistros(fecha) {
-  const [registros, setRegistros] = useState(() => store.getRegistros(fecha))
+  const [registros, setRegistros] = useState(getCached)
+  const [regError, setRegError]   = useState('')
 
-  const refetch = useCallback(() => {
-    setRegistros(store.getRegistros(fecha))
-  }, [fecha])
+  const refetch = useCallback(() => setRegistros(getCached()), [])
 
   useEffect(() => {
     pullRegistros().then(ok => { if (ok) refetch() })
   }, [fecha, refetch])
 
-  function marcarEntrada(asignacion_id) {
-    store.marcarEntrada(asignacion_id)
+  async function marcarEntrada(asignacion_id) {
+    setRegError('')
+    const cached = getCached()
+    if (cached.find(r => r.asignacion_id === asignacion_id)) return
+
+    const nuevo = {
+      id: genId(),
+      asignacion_id,
+      hora_entrada: new Date().toISOString(),
+      hora_salida:  null,
+      completado:   false,
+      notas:        '',
+    }
+    const { error } = await supabase.from('limpieza_registros').upsert(nuevo)
+    if (error) { setRegError('No se pudo registrar la entrada: ' + error.message); return }
+
+    setCached([...cached, nuevo])
     refetch()
-    const reg = getRegFromStorage(asignacion_id)
-    if (reg) pushRegistro(reg)
   }
 
-  function marcarSalida(asignacion_id, notas = '') {
-    store.marcarSalida(asignacion_id, notas)
-    refetch()
-    const reg = getRegFromStorage(asignacion_id)
-    if (reg) pushRegistro(reg)
-  }
+  async function marcarSalida(asignacion_id, notas = '') {
+    setRegError('')
+    const cached   = getCached()
+    const existing = cached.find(r => r.asignacion_id === asignacion_id)
 
-  function marcarCompletado(asignacion_id, completado) {
-    store.marcarCompletado(asignacion_id, completado)
+    const record = existing
+      ? { ...existing, hora_salida: new Date().toISOString(), completado: true, notas }
+      : { id: genId(), asignacion_id, hora_entrada: new Date().toISOString(), hora_salida: new Date().toISOString(), completado: true, notas }
+
+    const { error } = await supabase.from('limpieza_registros').upsert(record)
+    if (error) { setRegError('No se pudo registrar la salida: ' + error.message); return }
+
+    setCached(existing
+      ? cached.map(r => r.asignacion_id === asignacion_id ? record : r)
+      : [...cached, record]
+    )
     refetch()
-    const reg = getRegFromStorage(asignacion_id)
-    if (reg) pushRegistro(reg)
   }
 
   function getRegistroPorAsignacion(asignacion_id) {
     return registros.find(r => r.asignacion_id === asignacion_id) || null
   }
 
-  return { registros, loading: false, marcarEntrada, marcarSalida, marcarCompletado, getRegistroPorAsignacion, refetch, pullRegistros }
+  return { registros, loading: false, regError, marcarEntrada, marcarSalida, getRegistroPorAsignacion, refetch, pullRegistros }
 }

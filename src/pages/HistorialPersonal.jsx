@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
+import { pullFromSupabase } from '../hooks/useAsignaciones'
+import { pullRegistros } from '../hooks/useRegistros'
 
 function formatMesLargo(anio, mes) {
   return new Date(anio, mes, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -53,7 +55,10 @@ export default function HistorialPersonal() {
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    supabase.from('com_personal').select('id, nombre, sector, turno').eq('activo', true).order('nombre')
+    // Refrescar asignaciones y registros desde Supabase al abrir
+    Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
+
+    supabase.from('com_personal').select('id, nombre, sector, turno').neq('activo', false).order('nombre')
       .then(({ data, error }) => {
         if (error) console.error('HistorialPersonal personal:', error)
         else if (data) setPersonalSupabase(data)

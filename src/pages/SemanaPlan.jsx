@@ -172,7 +172,7 @@ export default function SemanaPlan() {
   const { personal: personalDB } = usePersonalComidas(null)
 
   useEffect(() => {
-    supabase.from('com_personal').select('id, nombre').eq('activo', true)
+    supabase.from('com_personal').select('id, nombre').neq('activo', false)
       .then(({ data, error }) => {
         if (error) { console.error('SemanaPlan personal:', error); return }
         if (data) {

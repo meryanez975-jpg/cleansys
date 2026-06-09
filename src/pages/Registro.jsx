@@ -212,7 +212,7 @@ export default function Registro() {
   }, [])
 
   const { asignaciones, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
-  const { marcarEntrada, marcarSalida, getRegistroPorAsignacion } = useRegistros(fechaHoy)
+  const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, regError } = useRegistros(fechaHoy)
 
   const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
   const [busqueda, setBusqueda]           = useState('')
@@ -370,6 +370,15 @@ export default function Registro() {
           </div>
         </div>
 
+
+        {regError && (
+          <div style={{
+            background: '#fee2e2', color: '#dc2626', borderRadius: 10,
+            padding: '10px 14px', fontSize: 13, fontWeight: 600, marginBottom: 16,
+          }}>
+            ⚠ {regError}
+          </div>
+        )}
 
         {/* HOY */}
         <div style={{ marginBottom: 24 }}>
