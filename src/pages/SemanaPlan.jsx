@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as store from '../data/store'
 import { supabase } from '../supabase/client'
 import html2canvas from 'html2canvas'
@@ -54,6 +54,7 @@ function diaIdxDeISO(iso) {
 
 export default function SemanaPlan() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
@@ -67,7 +68,7 @@ export default function SemanaPlan() {
   const [showMenu, setShowMenu] = useState(false)
   const [showZonas, setShowZonas] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
-  const [zonaFiltro, setZonaFiltro] = useState(null) // null = todas, o zona ID
+  const [zonaFiltro, setZonaFiltro] = useState(() => searchParams.get('zona') || null)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [inputInicio, setInputInicio] = useState('')
   const [inputFin, setInputFin] = useState('')

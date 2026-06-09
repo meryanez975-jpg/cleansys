@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import Inicio from './pages/Inicio'
 import Registro from './pages/Registro'
 import Asignacion from './pages/Asignacion'
 import SemanaPlan from './pages/SemanaPlan'
@@ -11,7 +12,7 @@ import GestionPersonal from './pages/GestionPersonal'
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/semana" replace />} />
+      <Route path="/" element={<Inicio />} />
       <Route path="/registro" element={<Registro />} />
       <Route path="/asignacion" element={<Navigate to="/semana" replace />} />
       <Route path="/asignacion/panel" element={<Navigate to="/semana" replace />} />
