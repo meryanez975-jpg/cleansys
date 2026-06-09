@@ -51,5 +51,14 @@ export function useZonas() {
     return { error: error?.message || null }
   }
 
-  return { zonas, loading, crearZona, editarZona, desactivarZona, refetch }
+  async function updateTareas(id, tareas) {
+    const { error } = await supabase
+      .from('limpieza_zonas')
+      .update({ tareas })
+      .eq('id', id)
+    if (!error) await refetch()
+    return { error: error?.message || null }
+  }
+
+  return { zonas, loading, crearZona, editarZona, desactivarZona, updateTareas, refetch }
 }

@@ -10,7 +10,7 @@ export function usePersonal() {
     const { data, error } = await supabase
       .from('com_personal')
       .select('id, nombre, sector, turno, activo')
-      .eq('activo', true)
+      .neq('activo', false)
       .order('nombre')
     if (!error && data) {
       setPersonal(data)

@@ -11,6 +11,7 @@ import { useZonas } from '../hooks/useZonas'
 import { usePersonal } from '../hooks/usePersonal'
 import { usePersonalComidas } from '../hooks/usePersonalComidas'
 import { pullFromSupabase, pushToSupabase } from '../hooks/useAsignaciones'
+import { pullRegistros } from '../hooks/useRegistros'
 
 const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -39,6 +40,7 @@ function turnoDePersona(turnoSupabase) {
 }
 
 const DIAS_NORM = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+function genId() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36) }
 function normStr(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim() }
 function esDiaLibre(persona, diaIdx) {
   if (!persona.diaLibre) return false
@@ -85,6 +87,8 @@ export default function SemanaPlan() {
   const [swapPersonalId, setSwapPersonalId] = useState('')
   const [draftPatron, setDraftPatron] = useState([])
   const [guardadoOk, setGuardadoOk] = useState(false)
+  const [guardandoPatron, setGuardandoPatron] = useState(false)
+  const [errorPatron, setErrorPatron] = useState('')
   const [confirmSalida, setConfirmSalida] = useState(null) // acción pendiente o null
   const [semanaConteo, setSemanaConteo] = useState(() => {
     const hoy = new Date()
@@ -98,15 +102,15 @@ export default function SemanaPlan() {
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
-  // Sincronizar asignaciones desde Supabase al abrir la app
+  // Sincronizar asignaciones y registros desde Supabase al abrir la app
   useEffect(() => {
-    pullFromSupabase().then(ok => { if (ok) setTick(t => t + 1) })
+    Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
   }, [])
 
   // Auto-refresh Conteo cada 30s para ver completados en tiempo real
   useEffect(() => {
     const id = setInterval(() => {
-      pullFromSupabase().then(ok => { if (ok) setTick(t => t + 1) })
+      Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
     }, 30000)
     return () => clearInterval(id)
   }, [])
@@ -166,13 +170,15 @@ export default function SemanaPlan() {
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre').eq('activo', true)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.error('SemanaPlan personal:', error); return }
         if (data) {
           const map = {}
           data.forEach(p => { map[p.id] = p.nombre })
           setPersonalMap(map)
         }
       })
+      .catch(err => console.error('SemanaPlan personal:', err))
   }, [])
 
   const fechasSemana = (() => {
@@ -188,7 +194,7 @@ export default function SemanaPlan() {
   const fechasISO    = fechasSemana.map(fechaISO)
   const asigsTodas   = store.getAsignacionesPorFechas(fechasISO) || (tick, [])
   const asigs        = zonaFiltro ? asigsTodas.filter(a => a.zona_id === zonaFiltro) : asigsTodas
-  const allRegistros = (() => { try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] } })()
+  const allRegistros = (() => { void tick; try { return JSON.parse(localStorage.getItem('cleansys_registros') || '[]') } catch { return [] } })()
   const hoyISO       = fechaISO(new Date())
   const asigHoy      = asigs.filter(a => a.fecha === hoyISO)
   const asigHoyManana = asigHoy.filter(a => a.turno === 'mañana').length
@@ -247,39 +253,42 @@ export default function SemanaPlan() {
     setEditForm({ zona_id: a.zona_id || '', turno: a.turno || '', fecha: a.fecha || '', personal_id: a.personal_id || '' })
   }
 
-  function guardarEdicion(id) {
+  async function guardarEdicion(id) {
     const p = personalDB.find(x => x.id === editForm.personal_id)
     const datos = {
-      zona_id:       editForm.zona_id,
-      turno:         editForm.turno,
-      fecha:         editForm.fecha,
-      personal_id:   editForm.personal_id,
+      zona_id:        editForm.zona_id,
+      turno:          editForm.turno,
+      fecha:          editForm.fecha,
+      personal_id:    editForm.personal_id,
       personalNombre: p?.nombre || '',
       personalSector: p?.sector || '',
     }
+    const { error } = await supabase.from('limpieza_asignaciones').update(datos).eq('id', id)
+    if (error) { console.error('guardarEdicion error:', error); return }
     store.editAsignacion(id, datos)
     setEditandoId(null)
     setTick(t => t + 1)
-    supabase.from('limpieza_asignaciones').update(datos).eq('id', id).then(() => {})
   }
 
-  function swapPersona(asigs, newPersonalId) {
+  async function swapPersona(asigs, newPersonalId) {
     const p = personalDB.find(x => x.id === newPersonalId)
     if (!p) return
     const datos = { personal_id: newPersonalId, personalNombre: p.nombre, personalSector: p.sector || '' }
-    asigs.forEach(a => {
-      store.editAsignacion(a.id, datos)
-      supabase.from('limpieza_asignaciones').update(datos).eq('id', a.id).then(() => {})
-    })
+    const { error } = await supabase.from('limpieza_asignaciones')
+      .update(datos)
+      .in('id', asigs.map(a => a.id))
+    if (error) { console.error('swapPersona error:', error); return }
+    asigs.forEach(a => store.editAsignacion(a.id, datos))
     setSwapPersonaKey(null)
     setSwapPersonalId('')
     setTick(t => t + 1)
   }
 
-  function eliminarAsig(id) {
+  async function eliminarAsig(id) {
+    const { error } = await supabase.from('limpieza_asignaciones').update({ activo: false }).eq('id', id)
+    if (error) { console.error('eliminarAsig error:', error); return }
     store.removeAsignacion(id)
     setTick(t => t + 1)
-    supabase.from('limpieza_asignaciones').update({ activo: false }).eq('id', id).then(() => {})
   }
 
   function toggleTurno(iso, turno) {
@@ -305,37 +314,91 @@ export default function SemanaPlan() {
     setAddZonaId('')
   }
 
-  function guardarPatronCompleto() {
-    const nuevas = []
+  async function guardarPatronCompleto() {
+    setErrorPatron('')
+    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    const rows = []
     draftPatron.forEach(d => {
       const p = personalDB.find(x => x.id === d.personalId)
       d.isos.forEach(iso => {
-        const result = store.addAsignacion(d.personalId, d.zonaId, d.turno, iso, p?.nombre || d.nombre, p?.sector || '')
-        if (!result.error) {
-          const asig = store.getAsignaciones(iso).find(a => a.personal_id === d.personalId && a.turno === d.turno)
-          if (asig) nuevas.push(asig)
+        const yaExiste = cached.find(a =>
+          a.personal_id === d.personalId && a.turno === d.turno && a.fecha === iso && a.activo !== false
+        )
+        if (!yaExiste) {
+          rows.push({
+            id: genId(),
+            personal_id: d.personalId,
+            zona_id: d.zonaId || null,
+            turno: d.turno,
+            fecha: iso,
+            personalNombre: p?.nombre || d.nombre || '',
+            personalSector: p?.sector || '',
+            activo: true,
+          })
         }
       })
     })
-    nuevas.forEach(a => pushToSupabase(a))
+
+    if (rows.length === 0) {
+      setDraftPatron([])
+      setGuardadoOk(true)
+      setTimeout(() => setGuardadoOk(false), 3000)
+      return
+    }
+
+    setGuardandoPatron(true)
+    const { error } = await supabase.from('limpieza_asignaciones').upsert(rows)
+    setGuardandoPatron(false)
+
+    if (error) {
+      console.error('guardarPatron error:', error)
+      setErrorPatron('Error al guardar: ' + (error.message || 'intenta de nuevo'))
+      return
+    }
+
+    localStorage.setItem('cleansys_asignaciones', JSON.stringify([
+      ...cached, ...rows.filter(r => !cached.some(c => c.id === r.id)),
+    ]))
     setDraftPatron([])
     setTick(t => t + 1)
     setGuardadoOk(true)
     setTimeout(() => setGuardadoOk(false), 3000)
   }
 
-  function handleAddAsignacion() {
+  async function handleAddAsignacion() {
     if (!addPersonalId || !addingFor) return
     const p = personalDB.find(x => x.id === addPersonalId)
     const zona = addZonaId || zonaFiltro || ''
     const isos = addingFor.isos || [addingFor.iso]
+
+    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    const rows = []
     isos.forEach(iso => {
-      const result = store.addAsignacion(addPersonalId, zona, addingFor.turno, iso, p?.nombre || '', p?.sector || '')
-      if (!result.error) {
-        const asig = store.getAsignaciones(iso).find(a => a.personal_id === addPersonalId && a.turno === addingFor.turno)
-        if (asig) pushToSupabase(asig)
+      const yaExiste = cached.find(a =>
+        a.personal_id === addPersonalId && a.turno === addingFor.turno && a.fecha === iso && a.activo !== false
+      )
+      if (!yaExiste) {
+        rows.push({
+          id: genId(),
+          personal_id: addPersonalId,
+          zona_id: zona || null,
+          turno: addingFor.turno,
+          fecha: iso,
+          personalNombre: p?.nombre || '',
+          personalSector: p?.sector || '',
+          activo: true,
+        })
       }
     })
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from('limpieza_asignaciones').upsert(rows)
+      if (error) { console.error('handleAddAsignacion error:', error); return }
+      localStorage.setItem('cleansys_asignaciones', JSON.stringify([
+        ...cached, ...rows.filter(r => !cached.some(c => c.id === r.id)),
+      ]))
+    }
+
     setTick(t => t + 1)
     setAddingFor(null)
     setAddPersonalId('')
@@ -931,26 +994,8 @@ export default function SemanaPlan() {
             )}
           </div>
 
-          {/* Botón confirmar patrón — solo visible cuando hay borradores */}
-          {rangoPersonalizado && draftPatron.length > 0 && (
-            <div style={{ background: 'linear-gradient(135deg, #1e3a5f, #4c1d95)', borderRadius: 14, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 800, color: '#fff', marginBottom: 2 }}>
-                  📋 {draftPatron.length} día{draftPatron.length !== 1 ? 's' : ''} de semana planificado{draftPatron.length !== 1 ? 's' : ''}
-                </p>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-                  {draftPatron.reduce((sum, d) => sum + d.isos.length, 0)} asignaciones en total
-                </p>
-              </div>
-              <button onClick={guardarPatronCompleto} style={{
-                width: '100%', padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: '#22c55e', color: '#fff', fontWeight: 800, fontSize: 14,
-                boxShadow: '0 4px 14px rgba(34,197,94,0.4)',
-              }}>
-                ✓ Guardar todo el patrón
-              </button>
-            </div>
-          )}
+          {/* Botón confirmar patrón — espacio reservado para que el fijo no tape contenido */}
+          {rangoPersonalizado && draftPatron.length > 0 && <div style={{ height: 80 }} />}
 
         </>}
 
@@ -1132,34 +1177,33 @@ export default function SemanaPlan() {
                       )
                     }
 
-                    return asigsDia.map(a => {
-                      const nombre = a.personalNombre || personalMap[a.personal_id] || '—'
-                      const reg = allRegistros.find(r => r.asignacion_id === a.id)
-                      const completado = reg?.completado === true
-                      const empezado = reg?.hora_entrada && !reg?.completado
-                      const estadoBg = completado ? '#f0fdf4' : empezado ? '#fff5f5' : esHoy ? '#f0f9ff' : '#fff'
-                      return (
-                        <div key={a.id} style={{
-                          display: 'flex', alignItems: 'center',
-                          padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
-                          background: estadoBg,
-                        }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: esHoy ? '#3b82f6' : '#64748b', width: 50, flexShrink: 0 }}>{dLabel}</span>
-                          <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : empezado ? '#dc2626' : '#1e293b', fontWeight: completado || empezado ? 700 : 500, paddingLeft: 8 }}>
-                            {nombre.split(' ')[0]}
-                          </span>
-                          {completado ? (
-                            <span style={{ width: 24, height: 24, borderRadius: 6, background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#fff', fontWeight: 800, flexShrink: 0 }}>✓</span>
-                          ) : empezado ? (
-                            <span style={{ width: 24, height: 24, borderRadius: 6, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#dc2626', fontWeight: 800, flexShrink: 0 }}>✗</span>
-                          ) : esHoy ? (
-                            <span style={{ width: 24, height: 24, borderRadius: 6, border: '2px solid #cbd5e1', background: '#f8fafc', flexShrink: 0 }} />
-                          ) : (
-                            <span style={{ fontSize: 14, color: '#cbd5e1', flexShrink: 0, width: 24, textAlign: 'center' }}>—</span>
-                          )}
-                        </div>
-                      )
-                    })
+                    const a = asigsDia[0]
+                    const nombre = a.personalNombre || personalMap[a.personal_id] || '—'
+                    const reg = allRegistros.find(r => r.asignacion_id === a.id)
+                    const completado = reg?.completado === true
+                    const empezado = reg?.hora_entrada && !reg?.completado
+                    const estadoBg = completado ? '#f0fdf4' : empezado ? '#fff5f5' : esHoy ? '#f0f9ff' : '#fff'
+                    return (
+                      <div key={iso + '-' + turno.key} style={{
+                        display: 'flex', alignItems: 'center',
+                        padding: '11px 16px', borderBottom: `1px solid ${turno.rowBg}`,
+                        background: estadoBg,
+                      }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: esHoy ? '#3b82f6' : '#64748b', width: 50, flexShrink: 0 }}>{dLabel}</span>
+                        <span style={{ flex: 1, fontSize: 13, color: completado ? '#15803d' : empezado ? '#dc2626' : '#1e293b', fontWeight: completado || empezado ? 700 : 500, paddingLeft: 8 }}>
+                          {nombre.split(' ')[0]}
+                        </span>
+                        {completado ? (
+                          <span style={{ width: 24, height: 24, borderRadius: 6, background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#fff', fontWeight: 800, flexShrink: 0 }}>✓</span>
+                        ) : empezado ? (
+                          <span style={{ width: 24, height: 24, borderRadius: 6, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#dc2626', fontWeight: 800, flexShrink: 0 }}>✗</span>
+                        ) : esHoy ? (
+                          <span style={{ width: 24, height: 24, borderRadius: 6, border: '2px solid #cbd5e1', background: '#f8fafc', flexShrink: 0 }} />
+                        ) : (
+                          <span style={{ fontSize: 14, color: '#cbd5e1', flexShrink: 0, width: 24, textAlign: 'center' }}>—</span>
+                        )}
+                      </div>
+                    )
                   })}
                 </div>
               ))}
@@ -1168,6 +1212,44 @@ export default function SemanaPlan() {
         })()}
 
       </div>
+
+      {/* Botón guardar patrón — fijo al fondo, siempre visible cuando hay borrador */}
+      {vista === 'semana' && rangoPersonalizado && draftPatron.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          padding: '12px 16px 20px',
+          background: 'linear-gradient(to top, #0f172a 60%, transparent)',
+          zIndex: 500,
+        }}>
+          {errorPatron && (
+            <div style={{
+              maxWidth: 480, margin: '0 auto 8px', background: '#fee2e2', color: '#dc2626',
+              borderRadius: 10, padding: '10px 14px', fontSize: 13, fontWeight: 600, textAlign: 'center',
+            }}>
+              ⚠ {errorPatron}
+            </div>
+          )}
+          <button
+            onClick={guardarPatronCompleto}
+            disabled={guardandoPatron}
+            style={{
+              width: '100%', maxWidth: 480, margin: '0 auto', display: 'block',
+              padding: '15px 0', borderRadius: 14, border: 'none',
+              cursor: guardandoPatron ? 'not-allowed' : 'pointer',
+              background: guardandoPatron
+                ? 'linear-gradient(135deg, #86efac, #4ade80)'
+                : 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: '#fff', fontWeight: 800, fontSize: 15,
+              boxShadow: '0 4px 20px rgba(34,197,94,0.5)',
+              opacity: guardandoPatron ? 0.8 : 1,
+            }}
+          >
+            {guardandoPatron
+              ? '⏳ Guardando...'
+              : `✓ Guardar ${draftPatron.reduce((s, d) => s + d.isos.length, 0)} asignaciones`}
+          </button>
+        </div>
+      )}
 
       {/* Toast de éxito */}
       {guardadoOk && (

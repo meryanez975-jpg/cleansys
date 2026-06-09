@@ -6,44 +6,19 @@ function genId() {
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36)
 }
 
-// Sync bidireccional: baja de Supabase y sube las locales que faltan
+// Descarga de Supabase — Supabase es la fuente de verdad
 async function pullFromSupabase() {
   try {
-    const { data, error } = await supabase
-      .from('limpieza_asignaciones')
-      .select('*')
+    const [{ data: activos, error }, { data: zonas }] = await Promise.all([
+      supabase.from('limpieza_asignaciones').select('*').eq('activo', true),
+      supabase.from('limpieza_zonas').select('*').eq('activo', true),
+    ])
     if (error) return false
-
-    const remoteIds = new Set((data || []).map(a => a.id))
-    const existing = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-
-    // Subir a Supabase las asignaciones locales que no están en Supabase
-    const localOnly = existing.filter(a => !remoteIds.has(a.id) && a.activo !== false)
-    if (localOnly.length > 0) {
-      await supabase.from('limpieza_asignaciones').upsert(
-        localOnly.map(a => ({
-          id: a.id,
-          personal_id: a.personal_id,
-          zona_id: a.zona_id || null,
-          turno: a.turno,
-          fecha: a.fecha,
-          personalNombre: a.personalNombre || '',
-          personalSector: a.personalSector || '',
-          activo: a.activo !== false,
-        }))
-      )
+    if (activos) {
+      localStorage.setItem('cleansys_asignaciones', JSON.stringify(activos))
     }
-
-    // Bajar todo de Supabase y guardar en localStorage
-    const { data: all } = await supabase
-      .from('limpieza_asignaciones')
-      .select('*')
-      .eq('activo', true)
-    if (all) {
-      // Preservar asignaciones locales que no llegaron a Supabase (push fallido)
-      const remoteDownloadedIds = new Set(all.map(a => a.id))
-      const stillLocal = existing.filter(a => !remoteDownloadedIds.has(a.id) && a.activo !== false)
-      localStorage.setItem('cleansys_asignaciones', JSON.stringify([...all, ...stillLocal]))
+    if (zonas) {
+      try { localStorage.setItem('cleansys_zonas', JSON.stringify(zonas)) } catch {}
     }
     return true
   } catch (e) {
@@ -52,7 +27,7 @@ async function pullFromSupabase() {
   }
 }
 
-// Push una asignación a Supabase en background
+// Mantenido para compatibilidad con SemanaPlan
 async function pushToSupabase(asig) {
   try {
     await supabase.from('limpieza_asignaciones').upsert({
@@ -66,40 +41,72 @@ async function pushToSupabase(asig) {
       activo: asig.activo !== false,
     })
   } catch (e) {
-    console.warn('Supabase sync asig failed:', e)
+    console.warn('pushToSupabase error:', e)
   }
 }
 
-// Hook para una sola fecha (usado por /registro, /asignacion, etc.)
 export function useAsignaciones(fecha) {
   const [asignaciones, setAsignaciones] = useState(() => store.getAsignaciones(fecha))
+  const [syncing, setSyncing] = useState(false)
 
   const refetch = useCallback(() => {
     setAsignaciones(store.getAsignaciones(fecha))
   }, [fecha])
 
   useEffect(() => {
-    pullFromSupabase().then(ok => { if (ok) refetch() })
+    setSyncing(true)
+    pullFromSupabase().then(ok => { if (ok) refetch(); setSyncing(false) })
   }, [fecha, refetch])
 
-  async function crearAsignacion(personal_id, zona_id, turno, personalNombre = '', personalSector = '') {
-    const result = store.addAsignacion(personal_id, zona_id, turno, fecha, personalNombre, personalSector)
-    if (!result.error) {
-      refetch()
-      const nueva = store.getAsignaciones(fecha).find(a => a.personal_id === personal_id && a.turno === turno)
-      if (nueva) pushToSupabase(nueva)
-    }
-    return result
+  async function sincronizar() {
+    setSyncing(true)
+    const ok = await pullFromSupabase()
+    if (ok) refetch()
+    setSyncing(false)
   }
 
-  async function eliminarAsignacion(id) {
-    store.removeAsignacion(id)
+  async function crearAsignacion(personal_id, zona_id, turno, personalNombre = '', personalSector = '') {
+    // Verificar duplicado en caché local
+    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    const yaExiste = cached.find(a =>
+      a.personal_id === personal_id && a.turno === turno && a.fecha === fecha && a.activo !== false
+    )
+    if (yaExiste) return { error: 'Esta persona ya está asignada en este turno' }
+
+    const nueva = {
+      id: genId(),
+      personal_id,
+      zona_id: zona_id || null,
+      turno,
+      fecha,
+      personalNombre: personalNombre || '',
+      personalSector: personalSector || '',
+      activo: true,
+    }
+
+    // Supabase primero — igual que Menu Soft
+    const { error } = await supabase.from('limpieza_asignaciones').upsert(nueva)
+    if (error) return { error: error.message }
+
+    // Actualizar caché local
+    localStorage.setItem('cleansys_asignaciones', JSON.stringify([...cached, nueva]))
     refetch()
-    try { await supabase.from('limpieza_asignaciones').update({ activo: false }).eq('id', id) } catch {}
     return { error: null }
   }
 
-  return { asignaciones, loading: false, crearAsignacion, eliminarAsignacion, refetch, pullFromSupabase }
+  async function eliminarAsignacion(id) {
+    const { error } = await supabase.from('limpieza_asignaciones').update({ activo: false }).eq('id', id)
+    if (error) return { error: error.message }
+
+    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    localStorage.setItem('cleansys_asignaciones', JSON.stringify(
+      cached.map(a => a.id === id ? { ...a, activo: false } : a)
+    ))
+    refetch()
+    return { error: null }
+  }
+
+  return { asignaciones, loading: syncing, sincronizar, crearAsignacion, eliminarAsignacion, refetch, pullFromSupabase }
 }
 
 export { pullFromSupabase, pushToSupabase }

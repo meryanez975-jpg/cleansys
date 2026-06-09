@@ -54,10 +54,12 @@ export default function HistorialPersonal() {
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre, sector, turno').eq('activo', true).order('nombre')
-      .then(({ data }) => {
-        if (data) setPersonalSupabase(data)
-        setLoadingPersonal(false)
+      .then(({ data, error }) => {
+        if (error) console.error('HistorialPersonal personal:', error)
+        else if (data) setPersonalSupabase(data)
       })
+      .catch(err => console.error('HistorialPersonal personal:', err))
+      .finally(() => setLoadingPersonal(false))
   }, [])
 
   function mesAnterior() {
@@ -227,7 +229,11 @@ export default function HistorialPersonal() {
         {/* Lista plana */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loadingPersonal && (
-            <p className="text-muted text-center" style={{ padding: 20 }}>Cargando personal...</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="skeleton" style={{ height: 52, borderRadius: 12, opacity: 1 - i * 0.1 }} />
+              ))}
+            </div>
           )}
           {!loadingPersonal && !filtroZona && (
             <div style={{

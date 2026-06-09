@@ -4,7 +4,6 @@ import { useMateriales } from '../hooks/useMateriales'
 import { useGuardiaNavegacion } from '../hooks/useGuardiaNavegacion'
 import ModalConfirmSalida from '../components/ModalConfirmSalida'
 import { useZonas } from '../hooks/useZonas'
-import * as store from '../data/store'
 
 function hoy() {
   return new Date().toISOString().split('T')[0]
@@ -28,7 +27,7 @@ const UNIDADES = ['unidad', 'litros', 'kg', 'paquete', 'caja', 'rollo', 'bolsa']
 
 export default function Materiales() {
   const navigate = useNavigate()
-  const { materiales, agregar, editar, eliminar } = useMateriales()
+  const { materiales, cambios, agregar, editar, eliminar, registrarCambio, eliminarCambio } = useMateriales()
   const { zonas } = useZonas()
 
   const [vista, setVista]               = useState('agregados') // 'agregados' | 'contabilidad'
@@ -65,14 +64,11 @@ export default function Materiales() {
   }
 
   // Contabilidad
-  const [cambios, setCambios]             = useState(() => store.getCambiosMateriales())
   const [fechaCambio, setFechaCambio]     = useState(hoy())
   const [showModalCambio, setShowModalCambio] = useState(null)
   const [contMes, setContMes]             = useState(new Date().getMonth())
   const [contAnio, setContAnio]           = useState(new Date().getFullYear())
   const [confirmEliminar, setConfirmEliminar] = useState(null) // { tipo: 'material'|'cambio', id, nombre }
-
-  function refetchCambios() { setCambios(store.getCambiosMateriales()) }
 
   function mesContAnterior() {
     if (contMes === 0) { setContMes(11); setContAnio(y => y - 1) }
@@ -89,8 +85,7 @@ export default function Materiales() {
       eliminar(confirmEliminar.id)
       setHayCambios(true)
     } else {
-      store.removeCambioMaterial(confirmEliminar.id)
-      refetchCambios()
+      eliminarCambio(confirmEliminar.id)
     }
     setConfirmEliminar(null)
   }
@@ -157,8 +152,7 @@ export default function Materiales() {
 
   function handleRegistrarCambio() {
     if (!showModalCambio) return
-    store.registrarCambioMaterial(showModalCambio.id, showModalCambio.nombre, fechaCambio)
-    refetchCambios()
+    registrarCambio(showModalCambio.id, showModalCambio.nombre, fechaCambio)
     setShowModalCambio(null)
     setFechaCambio(hoy())
   }

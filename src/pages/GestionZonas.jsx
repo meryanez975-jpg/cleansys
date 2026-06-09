@@ -1,15 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useZonas } from '../hooks/useZonas'
-import * as store from '../data/store'
-
-function getTareasMap() {
-  try { return JSON.parse(localStorage.getItem('cleansys_zonas_tareas') || '{}') } catch { return {} }
-}
 
 export default function GestionZonas() {
   const navigate = useNavigate()
-  const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
+  const { zonas, crearZona, editarZona, desactivarZona, updateTareas } = useZonas()
 
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [editando, setEditando]       = useState(null)
@@ -18,7 +13,6 @@ export default function GestionZonas() {
   const [confirmEliminar, setConfirmEliminar] = useState(null)
   const [expandidoTareas, setExpandidoTareas] = useState(null)
   const [nuevaTarea, setNuevaTarea]   = useState('')
-  const [tareasMap, setTareasMap]     = useState(getTareasMap)
 
   function handleCrear() {
     if (!nuevoNombre.trim()) { setError('Ingresá un nombre'); return }
@@ -40,18 +34,16 @@ export default function GestionZonas() {
 
   function agregarTarea(zona_id) {
     if (!nuevaTarea.trim()) return
-    const actual = tareasMap[zona_id] || []
-    const nueva = [...actual, nuevaTarea.trim()]
-    store.setTareasZona(zona_id, nueva)
-    setTareasMap({ ...tareasMap, [zona_id]: nueva })
+    const zona = zonas.find(z => z.id === zona_id)
+    const actual = zona?.tareas || []
+    updateTareas(zona_id, [...actual, nuevaTarea.trim()])
     setNuevaTarea('')
   }
 
   function eliminarTarea(zona_id, idx) {
-    const actual = tareasMap[zona_id] || []
-    const nueva = actual.filter((_, i) => i !== idx)
-    store.setTareasZona(zona_id, nueva)
-    setTareasMap({ ...tareasMap, [zona_id]: nueva })
+    const zona = zonas.find(z => z.id === zona_id)
+    const actual = zona?.tareas || []
+    updateTareas(zona_id, actual.filter((_, i) => i !== idx))
   }
 
   return (
@@ -78,7 +70,7 @@ export default function GestionZonas() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {zonas.map(z => {
-              const tareas = tareasMap[z.id] || []
+              const tareas = z.tareas || []
               const expandido = expandidoTareas === z.id
 
               return (

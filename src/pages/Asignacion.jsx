@@ -279,7 +279,13 @@ function CalendarioMes({ mes, inicio, fin, onClick, diasBloqueados = new Set() }
 
 // ── Selector de persona en fila horizontal ───────────────────────
 function PersonSelector({ opciones, valor, onChange, loading }) {
-  if (loading) return <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Cargando personal...</p>
+  if (loading) return (
+    <div style={{ display: 'flex', gap: 8, padding: '8px 0' }}>
+      {[80, 96, 72, 88].map((w, i) => (
+        <div key={i} className="skeleton" style={{ width: w, height: 34, borderRadius: 8, flexShrink: 0 }} />
+      ))}
+    </div>
+  )
   if (opciones.length === 0) return <p style={{ fontSize: 13, color: 'var(--warning)', padding: '8px 0' }}>⚠️ No hay personal con ese turno</p>
 
   return (

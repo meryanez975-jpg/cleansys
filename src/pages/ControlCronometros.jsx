@@ -167,6 +167,23 @@ function TarjetaEmpleado({ f, nombre, sector, onEliminar, mostrarEliminar }) {
   )
 }
 
+// ── eliminar datos del localStorage ──────────────────────────────
+function eliminarPorFechas(fechasArr) {
+  try {
+    const asigs = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+    const regs  = JSON.parse(localStorage.getItem('cleansys_registros')    || '[]')
+    const fechasSet = new Set(fechasArr)
+    const idsEliminados = new Set(asigs.filter(a => fechasSet.has(a.fecha)).map(a => a.id))
+    localStorage.setItem('cleansys_asignaciones', JSON.stringify(asigs.filter(a => !fechasSet.has(a.fecha))))
+    localStorage.setItem('cleansys_registros',    JSON.stringify(regs.filter(r => !idsEliminados.has(r.asignacion_id))))
+  } catch {}
+}
+
+function eliminarTodoElHistorial() {
+  localStorage.removeItem('cleansys_asignaciones')
+  localStorage.removeItem('cleansys_registros')
+}
+
 // ── página principal ──────────────────────────────────────────────
 const OPCIONES_FECHA = [
   { key: 'hoy',          label: 'Hoy' },
@@ -183,16 +200,20 @@ export default function ControlCronometros() {
   const [showFiltro, setShowFiltro] = useState(false)
   const [personalMap, setPersonalMap] = useState({})
   const [tick, setTick] = useState(0)
+  const [showEliminar, setShowEliminar] = useState(false)
+  const [confirmando,  setConfirmando]  = useState(null) // 'fecha' | 'todo'
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre, sector').eq('activo', true)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.error('ControlCronometros personal:', error); return }
         if (data) {
           const map = {}
           data.forEach(p => { map[p.id] = p })
           setPersonalMap(map)
         }
       })
+      .catch(err => console.error('ControlCronometros personal:', err))
   }, [])
 
   useEffect(() => {
@@ -214,6 +235,12 @@ export default function ControlCronometros() {
   const esMultiDia = fechas.length > 1
   const labelFiltro = OPCIONES_FECHA.find(o => o.key === diaKey)?.label || 'Hoy'
 
+  const labelRangoFecha = (() => {
+    if (fechas.length === 1) return fechas[0]
+    const fmt = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+    return `${fmt(fechas[0])} — ${fmt(fechas[fechas.length - 1])}`
+  })()
+
   function getNombre(f) {
     return personalMap[f.personal_id]?.nombre || f.personalNombre || '—'
   }
@@ -223,6 +250,17 @@ export default function ControlCronometros() {
 
   function handleEliminar(asignacion_id) {
     eliminarRegistro(asignacion_id)
+    setTick(t => t + 1)
+  }
+
+  function handleConfirmarEliminar() {
+    if (confirmando === 'fecha') {
+      eliminarPorFechas(fechas)
+    } else if (confirmando === 'todo') {
+      eliminarTodoElHistorial()
+    }
+    setConfirmando(null)
+    setShowEliminar(false)
     setTick(t => t + 1)
   }
 
@@ -378,6 +416,103 @@ export default function ControlCronometros() {
               />
             )}
 
+          </div>
+        )}
+
+        {/* ── Zona de eliminación ── */}
+        <div style={{ marginTop: 32, borderTop: '1.5px solid var(--border)', paddingTop: 16 }}>
+          <button
+            onClick={() => setShowEliminar(v => !v)}
+            style={{
+              width: '100%', padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
+              background: showEliminar ? '#fee2e2' : 'var(--bg-card)',
+              border: `1.5px solid ${showEliminar ? '#fca5a5' : 'var(--border)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 13, color: showEliminar ? '#dc2626' : 'var(--text-muted)' }}>
+              🗑️ Eliminar datos
+            </span>
+            <span style={{ fontSize: 12, color: showEliminar ? '#dc2626' : 'var(--text-muted)' }}>
+              {showEliminar ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {showEliminar && (
+            <div style={{
+              marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8,
+              padding: '12px 14px', background: '#fff5f5',
+              border: '1.5px solid #fca5a5', borderRadius: 10,
+            }}>
+              <button
+                onClick={() => setConfirmando('fecha')}
+                style={{
+                  padding: '11px 14px', borderRadius: 9, cursor: 'pointer',
+                  background: '#fee2e2', border: '1.5px solid #fca5a5',
+                  fontWeight: 700, fontSize: 13, color: '#b91c1c', textAlign: 'left',
+                }}
+              >
+                🗓️ Eliminar solo: <strong>{labelRangoFecha}</strong>
+              </button>
+              <button
+                onClick={() => setConfirmando('todo')}
+                style={{
+                  padding: '11px 14px', borderRadius: 9, cursor: 'pointer',
+                  background: '#dc2626', border: 'none',
+                  fontWeight: 700, fontSize: 13, color: '#fff', textAlign: 'left',
+                }}
+              >
+                ⚠️ Eliminar TODO el historial
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Modal de confirmación ── */}
+        {confirmando && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 999,
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}>
+            <div style={{
+              background: '#fff', borderRadius: 16, padding: '28px 22px',
+              width: '100%', maxWidth: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            }}>
+              <p style={{ fontSize: 36, textAlign: 'center', marginBottom: 10 }}>⚠️</p>
+              <p style={{ fontWeight: 800, fontSize: 17, color: '#1e293b', textAlign: 'center', marginBottom: 8 }}>
+                ¿Confirmar eliminación?
+              </p>
+              <p style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 22, lineHeight: 1.5 }}>
+                {confirmando === 'fecha'
+                  ? `Se borrarán todos los datos del período: ${labelRangoFecha}.`
+                  : 'Se borrará TODO el historial de limpiezas. Esta acción no se puede deshacer.'}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={handleConfirmarEliminar}
+                  style={{
+                    padding: '13px', borderRadius: 10, cursor: 'pointer',
+                    background: '#dc2626', border: 'none',
+                    fontWeight: 700, fontSize: 15, color: '#fff',
+                  }}
+                >
+                  Sí, eliminar
+                </button>
+                <button
+                  onClick={() => setConfirmando(null)}
+                  style={{
+                    padding: '13px', borderRadius: 10, cursor: 'pointer',
+                    background: 'var(--bg)', border: '1.5px solid var(--border)',
+                    fontWeight: 700, fontSize: 15, color: 'var(--text)',
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

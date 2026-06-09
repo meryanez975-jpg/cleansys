@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
-import { getTareasZona } from '../data/store'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -200,14 +199,19 @@ export default function Registro() {
   const [loadingPersonal, setLoadingPersonal] = useState(true)
 
   useEffect(() => {
-    supabase.from('com_personal').select('id, nombre, sector, turno').eq('activo', true).order('nombre')
-      .then(({ data }) => {
-        if (data) setPersonal(data)
-        setLoadingPersonal(false)
+    supabase.from('com_personal').select('id, nombre, sector, turno').neq('activo', false).order('nombre')
+      .then(({ data, error }) => {
+        if (error) console.error('Registro personal:', error)
+        else if (data) {
+          setPersonal(data)
+          try { localStorage.setItem('cleansys_personal', JSON.stringify(data)) } catch {}
+        }
       })
+      .catch(err => console.error('Registro personal:', err))
+      .finally(() => setLoadingPersonal(false))
   }, [])
 
-  const { asignaciones } = useAsignaciones(fechaHoy)
+  const { asignaciones, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
   const { marcarEntrada, marcarSalida, getRegistroPorAsignacion } = useRegistros(fechaHoy)
 
   const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
@@ -288,7 +292,16 @@ export default function Registro() {
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
               {loadingPersonal ? (
-                <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Cargando personal...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} style={{
+                      height: 44, borderRadius: 10,
+                      background: 'rgba(255,255,255,0.1)',
+                      opacity: 1 - i * 0.2,
+                      animation: 'pulse 1.4s ease-in-out infinite',
+                    }} />
+                  ))}
+                </div>
               ) : !busqueda.trim() ? (
                 <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Escribí al menos una letra</p>
               ) : personalFiltrado.length === 0 ? (
@@ -364,11 +377,25 @@ export default function Registro() {
             Hoy
           </p>
 
-          {tareasHoy.length === 0 ? (
+          {syncingAsigs ? (
+            <div className="card text-center" style={{ padding: 32 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', border: '4px solid var(--primary-light)', borderTopColor: 'var(--primary)', margin: '0 auto 14px', animation: 'spin 0.8s linear infinite' }} />
+              <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-muted)' }}>Cargando tareas...</p>
+            </div>
+          ) : tareasHoy.length === 0 ? (
             <div className="card text-center" style={{ padding: 32 }}>
               <p style={{ fontSize: 32, marginBottom: 10 }}>😴</p>
               <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 6 }}>Sin tareas hoy</p>
-              <p className="text-muted">No tenés limpieza asignada para hoy</p>
+              <p className="text-muted" style={{ marginBottom: 16 }}>No tenés limpieza asignada para hoy</p>
+              <button
+                onClick={sincronizar}
+                style={{
+                  padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 13,
+                }}
+              >
+                🔄 Actualizar
+              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -448,7 +475,7 @@ export default function Registro() {
                         {confirmando === a.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {(() => {
-                              const tareas = getTareasZona(a.zona_id)
+                              const tareas = a.zona?.tareas || []
                               if (tareas.length === 0) return null
                               return (
                                 <>
