@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 import { useAsignaciones } from '../hooks/useAsignaciones'
-import { useRegistros } from '../hooks/useRegistros'
+import { useRegistros, pullRegistros } from '../hooks/useRegistros'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -212,7 +212,16 @@ export default function Registro() {
   }, [])
 
   const { asignaciones, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
-  const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, regError } = useRegistros(fechaHoy)
+  const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, regError, refetch: refetchReg } = useRegistros(fechaHoy)
+
+  // Auto-refresh cada 15s para mantener datos sincronizados entre dispositivos
+  useEffect(() => {
+    const id = setInterval(() => {
+      sincronizar()
+      pullRegistros().then(ok => { if (ok) refetchReg() })
+    }, 15000)
+    return () => clearInterval(id)
+  }, [sincronizar, refetchReg])
 
   const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
   const [busqueda, setBusqueda]           = useState('')
