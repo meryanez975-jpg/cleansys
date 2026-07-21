@@ -53,7 +53,7 @@ function diaIdxDeISO(iso) {
   return dow === 0 ? 6 : dow - 1
 }
 
-function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange }) {
+function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange, zonaFiltro }) {
   const mesInicial = inicio
     ? inicio.slice(0, 7)
     : (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}` })()
@@ -97,6 +97,14 @@ function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange }) {
   const DIAS_CAL = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
   const fmtCorta = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 
+  // Días del mes que ya tienen asignaciones guardadas (para no perderlas de vista al cambiar de rango)
+  const diasConDatos = (() => {
+    const isoMes = Array.from({ length: totalDias }, (_, i) => `${mes}-${String(i + 1).padStart(2, '0')}`)
+    const asigsMes = store.getAsignacionesPorFechas(isoMes)
+    const filtradas = zonaFiltro ? asigsMes.filter(a => a.zona_id === zonaFiltro) : asigsMes
+    return new Set(filtradas.map(a => a.fecha))
+  })()
+
   return (
     <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 8px', border: '1.5px solid var(--border)' }}>
       {/* Hint selección actual */}
@@ -110,10 +118,14 @@ function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange }) {
       </p>
       {/* Historial — rango anterior en gris */}
       {anteriorInicio && anteriorFin && (
-        <p style={{ textAlign: 'center', fontSize: 10, marginBottom: 8, fontWeight: 600, color: '#94a3b8' }}>
+        <p style={{ textAlign: 'center', fontSize: 10, marginBottom: 4, fontWeight: 600, color: '#94a3b8' }}>
           ⬜ Anterior: {fmtCorta(anteriorInicio)} → {fmtCorta(anteriorFin)}
         </p>
       )}
+      <p style={{ textAlign: 'center', fontSize: 10, marginBottom: 8, fontWeight: 600, color: 'var(--text-muted)' }}>
+        <span style={{ display: 'inline-block', width: 12, height: 2, background: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />
+        Ya hay asignaciones ese día
+      </p>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <button onClick={prevMes} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--primary)', padding: '0 10px', fontWeight: 700 }}>‹</button>
         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{mesLabel}</span>
@@ -136,6 +148,7 @@ function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange }) {
             const esAntInicio      = iso === anteriorInicio
             const esAntFin         = iso === anteriorFin
             const enRangoAnterior  = anteriorInicio && anteriorFin && iso > anteriorInicio && iso < anteriorFin
+            const tieneDatos       = diasConDatos.has(iso)
 
             let bg = 'transparent', color = 'var(--text)', fontWeight = 400, borderRadius = 6
 
@@ -146,12 +159,18 @@ function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange }) {
             else if (esAntFin)      { bg = '#94a3b8';              color = '#fff';              fontWeight = 700; borderRadius = '0 6px 6px 0' }
             else if (enRangoAnterior) { bg = '#e2e8f0';            color = '#64748b';           fontWeight = 500; borderRadius = 0 }
 
+            const lineaColor = color === '#fff' ? '#fff' : 'var(--primary)'
+
             return (
               <button key={ci} onClick={() => handleDia(d)} style={{
                 padding: '6px 0', textAlign: 'center', border: 'none', cursor: 'pointer',
                 background: bg, color, fontWeight, borderRadius, fontSize: 12,
               }}>
                 {d}
+                <span style={{
+                  display: 'block', width: 12, height: 2, margin: '2px auto 0', borderRadius: 2,
+                  background: tieneDatos ? lineaColor : 'transparent',
+                }} />
               </button>
             )
           })}
@@ -951,6 +970,7 @@ export default function SemanaPlan() {
                   fin={inputFin}
                   anteriorInicio={rangoAnterior ? fechaISO(rangoAnterior.inicio) : ''}
                   anteriorFin={rangoAnterior ? fechaISO(rangoAnterior.fin) : ''}
+                  zonaFiltro={zonaFiltro}
                   onChange={(newInicio, newFin) => {
                     setInputInicio(newInicio)
                     setInputFin(newFin)
