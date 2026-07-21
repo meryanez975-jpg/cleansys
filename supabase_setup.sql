@@ -66,6 +66,15 @@ CREATE TABLE IF NOT EXISTS limpieza_registros (
 );
 
 -- ================================================
+
+-- 6. Config: valores chicos compartidos entre dispositivos (ej. rango de fechas elegido en Semana)
+CREATE TABLE IF NOT EXISTS limpieza_config (
+  key        TEXT PRIMARY KEY,
+  value      JSONB,
+  updated_en TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ================================================
 -- ROW LEVEL SECURITY
 -- ================================================
 
@@ -74,12 +83,14 @@ ALTER TABLE limpieza_zonas         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE limpieza_materiales    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE limpieza_asignaciones  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE limpieza_registros     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE limpieza_config        ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "public_personal"     ON limpieza_personal     FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "public_zonas"        ON limpieza_zonas        FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "public_materiales"   ON limpieza_materiales   FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "public_asignaciones" ON limpieza_asignaciones FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "public_registros"    ON limpieza_registros    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_config"       ON limpieza_config       FOR ALL USING (true) WITH CHECK (true);
 
 -- ================================================
 -- FIN DEL SCRIPT

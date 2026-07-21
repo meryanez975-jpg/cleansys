@@ -118,6 +118,25 @@ export default function SemanaPlan() {
     return () => clearInterval(id)
   }, [])
 
+  // Rango de fechas seleccionado: compartido entre dispositivos vía Supabase
+  // (antes solo vivía en localStorage, por eso otro celular no lo veía)
+  function pullRangoCompartido() {
+    supabase.from('limpieza_config').select('value').eq('key', 'semana_rango').maybeSingle()
+      .then(({ data, error }) => {
+        if (error || !data?.value?.inicio || !data?.value?.fin) return
+        setRangoPersonalizado(prev => {
+          if (prev && prev.inicio.toISOString() === data.value.inicio && prev.fin.toISOString() === data.value.fin) return prev
+          return { inicio: new Date(data.value.inicio), fin: new Date(data.value.fin) }
+        })
+      })
+      .catch(() => {})
+  }
+  useEffect(() => { pullRangoCompartido() }, [])
+  useEffect(() => {
+    const id = setInterval(pullRangoCompartido, 15000)
+    return () => clearInterval(id)
+  }, [])
+
   useEffect(() => {
     if (vista === 'sinTarea') {
       const hoy = new Date()
@@ -748,6 +767,10 @@ export default function SemanaPlan() {
                     if (inicio > fin) return
                     setRangoPersonalizado({ inicio, fin })
                     setShowDatePicker(false)
+                    supabase.from('limpieza_config').upsert({
+                      key: 'semana_rango',
+                      value: { inicio: inicio.toISOString(), fin: fin.toISOString() },
+                    }).then(({ error }) => { if (error) console.warn('guardar rango error:', error) })
                   }}
                   disabled={!inputInicio || !inputFin}
                   style={{
