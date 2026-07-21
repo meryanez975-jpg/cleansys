@@ -25,7 +25,7 @@ export async function pullRegistros() {
 }
 
 export function useRegistros(fecha) {
-  const [registros, setRegistros] = useState(getCached)
+  const [registros, setRegistros] = useState([])
   const [regError, setRegError]   = useState('')
 
   const refetch = useCallback(() => setRegistros(getCached()), [])
@@ -37,7 +37,8 @@ export function useRegistros(fecha) {
   async function marcarEntrada(asignacion_id) {
     setRegError('')
     const cached = getCached()
-    if (cached.find(r => r.asignacion_id === asignacion_id)) return
+    // Solo bloquear si ya hay una sesión activa (sin hora_salida)
+    if (cached.find(r => r.asignacion_id === asignacion_id && !r.hora_salida)) return
 
     const nuevo = {
       id: genId(),
@@ -57,7 +58,8 @@ export function useRegistros(fecha) {
   async function marcarSalida(asignacion_id, notas = '') {
     setRegError('')
     const cached   = getCached()
-    const existing = cached.find(r => r.asignacion_id === asignacion_id)
+    // Buscar la sesión activa (la que no tiene hora_salida)
+    const existing = cached.find(r => r.asignacion_id === asignacion_id && !r.hora_salida)
 
     const record = existing
       ? { ...existing, hora_salida: new Date().toISOString(), completado: true, notas }
@@ -66,16 +68,26 @@ export function useRegistros(fecha) {
     const { error } = await supabase.from('limpieza_registros').upsert(record)
     if (error) { setRegError('No se pudo registrar la salida: ' + error.message); return }
 
+    // Actualizar solo el registro por id (no por asignacion_id, pueden ser varios)
     setCached(existing
-      ? cached.map(r => r.asignacion_id === asignacion_id ? record : r)
+      ? cached.map(r => r.id === existing.id ? record : r)
       : [...cached, record]
     )
     refetch()
   }
 
   function getRegistroPorAsignacion(asignacion_id) {
-    return registros.find(r => r.asignacion_id === asignacion_id) || null
+    // Retorna la sesión más reciente
+    const todos = registros.filter(r => r.asignacion_id === asignacion_id)
+    if (!todos.length) return null
+    return todos.reduce((a, b) => ((a.hora_entrada || '') > (b.hora_entrada || '') ? a : b))
   }
 
-  return { registros, loading: false, regError, marcarEntrada, marcarSalida, getRegistroPorAsignacion, refetch, pullRegistros }
+  function getAllRegistrosPorAsignacion(asignacion_id) {
+    return registros
+      .filter(r => r.asignacion_id === asignacion_id)
+      .sort((a, b) => (a.hora_entrada || '').localeCompare(b.hora_entrada || ''))
+  }
+
+  return { registros, loading: false, regError, marcarEntrada, marcarSalida, getRegistroPorAsignacion, getAllRegistrosPorAsignacion, refetch, pullRegistros }
 }

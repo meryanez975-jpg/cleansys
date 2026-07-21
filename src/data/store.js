@@ -98,7 +98,7 @@ export function getAsignaciones(fecha) {
   const personal = leer('personal')
   const zonas    = leer('zonas')
   return leer('asignaciones')
-    .filter(a => a.fecha === fecha && a.activo !== false)
+    .filter(a => (a.fecha || '').slice(0, 10) === fecha && a.activo !== false)
     .map(a => ({
       ...a,
       personal: personal.find(p => p.id === a.personal_id)
@@ -153,7 +153,8 @@ export function getRegistros(fecha) {
 
 export function marcarEntrada(asignacion_id) {
   const all = leer('registros')
-  if (all.find(r => r.asignacion_id === asignacion_id)) return
+  // Solo bloquear si hay una sesión activa (sin hora_salida)
+  if (all.find(r => r.asignacion_id === asignacion_id && !r.hora_salida)) return
   const nuevo = {
     id: genId(),
     asignacion_id,
@@ -167,11 +168,15 @@ export function marcarEntrada(asignacion_id) {
 
 export function marcarSalida(asignacion_id, notas = '', imagen = null) {
   const all = leer('registros')
-  escribir('registros', all.map(r =>
-    r.asignacion_id === asignacion_id
-      ? { ...r, hora_salida: new Date().toISOString(), completado: true, notas, imagen }
-      : r
-  ))
+  // Actualizar solo la sesión activa (sin hora_salida), no todas
+  const existing = all.find(r => r.asignacion_id === asignacion_id && !r.hora_salida)
+  if (existing) {
+    escribir('registros', all.map(r =>
+      r.id === existing.id
+        ? { ...r, hora_salida: new Date().toISOString(), completado: true, notas, imagen }
+        : r
+    ))
+  }
 }
 
 export function marcarCompletado(asignacion_id, completado) {

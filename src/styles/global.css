@@ -336,6 +336,11 @@ button, [role="button"], a, select, label {
   to { transform: rotate(360deg); }
 }
 
+@keyframes slideUp {
+  from { transform: translateY(110%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
 .skeleton {
   background: linear-gradient(90deg, var(--border) 25%, color-mix(in srgb, var(--border) 40%, var(--bg-card)) 50%, var(--border) 75%);
   background-size: 200% 100%;

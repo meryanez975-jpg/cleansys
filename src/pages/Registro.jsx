@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 import { useAsignaciones } from '../hooks/useAsignaciones'
-import { useRegistros, pullRegistros } from '../hooks/useRegistros'
+import { useRegistros } from '../hooks/useRegistros'
+import { pullRegistros } from '../hooks/useRegistros'
+import { useInstallPWA } from '../hooks/useInstallPWA'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -170,16 +172,29 @@ function CheckItem({ checked, onChange, label, emoji }) {
 }
 
 // ── Compartir por WhatsApp (texto) ───────────────────────────────
+function duracionFmt(entrada, salida) {
+  if (!entrada || !salida) return null
+  const seg = Math.floor((new Date(salida) - new Date(entrada)) / 1000)
+  const h = Math.floor(seg / 3600)
+  const m = Math.floor((seg % 3600) / 60)
+  const s = seg % 60
+  const p = n => String(n).padStart(2, '0')
+  return h > 0 ? `${p(h)}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`
+}
+
 function compartirWhatsApp({ nombre, zona, turno, fecha, horaEntrada, horaSalida, notas }) {
   const esManana = turno === 'mañana'
   const fechaFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const dur = duracionFmt(horaEntrada, horaSalida)
   const lines = [
     '✅ Limpieza completada',
     `👤 ${nombre}`,
     `📍 ${zona} · ${esManana ? '☀️ Turno Mañana' : '🌙 Turno Noche'}`,
     `📅 ${fechaFmt}`,
-    `⏱ ${formatHora(horaEntrada)} → ${formatHora(horaSalida)}`,
+    `⏰ Inicio: *${formatHora(horaEntrada)}*`,
+    `🏁 Fin: *${formatHora(horaSalida)}*`,
   ]
+  if (dur) lines.push(`⏱️ Duración: *${dur}*`)
   if (notas) lines.push(`📝 ${notas}`)
   const texto = lines.join('\n')
   if (navigator.share) {
@@ -191,9 +206,23 @@ function compartirWhatsApp({ nombre, zona, turno, fecha, horaEntrada, horaSalida
   }
 }
 
+// ── Horario habilitado por turno ──────────────────────────────────
+function esHoraTurno(turno) {
+  const h = new Date().getHours()
+  if (turno === 'mañana') return h >= 8
+  if (turno === 'noche')  return h >= 18
+  return true
+}
+function horaDisponible(turno) {
+  if (turno === 'mañana') return '8:00 AM'
+  if (turno === 'noche')  return '6:00 PM'
+  return null
+}
+
 // ── Pantallas ─────────────────────────────────────────────────────
 export default function Registro() {
   const fechaHoy = hoy()
+  const { puedeInstalar, instalar } = useInstallPWA()
 
   const [personal, setPersonal]               = useState([])
   const [loadingPersonal, setLoadingPersonal] = useState(true)
@@ -212,7 +241,15 @@ export default function Registro() {
   }, [])
 
   const { asignaciones, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
-  const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, regError, refetch: refetchReg } = useRegistros(fechaHoy)
+  const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, getAllRegistrosPorAsignacion, regError, refetch: refetchReg } = useRegistros(fechaHoy)
+
+  // Recargar automáticamente a medianoche para mostrar datos del nuevo día
+  useEffect(() => {
+    const ahora = new Date()
+    const manana = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 1, 0, 0, 5)
+    const timer = setTimeout(() => window.location.reload(), manana - ahora)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Auto-refresh cada 15s para mantener datos sincronizados entre dispositivos
   useEffect(() => {
@@ -221,6 +258,34 @@ export default function Registro() {
       pullRegistros().then(ok => { if (ok) refetchReg() })
     }, 15000)
     return () => clearInterval(id)
+  }, [sincronizar, refetchReg])
+
+  // Refrescar cuando el usuario vuelve a la app
+  useEffect(() => {
+    function handleVisibilidad() {
+      if (!document.hidden) {
+        sincronizar()
+        pullRegistros().then(ok => { if (ok) refetchReg() })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilidad)
+    return () => document.removeEventListener('visibilitychange', handleVisibilidad)
+  }, [sincronizar, refetchReg])
+
+  // Supabase Realtime — sincronización instantánea entre dispositivos
+  useEffect(() => {
+    const channel = supabase
+      .channel('registro-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'limpieza_asignaciones' },
+        () => { sincronizar() }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'limpieza_registros' },
+        () => { pullRegistros().then(ok => { if (ok) refetchReg() }) }
+      )
+      .subscribe()
+    return () => supabase.removeChannel(channel)
   }, [sincronizar, refetchReg])
 
   const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
@@ -246,6 +311,14 @@ export default function Registro() {
   const personalFiltrado = personal.filter(p =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
   )
+  const todasCompletas = !syncingAsigs && tareasHoy.length > 0 && tareasHoy.every(a => !!getRegistroPorAsignacion(a.id)?.hora_salida)
+
+  // Re-render cada minuto para actualizar el estado de los botones de turno
+  const [, setTickMinuto] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTickMinuto(t => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [])
 
   // ── PANTALLA 1: elegir nombre ──────────────────────────────────
   if (!empleadoId) {
@@ -317,46 +390,80 @@ export default function Registro() {
                 <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Sin resultados</p>
               ) : (
                 personalFiltrado.map(p => {
-                  const tieneHoy = asignaciones.some(a => a.personal_id === p.id)
+                  const tareasDelDia = asignaciones.filter(a => a.personal_id === p.id)
+                  const tieneHoy    = tareasDelDia.length > 0
+                  const yaTermino   = tieneHoy && tareasDelDia.every(a => !!getRegistroPorAsignacion(a.id)?.hora_salida)
+                  const turnoHoy    = tieneHoy ? tareasDelDia[0].turno : null
+                  const puedeEntrar = tieneHoy && esHoraTurno(turnoHoy)
                   return (
                     <button
                       key={p.id}
                       onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }}
                       style={{
-                        background: tieneHoy ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
-                        border: `1.5px solid ${tieneHoy ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)'}`,
+                        background: yaTermino
+                          ? 'rgba(16,185,129,0.25)'
+                          : tieneHoy ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+                        border: `1.5px solid ${yaTermino ? 'rgba(16,185,129,0.6)' : tieneHoy ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)'}`,
                         borderRadius: 12, padding: '12px 14px', cursor: 'pointer',
                         textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
                       }}
                     >
                       <div style={{
                         width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                        background: tieneHoy ? '#fff' : 'rgba(255,255,255,0.2)',
+                        background: yaTermino ? '#10b981' : tieneHoy ? '#fff' : 'rgba(255,255,255,0.2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: tieneHoy ? 'var(--primary)' : '#fff',
-                        fontWeight: 800, fontSize: 16,
+                        color: yaTermino ? '#fff' : tieneHoy ? 'var(--primary)' : '#fff',
+                        fontWeight: 800, fontSize: yaTermino ? 20 : 16,
                       }}>
-                        {p.nombre.charAt(0).toUpperCase()}
+                        {yaTermino ? '✓' : p.nombre.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>{p.nombre}</p>
                         {p.sector && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>{p.sector}</p>}
+                        {tieneHoy && !yaTermino && !puedeEntrar && (
+                          <p style={{ fontSize: 11, color: '#fde68a', marginTop: 3 }}>
+                            ⏰ Disponible desde las {horaDisponible(turnoHoy)}
+                          </p>
+                        )}
                       </div>
-                      {tieneHoy && (
+                      {yaTermino ? (
                         <span style={{
-                          background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
+                          background: 'rgba(16,185,129,0.4)', border: '1px solid rgba(16,185,129,0.7)',
                           borderRadius: 20, padding: '3px 10px',
                           fontSize: 11, fontWeight: 700, color: '#fff',
                         }}>
-                          Tarea hoy
+                          ✅ Ya terminó
                         </span>
-                      )}
+                      ) : tieneHoy ? (
+                        <span style={{
+                          background: puedeEntrar ? 'rgba(255,255,255,0.25)' : 'rgba(251,191,36,0.2)',
+                          border: `1px solid ${puedeEntrar ? 'rgba(255,255,255,0.4)' : 'rgba(251,191,36,0.5)'}`,
+                          borderRadius: 20, padding: '3px 10px',
+                          fontSize: 11, fontWeight: 700, color: '#fff',
+                        }}>
+                          {puedeEntrar ? 'Hacés limpieza hoy' : '🔒 Hacés limpieza hoy'}
+                        </span>
+                      ) : null}
                     </button>
                   )
                 })
               )}
             </div>
           </div>
+
+          {puedeInstalar && (
+            <button
+              onClick={instalar}
+              style={{
+                width: '100%', marginTop: 16, padding: '12px 0', borderRadius: 12,
+                background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)',
+                color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>📲</span> Instalar app
+            </button>
+          )}
 
         </div>
       </div>
@@ -400,7 +507,105 @@ export default function Registro() {
               <div style={{ width: 36, height: 36, borderRadius: '50%', border: '4px solid var(--primary-light)', borderTopColor: 'var(--primary)', margin: '0 auto 14px', animation: 'spin 0.8s linear infinite' }} />
               <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-muted)' }}>Cargando tareas...</p>
             </div>
-          ) : tareasHoy.length === 0 ? (
+          ) : todasCompletas ? (
+            <div style={{
+              background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+              border: '2px solid #6ee7b7',
+              borderRadius: 20,
+              padding: '32px 24px',
+              textAlign: 'center',
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>🎉</div>
+              <p style={{ fontSize: 22, fontWeight: 800, color: '#065f46', marginBottom: 6 }}>
+                ¡Excelente, {empleadoSeleccionado?.nombre}!
+              </p>
+              <p style={{ fontSize: 15, color: '#047857', fontWeight: 600, marginBottom: 4 }}>
+                Ya completaste toda tu limpieza de hoy
+              </p>
+              <p style={{ fontSize: 13, color: '#059669', marginBottom: 20 }}>
+                Podés descansar, el trabajo está hecho ✨
+              </p>
+              {/* Resumen de tareas con última sesión */}
+              <div style={{
+                background: '#fff', borderRadius: 12, padding: '14px 16px',
+                border: '1px solid #a7f3d0', marginBottom: 16,
+              }}>
+                {tareasHoy.map(a => {
+                  const reg = getRegistroPorAsignacion(a.id)
+                  const dur = duracionFmt(reg?.hora_entrada, reg?.hora_salida)
+                  return (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #ecfdf5' }}>
+                      <span style={{ fontSize: 18 }}>{a.turno === 'mañana' ? '☀️' : '🌙'}</span>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <p style={{ fontWeight: 700, fontSize: 14, color: '#065f46' }}>{a.zona?.nombre || '—'}</p>
+                        <p style={{ fontSize: 12, color: '#059669' }}>
+                          ⏰ {formatHora(reg?.hora_entrada)} → {formatHora(reg?.hora_salida)}
+                        </p>
+                        {dur && <p style={{ fontSize: 12, color: '#047857', fontWeight: 600 }}>⏱️ Duración: {dur}</p>}
+                      </div>
+                      <span style={{ fontSize: 18 }}>✅</span>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Compartir + Iniciar de nuevo + Salir */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={() => {
+                    const lastA   = tareasHoy[tareasHoy.length - 1]
+                    const lastReg = getRegistroPorAsignacion(lastA?.id)
+                    compartirWhatsApp({
+                      nombre:      empleadoSeleccionado?.nombre,
+                      zona:        lastA?.zona?.nombre,
+                      turno:       lastA?.turno,
+                      fecha:       fechaHoy,
+                      horaEntrada: lastReg?.hora_entrada,
+                      horaSalida:  lastReg?.hora_salida,
+                      notas:       lastReg?.notas,
+                    })
+                    setTimeout(() => {
+                      setEmpleadoId(null)
+                      localStorage.removeItem('cleansys_reg_emp')
+                    }, 800)
+                  }}
+                  style={{
+                    width: '100%', padding: '12px 0', borderRadius: 12, border: 'none',
+                    background: 'linear-gradient(135deg, #25d366, #128c7e)',
+                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>📲</span> Compartir en WhatsApp
+                </button>
+                {tareasHoy.map(a => esHoraTurno(a.turno) ? (
+                  <button
+                    key={a.id}
+                    onClick={() => marcarEntrada(a.id)}
+                    style={{
+                      width: '100%', padding: '12px 0', borderRadius: 12,
+                      background: '#fff', border: '2px solid #6ee7b7',
+                      color: '#065f46', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    }}
+                  >
+                    🔄 {tareasHoy.length > 1 ? `Iniciar ${a.zona?.nombre || 'limpieza'}` : 'Iniciar de nuevo'}
+                  </button>
+                ) : null)}
+                <button
+                  onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}
+                  style={{
+                    width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
+                  }}
+                >
+                  👋 Listo, salir
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {tareasHoy.length === 0 ? (
             <div className="card text-center" style={{ padding: 32 }}>
               <p style={{ fontSize: 32, marginBottom: 10 }}>😴</p>
               <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 6 }}>Sin tareas hoy</p>
@@ -415,7 +620,7 @@ export default function Registro() {
                 🔄 Actualizar
               </button>
             </div>
-          ) : (
+          ) : todasCompletas ? null : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {tareasHoy.map(a => {
                 const reg          = getRegistroPorAsignacion(a.id)
@@ -452,38 +657,48 @@ export default function Registro() {
                             👤 {empleadoSeleccionado?.nombre}
                           </p>
                           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                            Inicio: {formatHora(reg.hora_entrada)} → Fin: {formatHora(reg.hora_salida)}
+                            ⏰ {formatHora(reg.hora_entrada)} → {formatHora(reg.hora_salida)}
                           </p>
-                          {reg.notas && (
-                            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>📝 {reg.notas}</p>
+                          {duracionFmt(reg.hora_entrada, reg.hora_salida) && (
+                            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                              ⏱️ Duración: {duracionFmt(reg.hora_entrada, reg.hora_salida)}
+                            </p>
+                          )}
+                          {reg.notas && <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>📝 {reg.notas}</p>}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <button
+                            onClick={() => {
+                              compartirWhatsApp({
+                                nombre: empleadoSeleccionado?.nombre,
+                                zona: a.zona?.nombre,
+                                turno: a.turno,
+                                fecha: fechaHoy,
+                                horaEntrada: reg.hora_entrada,
+                                horaSalida: reg.hora_salida,
+                                notas: reg.notas,
+                              })
+                              setTimeout(() => {
+                                setEmpleadoId(null)
+                                localStorage.removeItem('cleansys_reg_emp')
+                              }, 800)
+                            }}
+                            style={{
+                              width: '100%', padding: '12px 0', borderRadius: 10, cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #25d366, #128c7e)',
+                              border: 'none', color: '#fff', fontWeight: 700, fontSize: 14,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            }}
+                          >
+                            <span style={{ fontSize: 18 }}>📲</span> Compartir en WhatsApp
+                          </button>
+                          {esHoraTurno(a.turno) && (
+                            <button className="btn btn-outline btn-block" onClick={() => marcarEntrada(a.id)}>
+                              🔄 Iniciar de nuevo
+                            </button>
                           )}
                         </div>
-                        {/* Botón compartir */}
-                        <button
-                          onClick={() => {
-                            compartirWhatsApp({
-                              nombre: empleadoSeleccionado?.nombre,
-                              zona: a.zona?.nombre,
-                              turno: a.turno,
-                              fecha: fechaHoy,
-                              horaEntrada: reg.hora_entrada,
-                              horaSalida: reg.hora_salida,
-                              notas: reg.notas,
-                            })
-                            setTimeout(() => {
-                              setEmpleadoId(null)
-                              localStorage.removeItem('cleansys_reg_emp')
-                            }, 800)
-                          }}
-                          style={{
-                            width: '100%', padding: '12px 0', borderRadius: 10, cursor: 'pointer',
-                            background: 'linear-gradient(135deg, #25d366, #128c7e)',
-                            border: 'none', color: '#fff', fontWeight: 700, fontSize: 14,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          }}
-                        >
-                          <span style={{ fontSize: 18 }}>📲</span> Compartir en WhatsApp
-                        </button>
                       </div>
 
                     ) : tieneEntrada ? (
@@ -531,10 +746,25 @@ export default function Registro() {
                         )}
                       </div>
 
-                    ) : (
+                    ) : esHoraTurno(a.turno) ? (
                       <button className="btn btn-outline btn-block btn-lg" onClick={() => marcarEntrada(a.id)}>
                         📍 Marcar Entrada
                       </button>
+                    ) : (
+                      <div style={{
+                        textAlign: 'center', padding: '22px 16px',
+                        background: '#fffbeb', borderRadius: 12,
+                        border: '1.5px solid #fde68a',
+                      }}>
+                        <p style={{ fontSize: 30, marginBottom: 8 }}>⏰</p>
+                        <p style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 4 }}>
+                          Todavía no es la hora
+                        </p>
+                        <p style={{ fontSize: 13, color: '#b45309' }}>
+                          El botón de entrada estará disponible desde las{' '}
+                          <strong>{horaDisponible(a.turno)}</strong>
+                        </p>
+                      </div>
                     )}
                   </div>
                 )

@@ -12,6 +12,7 @@ import { usePersonal } from '../hooks/usePersonal'
 import { usePersonalComidas } from '../hooks/usePersonalComidas'
 import { pullFromSupabase, pushToSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
+import { useInstallPWA } from '../hooks/useInstallPWA'
 
 const DIAS_FULL  = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -52,9 +53,118 @@ function diaIdxDeISO(iso) {
   return dow === 0 ? 6 : dow - 1
 }
 
+function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange }) {
+  const mesInicial = inicio
+    ? inicio.slice(0, 7)
+    : (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}` })()
+  const [mes, setMes] = useState(mesInicial)
+
+  useEffect(() => {
+    if (inicio) setMes(inicio.slice(0, 7))
+  }, [inicio])
+
+  function prevMes() {
+    const [y, m] = mes.split('-').map(Number)
+    const d = new Date(y, m - 2, 1)
+    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  function nextMes() {
+    const [y, m] = mes.split('-').map(Number)
+    const d = new Date(y, m, 1)
+    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  function handleDia(d) {
+    const iso = `${mes}-${String(d).padStart(2, '0')}`
+    if (!inicio || (inicio && fin)) {
+      onChange(iso, '')
+    } else {
+      if (iso <= inicio) onChange(iso, inicio)
+      else onChange(inicio, iso)
+    }
+  }
+
+  const [y, m] = mes.split('-').map(Number)
+  const totalDias = new Date(y, m, 0).getDate()
+  const dow1 = new Date(y, m - 1, 1).getDay()
+  const offset = dow1 === 0 ? 6 : dow1 - 1
+  const celdas = [...Array(offset).fill(null), ...Array.from({ length: totalDias }, (_, i) => i + 1)]
+  while (celdas.length % 7 !== 0) celdas.push(null)
+  const semanas = []
+  for (let i = 0; i < celdas.length; i += 7) semanas.push(celdas.slice(i, i + 7))
+
+  const mesLabel = new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+  const DIAS_CAL = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+  const fmtCorta = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+
+  return (
+    <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 8px', border: '1.5px solid var(--border)' }}>
+      {/* Hint selección actual */}
+      <p style={{ textAlign: 'center', fontSize: 11, marginBottom: 4, fontWeight: 700,
+        color: inicio && fin ? 'var(--primary-dark)' : 'var(--text-muted)' }}>
+        {!inicio
+          ? '👆 Tocá el día de inicio'
+          : !fin
+            ? `Desde ${fmtCorta(inicio)} · Tocá el día de fin`
+            : `🔵 ${fmtCorta(inicio)} → ${fmtCorta(fin)}`}
+      </p>
+      {/* Historial — rango anterior en gris */}
+      {anteriorInicio && anteriorFin && (
+        <p style={{ textAlign: 'center', fontSize: 10, marginBottom: 8, fontWeight: 600, color: '#94a3b8' }}>
+          ⬜ Anterior: {fmtCorta(anteriorInicio)} → {fmtCorta(anteriorFin)}
+        </p>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <button onClick={prevMes} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--primary)', padding: '0 10px', fontWeight: 700 }}>‹</button>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{mesLabel}</span>
+        <button onClick={nextMes} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--primary)', padding: '0 10px', fontWeight: 700 }}>›</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+        {DIAS_CAL.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>{d}</div>
+        ))}
+      </div>
+      {semanas.map((sem, si) => (
+        <div key={si} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
+          {sem.map((d, ci) => {
+            if (!d) return <div key={ci} />
+            const iso = `${mes}-${String(d).padStart(2, '0')}`
+
+            const esInicio         = iso === inicio
+            const esFin            = iso === fin
+            const enRango          = inicio && fin && iso > inicio && iso < fin
+            const esAntInicio      = iso === anteriorInicio
+            const esAntFin         = iso === anteriorFin
+            const enRangoAnterior  = anteriorInicio && anteriorFin && iso > anteriorInicio && iso < anteriorFin
+
+            let bg = 'transparent', color = 'var(--text)', fontWeight = 400, borderRadius = 6
+
+            if (esInicio)           { bg = 'var(--primary)';       color = '#fff';              fontWeight = 800; borderRadius = '6px 0 0 6px' }
+            else if (esFin)         { bg = 'var(--primary)';       color = '#fff';              fontWeight = 800; borderRadius = '0 6px 6px 0' }
+            else if (enRango)       { bg = 'var(--primary-light)'; color = 'var(--primary-dark)'; fontWeight = 600; borderRadius = 0 }
+            else if (esAntInicio)   { bg = '#94a3b8';              color = '#fff';              fontWeight = 700; borderRadius = '6px 0 0 6px' }
+            else if (esAntFin)      { bg = '#94a3b8';              color = '#fff';              fontWeight = 700; borderRadius = '0 6px 6px 0' }
+            else if (enRangoAnterior) { bg = '#e2e8f0';            color = '#64748b';           fontWeight = 500; borderRadius = 0 }
+
+            return (
+              <button key={ci} onClick={() => handleDia(d)} style={{
+                padding: '6px 0', textAlign: 'center', border: 'none', cursor: 'pointer',
+                background: bg, color, fontWeight, borderRadius, fontSize: 12,
+              }}>
+                {d}
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SemanaPlan() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { puedeInstalar, instalar } = useInstallPWA()
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
   const [personalMap, setPersonalMap] = useState({})
@@ -80,6 +190,8 @@ export default function SemanaPlan() {
       return { inicio: new Date(inicio), fin: new Date(fin) }
     } catch { return null }
   })
+  const [rangoAnterior, setRangoAnterior] = useState(null)
+  const channelRef = useRef(null)
   const [addingFor, setAddingFor] = useState(null) // { iso, turno }
   const [addPersonalId, setAddPersonalId] = useState('')
   const [addZonaId, setAddZonaId] = useState('')
@@ -93,6 +205,8 @@ export default function SemanaPlan() {
   const [guardandoPatron, setGuardandoPatron] = useState(false)
   const [errorPatron, setErrorPatron] = useState('')
   const [confirmSalida, setConfirmSalida] = useState(null) // acción pendiente o null
+  const [conflictoToast, setConflictoToast] = useState(null) // { nombre, zonaNombre, turno }
+  const [alertasInactivos, setAlertasInactivos] = useState([])
   const [semanaConteo, setSemanaConteo] = useState(() => {
     const hoy = new Date()
     const d = hoy.getDay()
@@ -105,36 +219,56 @@ export default function SemanaPlan() {
 
   useEffect(() => { setTick(t => t + 1) }, [])
 
+  useEffect(() => {
+    if (!conflictoToast) return
+    const t = setTimeout(() => setConflictoToast(null), 4500)
+    return () => clearTimeout(t)
+  }, [conflictoToast])
+
   // Sincronizar asignaciones y registros desde Supabase al abrir la app
   useEffect(() => {
     Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
   }, [])
 
-  // Auto-refresh Conteo cada 30s para ver completados en tiempo real
+  // Auto-refresh cada 15s para mantener datos sincronizados entre dispositivos
   useEffect(() => {
     const id = setInterval(() => {
       Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
-    }, 30000)
+    }, 15000)
     return () => clearInterval(id)
   }, [])
 
-  // Rango de fechas seleccionado: compartido entre dispositivos vía Supabase
-  // (antes solo vivía en localStorage, por eso otro celular no lo veía)
-  function pullRangoCompartido() {
-    supabase.from('limpieza_config').select('value').eq('key', 'semana_rango').maybeSingle()
-      .then(({ data, error }) => {
-        if (error || !data?.value?.inicio || !data?.value?.fin) return
-        setRangoPersonalizado(prev => {
-          if (prev && prev.inicio.toISOString() === data.value.inicio && prev.fin.toISOString() === data.value.fin) return prev
-          return { inicio: new Date(data.value.inicio), fin: new Date(data.value.fin) }
-        })
-      })
-      .catch(() => {})
-  }
-  useEffect(() => { pullRangoCompartido() }, [])
+  // Refrescar cuando el usuario vuelve a la app (cambia de pestaña, desbloquea celular, etc.)
   useEffect(() => {
-    const id = setInterval(pullRangoCompartido, 15000)
-    return () => clearInterval(id)
+    function handleVisibilidad() {
+      if (!document.hidden) {
+        Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilidad)
+    return () => document.removeEventListener('visibilitychange', handleVisibilidad)
+  }, [])
+
+  // Supabase Realtime — sincronización instantánea entre dispositivos
+  useEffect(() => {
+    const channel = supabase
+      .channel('semanaplan-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'limpieza_asignaciones' },
+        () => {
+          Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
+        }
+      )
+      .on('broadcast', { event: 'rango_change' }, ({ payload }) => {
+        if (payload?.inicio && payload?.fin) {
+          setRangoPersonalizado({ inicio: new Date(payload.inicio), fin: new Date(payload.fin) })
+        } else {
+          setRangoPersonalizado(null)
+        }
+      })
+      .subscribe()
+    channelRef.current = channel
+    return () => { supabase.removeChannel(channel); channelRef.current = null }
   }, [])
 
   useEffect(() => {
@@ -187,7 +321,6 @@ export default function SemanaPlan() {
 
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
   const { personal, refetch: refetchPersonal } = usePersonal()
-  const [alertasInactivos, setAlertasInactivos] = useState([])
   const { personal: personalDB } = usePersonalComidas(null)
 
   useEffect(() => {
@@ -341,6 +474,14 @@ export default function SemanaPlan() {
     setTick(t => t + 1)
   }
 
+  async function eliminarPersonaCompleta(asigs) {
+    const ids = asigs.map(a => a.id)
+    const { error } = await supabase.from('limpieza_asignaciones').update({ activo: false }).in('id', ids)
+    if (error) { console.error('eliminarPersonaCompleta error:', error); return }
+    ids.forEach(id => store.removeAsignacion(id))
+    setTick(t => t + 1)
+  }
+
   function toggleTurno(iso, turno) {
     setTurnosAbiertos(prev => {
       const actual = prev[iso]
@@ -366,28 +507,44 @@ export default function SemanaPlan() {
 
   async function guardarPatronCompleto() {
     setErrorPatron('')
-    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
     const rows = []
-    draftPatron.forEach(d => {
+
+    // Verificar conflictos directamente en Supabase para cada entrada del patrón
+    for (const d of draftPatron) {
       const p = personalDB.find(x => x.id === d.personalId)
-      d.isos.forEach(iso => {
-        const yaExiste = cached.find(a =>
-          a.personal_id === d.personalId && a.turno === d.turno && a.fecha === iso && a.activo !== false
-        )
-        if (!yaExiste) {
-          rows.push({
-            id: genId(),
-            personal_id: d.personalId,
-            zona_id: d.zonaId || null,
+      for (const iso of d.isos) {
+        const { data: existentes } = await supabase
+          .from('limpieza_asignaciones')
+          .select('id, zona_id')
+          .eq('personal_id', d.personalId)
+          .eq('turno', d.turno)
+          .eq('fecha', iso)
+          .eq('activo', true)
+          .limit(1)
+
+        if (existentes && existentes.length > 0) {
+          const zonaConflicto = zonas.find(z => z.id === existentes[0].zona_id)
+          const nombrePersona = p?.nombre || d.nombre || '—'
+          setConflictoToast({
+            nombre: nombrePersona,
+            zonaNombre: zonaConflicto?.nombre || 'otra zona',
             turno: d.turno,
-            fecha: iso,
-            personalNombre: p?.nombre || d.nombre || '',
-            personalSector: p?.sector || '',
-            activo: true,
           })
+          return
         }
-      })
-    })
+
+        rows.push({
+          id: genId(),
+          personal_id: d.personalId,
+          zona_id: d.zonaId || null,
+          turno: d.turno,
+          fecha: iso,
+          personalNombre: p?.nombre || d.nombre || '',
+          personalSector: p?.sector || '',
+          activo: true,
+        })
+      }
+    }
 
     if (rows.length === 0) {
       setDraftPatron([])
@@ -406,6 +563,7 @@ export default function SemanaPlan() {
       return
     }
 
+    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
     localStorage.setItem('cleansys_asignaciones', JSON.stringify([
       ...cached, ...rows.filter(r => !cached.some(c => c.id === r.id)),
     ]))
@@ -421,29 +579,52 @@ export default function SemanaPlan() {
     const zona = addZonaId || zonaFiltro || ''
     const isos = addingFor.isos || [addingFor.iso]
 
-    const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-    const rows = []
-    isos.forEach(iso => {
-      const yaExiste = cached.find(a =>
-        a.personal_id === addPersonalId && a.turno === addingFor.turno && a.fecha === iso && a.activo !== false
-      )
-      if (!yaExiste) {
-        rows.push({
-          id: genId(),
-          personal_id: addPersonalId,
-          zona_id: zona || null,
+    // Verificar conflicto directamente en Supabase (fuente de verdad)
+    let conflicto = null
+    for (const iso of isos) {
+      const { data: existentes } = await supabase
+        .from('limpieza_asignaciones')
+        .select('id, zona_id')
+        .eq('personal_id', addPersonalId)
+        .eq('turno', addingFor.turno)
+        .eq('fecha', iso)
+        .eq('activo', true)
+        .limit(1)
+
+      if (existentes && existentes.length > 0) {
+        const zonaConflicto = zonas.find(z => z.id === existentes[0].zona_id)
+        conflicto = {
+          nombre: p?.nombre || '—',
+          zonaNombre: zonaConflicto?.nombre || 'otra zona',
           turno: addingFor.turno,
-          fecha: iso,
-          personalNombre: p?.nombre || '',
-          personalSector: p?.sector || '',
-          activo: true,
-        })
+        }
+        break
       }
-    })
+    }
+
+    if (conflicto) {
+      setConflictoToast(conflicto)
+      setAddingFor(null)
+      setAddPersonalId('')
+      setAddZonaId('')
+      return
+    }
+
+    const rows = isos.map(iso => ({
+      id: genId(),
+      personal_id: addPersonalId,
+      zona_id: zona || null,
+      turno: addingFor.turno,
+      fecha: iso,
+      personalNombre: p?.nombre || '',
+      personalSector: p?.sector || '',
+      activo: true,
+    }))
 
     if (rows.length > 0) {
       const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno' })
       if (error) { console.error('handleAddAsignacion error:', error); return }
+      const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
       localStorage.setItem('cleansys_asignaciones', JSON.stringify([
         ...cached, ...rows.filter(r => !cached.some(c => c.id === r.id)),
       ]))
@@ -453,6 +634,8 @@ export default function SemanaPlan() {
     setAddingFor(null)
     setAddPersonalId('')
     setAddZonaId('')
+    setGuardadoOk(true)
+    setTimeout(() => setGuardadoOk(false), 2500)
   }
 
   const btnBase = { flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }
@@ -461,9 +644,10 @@ export default function SemanaPlan() {
 
   const rangoTexto = `${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[fechasSemana.length - 1].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`
 
-  async function compartirCaptura(ref, titulo, info) {
+  async function compartirCaptura(ref, titulo, info, onCapturado) {
     if (!ref) return
     const canvas = await html2canvas(ref, { backgroundColor: '#fff', scale: 2 })
+    onCapturado?.()
     canvas.toBlob(async blob => {
       const nombreArchivo = `${titulo.replace(/\s+/g, '-')}-${fechasISO[0]}.png`
       const file = new File([blob], nombreArchivo, { type: 'image/png' })
@@ -493,18 +677,19 @@ export default function SemanaPlan() {
 
   function ejecutarCapturaConTurno(turno) {
     const t = turno === 'mañana' ? '☀️ Turno Mañana' : '🌙 Turno Noche'
+    setElegirTurnoCaptura(null)
     if (elegirTurnoCaptura === 'semana') {
-      // Capturar con filtro temporal
+      const filtroAnterior = filtroTurno
       setFiltroTurno(turno)
       setTimeout(() => {
-        compartirCaptura(semanaRef.current, 'Semana de trabajo', t)
-        setElegirTurnoCaptura(null)
-      }, 100)
+        compartirCaptura(semanaRef.current, 'Semana de trabajo', t, () => {
+          setFiltroTurno(filtroAnterior)
+        })
+      }, 150)
     } else {
       const zona = zonas.find(z => z.id === elegirTurnoCaptura)
       setTimeout(() => {
         compartirCaptura(zonasRefs.current[elegirTurnoCaptura], `Zona ${zona?.nombre}`, `🏢 ${zona?.nombre} · ${t}\n📅 ${rangoTexto}`)
-        setElegirTurnoCaptura(null)
       }, 100)
     }
   }
@@ -518,19 +703,35 @@ export default function SemanaPlan() {
 
         {/* Header */}
         <div className="header">
-          <button
-            onClick={() => confirmarSiHayDraft(() => setShowMenu(true))}
-            style={{
-              background: vista === 'inicio' ? 'rgba(255,255,255,0.15)' : 'var(--primary-light)',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)', cursor: 'pointer', padding: '10px 12px',
-              display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <span style={{ display: 'block', width: 18, height: 2, background: vista === 'inicio' ? '#fff' : 'var(--primary-dark)', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 18, height: 2, background: vista === 'inicio' ? '#fff' : 'var(--primary-dark)', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 18, height: 2, background: vista === 'inicio' ? '#fff' : 'var(--primary-dark)', borderRadius: 2 }} />
-          </button>
+          {vista !== 'inicio' ? (
+            <button
+              onClick={() => confirmarSiHayDraft(() => setVista('inicio'))}
+              style={{
+                background: 'var(--primary-light)',
+                border: 'none', borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer', padding: '10px 16px',
+                fontSize: 20, fontWeight: 800, color: 'var(--primary-dark)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              ←
+            </button>
+          ) : (
+            <button
+              onClick={() => confirmarSiHayDraft(() => setShowMenu(true))}
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer', padding: '10px 12px',
+                display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <span style={{ display: 'block', width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
+            </button>
+          )}
           <div style={{ flex: 1 }}>
             <p className="header-title" style={vista === 'inicio' ? { color: '#fff' } : {}}>
               {zonaFiltro ? (zonas.find(z => z.id === zonaFiltro)?.nombre ?? 'Semana de trabajo') : 'Semana de trabajo'}
@@ -613,6 +814,19 @@ export default function SemanaPlan() {
               </div>
             </div>
 
+            {puedeInstalar && (
+              <button
+                onClick={instalar}
+                style={{
+                  width: '100%', padding: '12px 0', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)',
+                  color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>📲</span> Instalar app
+              </button>
+            )}
 
             {/* Alertas de personal inactivo */}
             {alertasInactivos.map(({ nombre, asigs }) => (
@@ -653,28 +867,21 @@ export default function SemanaPlan() {
         {/* Barra de navegación (visible en todas las vistas excepto inicio) */}
         {vista !== 'inicio' && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button onClick={() => confirmarSiHayDraft(() => setVista('inicio'))} style={{
-              ...btnBase, flex: 'none', padding: '10px 14px',
-              background: 'var(--primary-light)', color: 'var(--primary-dark)',
-              fontWeight: 700, fontSize: 18,
-            }}>
-              ←
-            </button>
-            <button onClick={() => setVista('semana')} style={{
+            <button onClick={() => confirmarSiHayDraft(() => setVista('semana'))} style={{
               ...btnBase,
               background: vista === 'semana' ? '#1d4ed8' : '#dbeafe',
               boxShadow: vista === 'semana' ? '0 3px 10px rgba(29,78,216,0.35)' : 'none',
             }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
             </button>
-            <button onClick={() => setVista('limpieza')} style={{
+            <button onClick={() => confirmarSiHayDraft(() => setVista('limpieza'))} style={{
               ...btnBase,
               background: vista === 'limpieza' ? '#15803d' : '#dcfce7',
               boxShadow: vista === 'limpieza' ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
             }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 Limpieza</p>
             </button>
-            <button onClick={() => setVista('sinTarea')} style={{
+            <button onClick={() => confirmarSiHayDraft(() => setVista('sinTarea'))} style={{
               ...btnBase,
               background: vista === 'sinTarea' ? '#475569' : '#f1f5f9',
               boxShadow: vista === 'sinTarea' ? '0 3px 10px rgba(71,85,105,0.35)' : 'none',
@@ -719,11 +926,10 @@ export default function SemanaPlan() {
             <div style={{ display: 'flex', gap: 6, marginTop: showDatePicker || rangoPersonalizado ? 10 : 8 }}>
               <button
                 onClick={() => {
-                  setShowDatePicker(v => !v)
-                  const hoy = new Date()
-                  const primeroDeMes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`
-                  setInputInicio(primeroDeMes)
+                  if (showDatePicker) { setShowDatePicker(false); return }
+                  setInputInicio(rangoPersonalizado ? fechaISO(rangoPersonalizado.inicio) : '')
                   setInputFin(rangoPersonalizado ? fechaISO(rangoPersonalizado.fin) : '')
+                  setShowDatePicker(true)
                 }}
                 style={{
                   flex: 1, padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -738,49 +944,54 @@ export default function SemanaPlan() {
 
             {/* Formulario de rango */}
             {showDatePicker && (
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Desde</p>
-                    <input
-                      type="date"
-                      value={inputInicio}
-                      onChange={e => setInputInicio(e.target.value)}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Hasta</p>
-                    <input
-                      type="date"
-                      value={inputFin}
-                      onChange={e => setInputFin(e.target.value)}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    if (!inputInicio || !inputFin) return
-                    const inicio = new Date(inputInicio + 'T12:00:00')
-                    const fin = new Date(inputFin + 'T12:00:00')
-                    if (inicio > fin) return
-                    setRangoPersonalizado({ inicio, fin })
-                    setShowDatePicker(false)
-                    supabase.from('limpieza_config').upsert({
-                      key: 'semana_rango',
-                      value: { inicio: inicio.toISOString(), fin: fin.toISOString() },
-                    }).then(({ error }) => { if (error) console.warn('guardar rango error:', error) })
+              <div style={{ marginTop: 10 }}>
+                <MiniCalRango
+                  key={inputInicio || 'empty'}
+                  inicio={inputInicio}
+                  fin={inputFin}
+                  anteriorInicio={rangoAnterior ? fechaISO(rangoAnterior.inicio) : ''}
+                  anteriorFin={rangoAnterior ? fechaISO(rangoAnterior.fin) : ''}
+                  onChange={(newInicio, newFin) => {
+                    setInputInicio(newInicio)
+                    setInputFin(newFin)
                   }}
-                  disabled={!inputInicio || !inputFin}
-                  style={{
-                    width: '100%', padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    background: inputInicio && inputFin ? 'var(--primary)' : '#cbd5e1',
-                    color: '#fff', fontWeight: 700, fontSize: 13,
-                  }}
-                >
-                  Aplicar
-                </button>
+                />
+                {inputInicio && inputFin && (() => {
+                  const dias = Math.round((new Date(inputFin + 'T12:00:00') - new Date(inputInicio + 'T12:00:00')) / 86400000) + 1
+                  const fmtCorta = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+                  return (
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--primary-dark)', marginBottom: 6 }}>
+                        📅 {fmtCorta(inputInicio)} → {fmtCorta(inputFin)} · <strong>{dias} {dias === 1 ? 'día' : 'días'}</strong>
+                      </p>
+                      <button
+                        onClick={() => {
+                          setRangoAnterior(rangoPersonalizado)
+                          const newRango = { inicio: new Date(inputInicio + 'T12:00:00'), fin: new Date(inputFin + 'T12:00:00') }
+                          setRangoPersonalizado(newRango)
+                          if (channelRef.current) {
+                            channelRef.current.send({
+                              type: 'broadcast',
+                              event: 'rango_change',
+                              payload: { inicio: newRango.inicio.toISOString(), fin: newRango.fin.toISOString() },
+                            })
+                          }
+                          setGuardadoOk(true)
+                          setTimeout(() => setGuardadoOk(false), 2500)
+                          setShowDatePicker(false)
+                        }}
+                        style={{
+                          width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
+                          cursor: 'pointer', background: 'var(--primary)', color: '#fff',
+                          fontWeight: 800, fontSize: 15, letterSpacing: '0.02em',
+                          boxShadow: '0 2px 8px rgba(var(--primary-rgb, 59,130,246),0.35)',
+                        }}
+                      >
+                        Guardar período
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
             )}
           </div>
@@ -810,8 +1021,11 @@ export default function SemanaPlan() {
                   ].filter(t => !filtroTurno || t.key === filtroTurno)
                   return (
                     <div key={'pat-' + i} className="card" style={{ borderLeft: '4px solid var(--border)', padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 10 }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{dia.nombre}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                          {dia.isos.map(iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })).join(' · ')}
+                        </span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {turnos.filter(t => turnoOpenPat === null || turnoOpenPat === t.key).map(t => {
@@ -966,22 +1180,44 @@ export default function SemanaPlan() {
                                     <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: t.lista.length > 0 ? 4 : 0 }}>
                                       <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona</p>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
-                                        {personalDB.filter(p => !esDiaLibre(p, diaIdxDeISO(iso))).map(p => (
-                                          <button
-                                            key={p.id}
-                                            onClick={() => setAddPersonalId(p.id)}
-                                            style={{
-                                              padding: '8px 12px', borderRadius: 8, textAlign: 'left',
-                                              border: `2px solid ${addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
-                                              background: addPersonalId === p.id ? t.bg : '#f8fafc',
-                                              color: addPersonalId === p.id ? t.bgAct : '#475569',
-                                              fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                                              transition: 'all 0.12s',
-                                            }}
-                                          >
-                                            {addPersonalId === p.id ? '✓ ' : ''}{p.nombre}
-                                          </button>
-                                        ))}
+                                        {(() => {
+                                          const cachedLocal = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+                                          return personalDB.filter(p => !esDiaLibre(p, diaIdxDeISO(iso))).map(p => {
+                                            const existente = cachedLocal.find(a =>
+                                              a.personal_id === p.id && a.turno === addingFor.turno && a.fecha === iso && a.activo !== false
+                                            )
+                                            const zonaOcupada = existente ? zonas.find(z => z.id === existente.zona_id) : null
+                                            const ocupado = !!existente
+                                            return (
+                                              <button
+                                                key={p.id}
+                                                onClick={() => !ocupado && setAddPersonalId(p.id)}
+                                                disabled={ocupado}
+                                                style={{
+                                                  padding: '8px 12px', borderRadius: 8, textAlign: 'left',
+                                                  border: `2px solid ${ocupado ? '#fca5a5' : addPersonalId === p.id ? t.bgAct : '#e2e8f0'}`,
+                                                  background: ocupado ? '#fef2f2' : addPersonalId === p.id ? t.bg : '#f8fafc',
+                                                  color: ocupado ? '#ef4444' : addPersonalId === p.id ? t.bgAct : '#475569',
+                                                  fontWeight: 600, fontSize: 13,
+                                                  cursor: ocupado ? 'not-allowed' : 'pointer',
+                                                  transition: 'all 0.12s',
+                                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                  opacity: ocupado ? 0.85 : 1,
+                                                }}
+                                              >
+                                                <span>{addPersonalId === p.id ? '✓ ' : ''}{p.nombre}</span>
+                                                {ocupado && (
+                                                  <span style={{
+                                                    fontSize: 10, fontWeight: 700, color: '#ef4444',
+                                                    background: '#fee2e2', borderRadius: 5, padding: '2px 7px', flexShrink: 0,
+                                                  }}>
+                                                    Ya en {zonaOcupada?.nombre || 'otro turno'}
+                                                  </span>
+                                                )}
+                                              </button>
+                                            )
+                                          })
+                                        })()}
                                       </div>
                                       <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zona</p>
                                       <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginBottom: 10, paddingBottom: 4, scrollbarWidth: 'thin' }}>
@@ -1000,21 +1236,28 @@ export default function SemanaPlan() {
                                           >{z.nombre}</button>
                                         ))}
                                       </div>
-                                      <div style={{ display: 'flex', gap: 6 }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
                                         <button
                                           onClick={handleAddAsignacion}
                                           disabled={!addPersonalId}
                                           style={{
-                                            flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                                            background: addPersonalId ? t.bgAct : '#cbd5e1',
-                                            color: '#fff', fontWeight: 700, fontSize: 13,
+                                            width: '100%', padding: '13px 0', borderRadius: 10, border: 'none',
+                                            background: addPersonalId
+                                              ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                                              : '#cbd5e1',
+                                            color: '#fff', fontWeight: 800, fontSize: 14,
                                             cursor: addPersonalId ? 'pointer' : 'not-allowed',
+                                            boxShadow: addPersonalId ? '0 4px 14px rgba(22,163,74,0.4)' : 'none',
+                                            transition: 'all 0.15s',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                                           }}
-                                        >✓ Guardar</button>
+                                        >
+                                          <span style={{ fontSize: 16 }}>✓</span> Confirmar asignación
+                                        </button>
                                         <button
                                           onClick={() => { setAddingFor(null); setAddPersonalId(''); setAddZonaId('') }}
-                                          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-                                        >✕</button>
+                                          style={{ padding: '8px 0', borderRadius: 8, border: '1px solid #e2e8f0', background: 'transparent', color: '#64748b', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+                                        >Cancelar</button>
                                       </div>
                                     </div>
                                   ) : t.lista.length === 0 && (
@@ -1109,6 +1352,12 @@ export default function SemanaPlan() {
                               title="Cambiar persona"
                               style={{ background: swapOpen ? tColor : 'transparent', border: 'none', padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: swapOpen ? '#fff' : tColor, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s', borderRadius: 6 }}
                             >✏️</button>
+                            {/* Botón eliminar persona completa */}
+                            <button
+                              onClick={e => { e.stopPropagation(); eliminarPersonaCompleta(persona.asigs) }}
+                              title="Eliminar persona"
+                              style={{ background: 'transparent', border: 'none', padding: '8px 8px', cursor: 'pointer', fontSize: 14, color: '#ef4444', fontWeight: 700, flexShrink: 0, lineHeight: 1 }}
+                            >✕</button>
                             <button
                               onClick={() => { setOpenPersonKey(isOpen ? null : persona.pKey); setSwapPersonaKey(null); setSwapPersonalId('') }}
                               style={{ background: 'transparent', border: 'none', padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -1307,6 +1556,47 @@ export default function SemanaPlan() {
               ? '⏳ Guardando...'
               : `✓ Guardar ${draftPatron.reduce((s, d) => s + d.isos.length, 0)} asignaciones`}
           </button>
+        </div>
+      )}
+
+      {/* Toast de conflicto de turno */}
+      {conflictoToast && (
+        <div style={{
+          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          zIndex: 9999, width: 'calc(100% - 32px)', maxWidth: 400,
+          background: '#1e293b',
+          borderRadius: 16,
+          padding: '14px 16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          display: 'flex', gap: 12, alignItems: 'center',
+          animation: 'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)',
+          border: '1.5px solid #334155',
+        }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+            background: 'linear-gradient(135deg, #f97316, #ef4444)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18,
+          }}>⚠️</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontWeight: 700, fontSize: 13, color: '#fff', marginBottom: 2 }}>
+              {conflictoToast.nombre} ya tiene turno asignado
+            </p>
+            <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>
+              {conflictoToast.turno === 'mañana' ? '☀️ Mañana' : '🌙 Noche'}
+              {' · ya está en '}
+              <strong style={{ color: '#60a5fa' }}>{conflictoToast.zonaNombre}</strong>
+            </p>
+          </div>
+          <button
+            onClick={() => setConflictoToast(null)}
+            style={{
+              background: '#334155', border: 'none', cursor: 'pointer',
+              color: '#94a3b8', fontSize: 14, padding: '5px 8px',
+              borderRadius: 8, flexShrink: 0, fontWeight: 700,
+              transition: 'background 0.15s',
+            }}
+          >✕</button>
         </div>
       )}
 

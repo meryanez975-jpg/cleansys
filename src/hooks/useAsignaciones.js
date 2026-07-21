@@ -15,7 +15,12 @@ async function pullFromSupabase() {
     ])
     if (error) return false
     if (activos) {
-      localStorage.setItem('cleansys_asignaciones', JSON.stringify(activos))
+      // Solo sobrescribir si Supabase devolvió datos, o si el caché está vacío.
+      // Evita borrar tareas del día si hay una respuesta vacía temporal.
+      const existing = localStorage.getItem('cleansys_asignaciones')
+      if (activos.length > 0 || !existing) {
+        localStorage.setItem('cleansys_asignaciones', JSON.stringify(activos))
+      }
     }
     if (zonas) {
       try { localStorage.setItem('cleansys_zonas', JSON.stringify(zonas)) } catch {}
@@ -46,8 +51,8 @@ async function pushToSupabase(asig) {
 }
 
 export function useAsignaciones(fecha) {
-  const [asignaciones, setAsignaciones] = useState(() => store.getAsignaciones(fecha))
-  const [syncing, setSyncing] = useState(false)
+  const [asignaciones, setAsignaciones] = useState([])
+  const [syncing, setSyncing] = useState(true)
 
   const refetch = useCallback(() => {
     setAsignaciones(store.getAsignaciones(fecha))

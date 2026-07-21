@@ -9,7 +9,8 @@ import { useRegistros } from '../hooks/useRegistros'
 import ZonaModal from '../components/ZonaModal'
 import PersonalModal from '../components/PersonalModal'
 import MenuDrawer from '../components/MenuDrawer'
-import * as store from '../data/store'
+import { supabase } from '../supabase/client'
+import { pullFromSupabase } from '../hooks/useAsignaciones'
 import { useGuardiaNavegacion } from '../hooks/useGuardiaNavegacion'
 import ModalConfirmSalida from '../components/ModalConfirmSalida'
 
@@ -452,20 +453,63 @@ export default function Asignacion() {
     return fechas
   })()
 
-  function handleCrearAsignacion() {
+  async function handleCrearAsignacion() {
     if (!selPersonal || !selZona) { setErrForm('Seleccioná persona y zona'); return }
     if (selDiaSemana !== null && fechasParaAsignar.length === 0) {
       setErrForm('El día elegido no existe en el rango seleccionado')
       return
     }
     setGuardando(true)
-    let errores = 0
-    for (const f of fechasParaAsignar) {
-      const { error } = store.addAsignacion(selPersonal, selZona, selTurnoForm, f, pSelec?.nombre || '', pSelec?.sector || '')
-      if (error) errores++
+
+    const { data: asigsFrescas, error: errCheck } = await supabase
+      .from('limpieza_asignaciones')
+      .select('fecha, turno')
+      .eq('personal_id', selPersonal)
+      .eq('activo', true)
+
+    if (errCheck) {
+      setErrForm('Error al verificar disponibilidad: ' + errCheck.message)
+      setGuardando(false)
+      return
     }
+
+    const genId = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36)
+    const rows = []
+    let errores = 0
+    const ocupadas = new Set((asigsFrescas || []).map(a => `${a.fecha}|${a.turno}`))
+
+    for (const f of fechasParaAsignar) {
+      if (ocupadas.has(`${f}|${selTurnoForm}`)) {
+        errores++
+      } else {
+        rows.push({
+          id: genId(),
+          personal_id: selPersonal,
+          zona_id: selZona,
+          turno: selTurnoForm,
+          fecha: f,
+          personalNombre: pSelec?.nombre || '',
+          personalSector: pSelec?.sector || '',
+          activo: true,
+        })
+      }
+    }
+
+    if (rows.length > 0) {
+      const { error } = await supabase
+        .from('limpieza_asignaciones')
+        .upsert(rows, { onConflict: 'personal_id,fecha,turno' })
+      if (error) {
+        setErrForm('Error al guardar: ' + error.message)
+        setGuardando(false)
+        return
+      }
+      await pullFromSupabase()
+    }
+
     forceRefetch()
-    if (errores === fechasRango.length) {
+
+    if (errores === fechasParaAsignar.length) {
       setErrForm('La persona ya está asignada en todos los días del rango')
     } else {
       setHayCambios(false)

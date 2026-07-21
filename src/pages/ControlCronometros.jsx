@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
+import { pullFromSupabase } from '../hooks/useAsignaciones'
+import { pullRegistros } from '../hooks/useRegistros'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function localISO(d) {
@@ -64,11 +66,18 @@ function getDatosDelDia(fecha, turno) {
     const zonas = JSON.parse(localStorage.getItem('cleansys_zonas')        || '[]')
     return asigs
       .filter(a => a.fecha === fecha && a.turno === turno && a.activo !== false)
-      .map(a => ({
-        ...a,
-        registro: regs.find(r => r.asignacion_id === a.id) || null,
-        zona:     zonas.find(z => z.id === a.zona_id) || null,
-      }))
+      .map(a => {
+        // Sesión más reciente (puede haber varias por asignacion)
+        const sesiones = regs.filter(r => r.asignacion_id === a.id)
+        const ultimaSession = sesiones.length
+          ? sesiones.reduce((lat, r) => ((r.hora_entrada || '') > (lat.hora_entrada || '') ? r : lat))
+          : null
+        return {
+          ...a,
+          registro: ultimaSession,
+          zona:     zonas.find(z => z.id === a.zona_id) || null,
+        }
+      })
   } catch { return [] }
 }
 
@@ -142,7 +151,7 @@ function TarjetaEmpleado({ f, nombre, sector, onEliminar, mostrarEliminar }) {
         )}
       </div>
 
-      {/* Derecha: badge + botón eliminar */}
+      {/* Derecha: badge + botón ✕ */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, color: badgeColor,
@@ -153,13 +162,16 @@ function TarjetaEmpleado({ f, nombre, sector, onEliminar, mostrarEliminar }) {
         {mostrarEliminar && reg && (
           <button
             onClick={() => onEliminar(f.id)}
+            title="Reiniciar limpieza"
             style={{
-              fontSize: 11, fontWeight: 700, color: '#dc2626',
-              background: '#fee2e2', border: '1px solid #fecaca',
-              borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+              width: 28, height: 28, borderRadius: '50%',
+              background: '#fee2e2', border: '1.5px solid #fca5a5',
+              color: '#dc2626', fontWeight: 800, fontSize: 14,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1,
             }}
           >
-            🔄 Reiniciar
+            ✕
           </button>
         )}
       </div>
@@ -200,8 +212,7 @@ export default function ControlCronometros() {
   const [showFiltro, setShowFiltro] = useState(false)
   const [personalMap, setPersonalMap] = useState({})
   const [tick, setTick] = useState(0)
-  const [showEliminar, setShowEliminar] = useState(false)
-  const [confirmando,  setConfirmando]  = useState(null) // 'fecha' | 'todo'
+  const [confirmandoZona, setConfirmandoZona] = useState(null) // zonaId a eliminar
 
   useEffect(() => {
     supabase.from('com_personal').select('id, nombre, sector').eq('activo', true)
@@ -217,8 +228,37 @@ export default function ControlCronometros() {
   }, [])
 
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 30_000)
+    Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
+  }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
+    }, 15_000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    function handleVisibilidad() {
+      if (!document.hidden) {
+        Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilidad)
+    return () => document.removeEventListener('visibilitychange', handleVisibilidad)
+  }, [])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('controlcronometros-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'limpieza_asignaciones' },
+        () => { Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1)) }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'limpieza_registros' },
+        () => { Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1)) }
+      )
+      .subscribe()
+    return () => supabase.removeChannel(channel)
   }, [])
 
   void tick
@@ -248,19 +288,30 @@ export default function ControlCronometros() {
     return personalMap[f.personal_id]?.sector || f.personalSector || ''
   }
 
-  function handleEliminar(asignacion_id) {
+  async function handleEliminar(asignacion_id) {
+    await supabase.from('limpieza_registros').delete().eq('asignacion_id', asignacion_id)
     eliminarRegistro(asignacion_id)
     setTick(t => t + 1)
   }
 
-  function handleConfirmarEliminar() {
-    if (confirmando === 'fecha') {
-      eliminarPorFechas(fechas)
-    } else if (confirmando === 'todo') {
-      eliminarTodoElHistorial()
-    }
-    setConfirmando(null)
-    setShowEliminar(false)
+  async function handleEliminarZona(zonaId) {
+    try {
+      const asigs = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+      const zonaAsigIds = asigs
+        .filter(a => a.zona_id === zonaId && fechas.includes(a.fecha) && a.turno === turno)
+        .map(a => a.id)
+
+      if (zonaAsigIds.length > 0) {
+        await supabase.from('limpieza_registros').delete().in('asignacion_id', zonaAsigIds)
+        await supabase.from('limpieza_asignaciones').update({ activo: false }).in('id', zonaAsigIds)
+
+        const newAsigs = asigs.map(a => zonaAsigIds.includes(a.id) ? { ...a, activo: false } : a)
+        const regs = JSON.parse(localStorage.getItem('cleansys_registros') || '[]')
+        localStorage.setItem('cleansys_asignaciones', JSON.stringify(newAsigs))
+        localStorage.setItem('cleansys_registros', JSON.stringify(regs.filter(r => !zonaAsigIds.includes(r.asignacion_id))))
+      }
+    } catch (e) { console.error('handleEliminarZona:', e) }
+    setConfirmandoZona(null)
     setTick(t => t + 1)
   }
 
@@ -383,138 +434,127 @@ export default function ControlCronometros() {
               Sin asignaciones para este período
             </p>
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        ) : (() => {
+          // Agrupar por zona
+          const gruposMap = {}
+          todasLasFilas.forEach(f => {
+            const zonaId = f.zona_id || '__sin_zona__'
+            const zonaNombre = f.zona?.nombre || 'Sin zona'
+            if (!gruposMap[zonaId]) gruposMap[zonaId] = { zonaId, zonaNombre, filas: [] }
+            gruposMap[zonaId].filas.push(f)
+          })
+          const grupos = Object.values(gruposMap).sort((a, b) => a.zonaNombre.localeCompare(b.zonaNombre))
 
-            {/* ── No registró ── */}
-            {sinRegistro.length > 0 && (
-              <Seccion
-                color="#ef4444" label={`No hizo la limpieza (${sinRegistro.length})`}
-                filas={sinRegistro} esMultiDia={esMultiDia}
-                getNombre={getNombre} getSector={getSector}
-                onEliminar={handleEliminar} mostrarEliminar={false}
-              />
-            )}
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {grupos.map(grupo => {
+                const sinReg = grupo.filas.filter(f => !f.registro)
+                const enCur  = grupo.filas.filter(f => f.registro && !f.registro.completado)
+                const compl  = grupo.filas.filter(f => f.registro?.completado)
+                return (
+                  <div key={grupo.zonaId} style={{
+                    background: 'var(--bg-card)', borderRadius: 14,
+                    border: '1px solid var(--border)', overflow: 'hidden',
+                    boxShadow: 'var(--shadow)',
+                  }}>
+                    {/* Encabezado de zona */}
+                    <div style={{ background: 'var(--primary)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 16 }}>🏢</span>
+                      <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>{grupo.zonaNombre}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
+                        {grupo.filas.length} {grupo.filas.length === 1 ? 'persona' : 'personas'}
+                      </span>
+                    </div>
 
-            {/* ── En curso ── */}
-            {enCurso.length > 0 && (
-              <Seccion
-                color="#f59e0b" label={`En curso (${enCurso.length})`}
-                filas={enCurso} esMultiDia={esMultiDia}
-                getNombre={getNombre} getSector={getSector}
-                onEliminar={handleEliminar} mostrarEliminar={true}
-              />
-            )}
+                    {/* Contenido de la zona */}
+                    <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {sinReg.length > 0 && (
+                        <Seccion
+                          color="#ef4444" label={`No registró (${sinReg.length})`}
+                          filas={sinReg} esMultiDia={esMultiDia}
+                          getNombre={getNombre} getSector={getSector}
+                          onEliminar={handleEliminar} mostrarEliminar={false}
+                        />
+                      )}
+                      {enCur.length > 0 && (
+                        <Seccion
+                          color="#f59e0b" label={`En curso (${enCur.length})`}
+                          filas={enCur} esMultiDia={esMultiDia}
+                          getNombre={getNombre} getSector={getSector}
+                          onEliminar={handleEliminar} mostrarEliminar={true}
+                        />
+                      )}
+                      {compl.length > 0 && (
+                        <Seccion
+                          color="#22c55e" label={`Completadas (${compl.length})`}
+                          filas={compl} esMultiDia={esMultiDia}
+                          getNombre={getNombre} getSector={getSector}
+                          onEliminar={handleEliminar} mostrarEliminar={true}
+                        />
+                      )}
 
-            {/* ── Completadas ── */}
-            {completadas.length > 0 && (
-              <Seccion
-                color="#22c55e" label={`Completadas (${completadas.length})`}
-                filas={completadas} esMultiDia={esMultiDia}
-                getNombre={getNombre} getSector={getSector}
-                onEliminar={handleEliminar} mostrarEliminar={true}
-              />
-            )}
-
-          </div>
-        )}
-
-        {/* ── Zona de eliminación ── */}
-        <div style={{ marginTop: 32, borderTop: '1.5px solid var(--border)', paddingTop: 16 }}>
-          <button
-            onClick={() => setShowEliminar(v => !v)}
-            style={{
-              width: '100%', padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
-              background: showEliminar ? '#fee2e2' : 'var(--bg-card)',
-              border: `1.5px solid ${showEliminar ? '#fca5a5' : 'var(--border)'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              transition: 'all 0.15s',
-            }}
-          >
-            <span style={{ fontWeight: 700, fontSize: 13, color: showEliminar ? '#dc2626' : 'var(--text-muted)' }}>
-              🗑️ Eliminar datos
-            </span>
-            <span style={{ fontSize: 12, color: showEliminar ? '#dc2626' : 'var(--text-muted)' }}>
-              {showEliminar ? '▲' : '▼'}
-            </span>
-          </button>
-
-          {showEliminar && (
-            <div style={{
-              marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8,
-              padding: '12px 14px', background: '#fff5f5',
-              border: '1.5px solid #fca5a5', borderRadius: 10,
-            }}>
-              <button
-                onClick={() => setConfirmando('fecha')}
-                style={{
-                  padding: '11px 14px', borderRadius: 9, cursor: 'pointer',
-                  background: '#fee2e2', border: '1.5px solid #fca5a5',
-                  fontWeight: 700, fontSize: 13, color: '#b91c1c', textAlign: 'left',
-                }}
-              >
-                🗓️ Eliminar solo: <strong>{labelRangoFecha}</strong>
-              </button>
-              <button
-                onClick={() => setConfirmando('todo')}
-                style={{
-                  padding: '11px 14px', borderRadius: 9, cursor: 'pointer',
-                  background: '#dc2626', border: 'none',
-                  fontWeight: 700, fontSize: 13, color: '#fff', textAlign: 'left',
-                }}
-              >
-                ⚠️ Eliminar TODO el historial
-              </button>
+                      {/* Botón eliminar solo esta zona */}
+                      <button
+                        onClick={() => setConfirmandoZona(grupo.zonaId)}
+                        style={{
+                          marginTop: 4, width: '100%', padding: '9px 0',
+                          borderRadius: 8, border: '1.5px solid #fecaca',
+                          background: '#fff1f2', color: '#dc2626',
+                          fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        }}
+                      >
+                        🗑️ Eliminar datos de {grupo.zonaNombre}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          )}
-        </div>
+          )
+        })()}
 
-        {/* ── Modal de confirmación ── */}
-        {confirmando && (
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 999,
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 24,
-          }}>
+        {/* ── Modal confirmar eliminar zona ── */}
+        {confirmandoZona && (() => {
+          const asigs = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
+          const zonas = JSON.parse(localStorage.getItem('cleansys_zonas') || '[]')
+          const zona = zonas.find(z => z.id === confirmandoZona)
+          return (
             <div style={{
-              background: '#fff', borderRadius: 16, padding: '28px 22px',
-              width: '100%', maxWidth: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-            }}>
-              <p style={{ fontSize: 36, textAlign: 'center', marginBottom: 10 }}>⚠️</p>
-              <p style={{ fontWeight: 800, fontSize: 17, color: '#1e293b', textAlign: 'center', marginBottom: 8 }}>
-                ¿Confirmar eliminación?
-              </p>
-              <p style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 22, lineHeight: 1.5 }}>
-                {confirmando === 'fecha'
-                  ? `Se borrarán todos los datos del período: ${labelRangoFecha}.`
-                  : 'Se borrará TODO el historial de limpiezas. Esta acción no se puede deshacer.'}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button
-                  onClick={handleConfirmarEliminar}
-                  style={{
-                    padding: '13px', borderRadius: 10, cursor: 'pointer',
-                    background: '#dc2626', border: 'none',
-                    fontWeight: 700, fontSize: 15, color: '#fff',
-                  }}
-                >
-                  Sí, eliminar
-                </button>
-                <button
-                  onClick={() => setConfirmando(null)}
-                  style={{
-                    padding: '13px', borderRadius: 10, cursor: 'pointer',
-                    background: 'var(--bg)', border: '1.5px solid var(--border)',
-                    fontWeight: 700, fontSize: 15, color: 'var(--text)',
-                  }}
-                >
-                  Cancelar
-                </button>
+              position: 'fixed', inset: 0, zIndex: 999,
+              background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+            }} onClick={() => setConfirmandoZona(null)}>
+              <div style={{
+                background: '#fff', borderRadius: 16, padding: '28px 22px',
+                width: '100%', maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                textAlign: 'center',
+              }} onClick={e => e.stopPropagation()}>
+                <p style={{ fontSize: 36, marginBottom: 10 }}>🗑️</p>
+                <p style={{ fontWeight: 800, fontSize: 17, color: '#1e293b', marginBottom: 8 }}>
+                  Eliminar datos de {zona?.nombre || 'esta zona'}
+                </p>
+                <p style={{ fontSize: 13, color: '#64748b', marginBottom: 22, lineHeight: 1.5 }}>
+                  Se borrarán las asignaciones y registros de <strong>{zona?.nombre}</strong> para el período seleccionado.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    onClick={() => handleEliminarZona(confirmandoZona)}
+                    style={{ padding: '13px', borderRadius: 10, cursor: 'pointer', background: '#dc2626', border: 'none', fontWeight: 700, fontSize: 15, color: '#fff' }}
+                  >
+                    Sí, eliminar {zona?.nombre}
+                  </button>
+                  <button
+                    onClick={() => setConfirmandoZona(null)}
+                    style={{ padding: '13px', borderRadius: 10, cursor: 'pointer', background: 'var(--bg)', border: '1.5px solid var(--border)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
       </div>
     </div>
