@@ -1,8 +1,10 @@
 {
-  "name": "CleaSys",
-  "short_name": "CleaSys",
+  "id": "cleansys-asignacion",
+  "name": "CleaSys — Asignación",
+  "short_name": "Asignación",
   "description": "Sistema de gestión de limpieza",
-  "start_url": "/registro",
+  "start_url": "/asignacion",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f0f4ff",
   "theme_color": "#3B82F6",
