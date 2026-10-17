@@ -1,0 +1,150 @@
+.bf-barra {
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.bf-textos { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bf-titulo { font-size: 15px; font-weight: 900; color: var(--text); }
+.bf-subtitulo { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.bf-flechas {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.bf-flecha {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bf-flecha:hover:not(:disabled) { background: var(--bg-card); }
+.bf-flecha:disabled { opacity: 0.3; cursor: default; }
+.bf-cal {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary-light);
+  font-size: 21px;
+  cursor: pointer;
+}
+
+/* ── Calendario ── */
+.bf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(20, 28, 48, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+@media (min-width: 700px) {
+  .bf-overlay { align-items: center; padding: 16px; }
+}
+.bf-modal {
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 18px 26px;
+  border-radius: 26px 26px 0 0;
+  background: var(--bg-card);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+}
+@media (min-width: 700px) {
+  .bf-modal { border-radius: 26px; padding: 22px; }
+}
+.bf-modal-cab { display: flex; align-items: center; justify-content: center; position: relative; }
+.bf-modal-titulo { font-size: 18px; font-weight: 900; color: var(--text); }
+.bf-cerrar {
+  position: absolute;
+  right: 0;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font-size: 17px;
+  cursor: pointer;
+}
+.bf-mes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text);
+  text-transform: capitalize;
+}
+.bf-mes-flecha {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bf-mes-flecha:disabled { opacity: 0.3; cursor: default; }
+.bf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.bf-dia-nombre { text-align: center; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; padding-bottom: 4px; }
+.bf-dia {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.bf-dia:hover:not(:disabled) { background: var(--bg); }
+.bf-dia:disabled { opacity: 0.3; cursor: default; }
+.bf-dia.hoy { box-shadow: inset 0 0 0 2px var(--primary); color: var(--primary); }
+.bf-dia.elegido { background: var(--primary); color: #fff; box-shadow: none; }
+.bf-elegido { text-align: center; font-size: 14px; font-weight: 800; color: var(--text-muted); }
+.bf-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bf-cancelar, .bf-aceptar {
+  padding: 13px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bf-cancelar { border: 1px solid var(--border); background: var(--bg-card); color: var(--text); }
+.bf-aceptar { border: none; background: var(--primary); color: #fff; }
+.bf-dia.en-rango { background: var(--primary-light); color: var(--primary); border-radius: 8px; }
+.bf-aceptar:disabled { opacity: 0.5; cursor: default; }
+.bf-hoy-pill {
+  margin-left: 8px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  vertical-align: middle;
+}

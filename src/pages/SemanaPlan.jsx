@@ -7,6 +7,7 @@ import MenuDrawer from '../components/MenuDrawer'
 import ZonaModal from '../components/ZonaModal'
 import PersonalModal from '../components/PersonalModal'
 import ModalConfirmSalida from '../components/ModalConfirmSalida'
+import BarraFecha from '../components/BarraFecha'
 import { useZonas } from '../hooks/useZonas'
 import { usePersonalComidas } from '../hooks/usePersonalComidas'
 import { pullFromSupabase, pushToSupabase } from '../hooks/useAsignaciones'
@@ -52,133 +53,6 @@ function diaIdxDeISO(iso) {
   return dow === 0 ? 6 : dow - 1
 }
 
-function MiniCalRango({ inicio, fin, anteriorInicio, anteriorFin, onChange, zonaFiltro }) {
-  const mesInicial = inicio
-    ? inicio.slice(0, 7)
-    : (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}` })()
-  const [mes, setMes] = useState(mesInicial)
-
-  useEffect(() => {
-    if (inicio) setMes(inicio.slice(0, 7))
-  }, [inicio])
-
-  function prevMes() {
-    const [y, m] = mes.split('-').map(Number)
-    const d = new Date(y, m - 2, 1)
-    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
-  function nextMes() {
-    const [y, m] = mes.split('-').map(Number)
-    const d = new Date(y, m, 1)
-    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
-
-  function handleDia(d) {
-    const iso = `${mes}-${String(d).padStart(2, '0')}`
-    if (!inicio || (inicio && fin)) {
-      onChange(iso, '')
-    } else {
-      if (iso <= inicio) onChange(iso, inicio)
-      else onChange(inicio, iso)
-    }
-  }
-
-  const [y, m] = mes.split('-').map(Number)
-  const totalDias = new Date(y, m, 0).getDate()
-  const dow1 = new Date(y, m - 1, 1).getDay()
-  const offset = dow1 === 0 ? 6 : dow1 - 1
-  const celdas = [...Array(offset).fill(null), ...Array.from({ length: totalDias }, (_, i) => i + 1)]
-  while (celdas.length % 7 !== 0) celdas.push(null)
-  const semanas = []
-  for (let i = 0; i < celdas.length; i += 7) semanas.push(celdas.slice(i, i + 7))
-
-  const mesLabel = new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
-  const DIAS_CAL = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
-  const fmtCorta = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
-
-  // Días del mes que ya tienen asignaciones guardadas (para no perderlas de vista al cambiar de rango)
-  const diasConDatos = (() => {
-    const isoMes = Array.from({ length: totalDias }, (_, i) => `${mes}-${String(i + 1).padStart(2, '0')}`)
-    const asigsMes = store.getAsignacionesPorFechas(isoMes)
-    const filtradas = zonaFiltro ? asigsMes.filter(a => a.zona_id === zonaFiltro) : asigsMes
-    return new Set(filtradas.map(a => a.fecha))
-  })()
-
-  return (
-    <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 8px', border: '1.5px solid var(--border)' }}>
-      {/* Hint selección actual */}
-      <p style={{ textAlign: 'center', fontSize: 11, marginBottom: 4, fontWeight: 700,
-        color: inicio && fin ? 'var(--primary-dark)' : 'var(--text-muted)' }}>
-        {!inicio
-          ? '👆 Tocá el día de inicio'
-          : !fin
-            ? `Desde ${fmtCorta(inicio)} · Tocá el día de fin`
-            : `🔵 ${fmtCorta(inicio)} → ${fmtCorta(fin)}`}
-      </p>
-      {/* Historial — rango anterior en gris */}
-      {anteriorInicio && anteriorFin && (
-        <p style={{ textAlign: 'center', fontSize: 10, marginBottom: 4, fontWeight: 600, color: '#94a3b8' }}>
-          ⬜ Anterior: {fmtCorta(anteriorInicio)} → {fmtCorta(anteriorFin)}
-        </p>
-      )}
-      <p style={{ textAlign: 'center', fontSize: 10, marginBottom: 8, fontWeight: 600, color: 'var(--text-muted)' }}>
-        <span style={{ display: 'inline-block', width: 12, height: 2, background: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />
-        Ya hay asignaciones ese día
-      </p>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <button onClick={prevMes} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--primary)', padding: '0 10px', fontWeight: 700 }}>‹</button>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{mesLabel}</span>
-        <button onClick={nextMes} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--primary)', padding: '0 10px', fontWeight: 700 }}>›</button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
-        {DIAS_CAL.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>{d}</div>
-        ))}
-      </div>
-      {semanas.map((sem, si) => (
-        <div key={si} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
-          {sem.map((d, ci) => {
-            if (!d) return <div key={ci} />
-            const iso = `${mes}-${String(d).padStart(2, '0')}`
-
-            const esInicio         = iso === inicio
-            const esFin            = iso === fin
-            const enRango          = inicio && fin && iso > inicio && iso < fin
-            const esAntInicio      = iso === anteriorInicio
-            const esAntFin         = iso === anteriorFin
-            const enRangoAnterior  = anteriorInicio && anteriorFin && iso > anteriorInicio && iso < anteriorFin
-            const tieneDatos       = diasConDatos.has(iso)
-
-            let bg = 'transparent', color = 'var(--text)', fontWeight = 400, borderRadius = 6
-
-            if (esInicio)           { bg = 'var(--primary)';       color = '#fff';              fontWeight = 800; borderRadius = '6px 0 0 6px' }
-            else if (esFin)         { bg = 'var(--primary)';       color = '#fff';              fontWeight = 800; borderRadius = '0 6px 6px 0' }
-            else if (enRango)       { bg = 'var(--primary-light)'; color = 'var(--primary-dark)'; fontWeight = 600; borderRadius = 0 }
-            else if (esAntInicio)   { bg = '#94a3b8';              color = '#fff';              fontWeight = 700; borderRadius = '6px 0 0 6px' }
-            else if (esAntFin)      { bg = '#94a3b8';              color = '#fff';              fontWeight = 700; borderRadius = '0 6px 6px 0' }
-            else if (enRangoAnterior) { bg = '#e2e8f0';            color = '#64748b';           fontWeight = 500; borderRadius = 0 }
-
-            const lineaColor = color === '#fff' ? '#fff' : 'var(--primary)'
-
-            return (
-              <button key={ci} onClick={() => handleDia(d)} style={{
-                padding: '6px 0', textAlign: 'center', border: 'none', cursor: 'pointer',
-                background: bg, color, fontWeight, borderRadius, fontSize: 12,
-              }}>
-                {d}
-                <span style={{
-                  display: 'block', width: 12, height: 2, margin: '2px auto 0', borderRadius: 2,
-                  background: tieneDatos ? lineaColor : 'transparent',
-                }} />
-              </button>
-            )
-          })}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export default function SemanaPlan() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -196,9 +70,6 @@ export default function SemanaPlan() {
   const [showZonas, setShowZonas] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
   const [zonaFiltro, setZonaFiltro] = useState(() => searchParams.get('zona') || null)
-  const [showDatePicker, setShowDatePicker] = useState(false)
-  const [inputInicio, setInputInicio] = useState('')
-  const [inputFin, setInputFin] = useState('')
   const [rangoPersonalizado, setRangoPersonalizado] = useState(() => {
     try {
       const s = localStorage.getItem('cleansys_semana_rango')
@@ -207,7 +78,6 @@ export default function SemanaPlan() {
       return { inicio: new Date(inicio), fin: new Date(fin) }
     } catch { return null }
   })
-  const [rangoAnterior, setRangoAnterior] = useState(null)
   const channelRef = useRef(null)
   const [addingFor, setAddingFor] = useState(null) // { iso, turno }
   const [addPersonalId, setAddPersonalId] = useState('')
@@ -405,6 +275,49 @@ export default function SemanaPlan() {
         return { nombre, isos: isosDelDia, asigs: asigsDia, count: isosDelDia.length }
       })
     : null
+
+  // Avisa a las otras tablets abiertas del cambio de período (null = semanas)
+  function avisarRango(rango) {
+    if (!channelRef.current) return
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'rango_change',
+      payload: rango ? { inicio: rango.inicio.toISOString(), fin: rango.fin.toISOString() } : {},
+    })
+  }
+
+  // Flechas: si había un período elegido, se vuelve a la vista por semanas
+  // (antes no había forma de salir del período)
+  function moverSemana(n) {
+    if (rangoPersonalizado) {
+      const base = new Date(rangoPersonalizado.inicio)
+      base.setDate(base.getDate() - ((base.getDay() + 6) % 7)); base.setHours(0, 0, 0, 0)
+      setRangoPersonalizado(null)
+      avisarRango(null)
+      setLunesBase(addDays(base, 7 * n))
+    } else {
+      setLunesBase(d => addDays(d, 7 * n))
+    }
+  }
+
+  function guardarPeriodo({ inicio, fin }) {
+    const ini = new Date(inicio); ini.setHours(12, 0, 0, 0)
+    const f   = new Date(fin);    f.setHours(12, 0, 0, 0)
+    const esSemanaJusta = ini.getDay() === 1 && Math.round((f - ini) / 86400000) === 6
+    if (esSemanaJusta) {
+      // Elegir lunes a domingo es lo mismo que la vista por semanas
+      setRangoPersonalizado(null)
+      avisarRango(null)
+      const l = new Date(ini); l.setHours(0, 0, 0, 0)
+      setLunesBase(l)
+      return
+    }
+    const nuevo = { inicio: ini, fin: f }
+    setRangoPersonalizado(nuevo)
+    avisarRango(nuevo)
+    setGuardadoOk(true)
+    setTimeout(() => setGuardadoOk(false), 2500)
+  }
 
   function confirmarSiHayDraft(accion) {
     if (draftPatron.length === 0) { accion(); return }
@@ -869,108 +782,16 @@ export default function SemanaPlan() {
 
         {/* ── Vista: Semana ── */}
         {vista === 'semana' && <>
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 12,
-            boxShadow: 'var(--shadow)',
-          }}>
-            {/* Navegador de semana */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showDatePicker ? 12 : 0 }}>
-              {!rangoPersonalizado ? (
-                <button onClick={() => setLunesBase(d => addDays(d, -7))}
-                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
-              ) : <div style={{ width: 40 }} />}
-
-              <div style={{ textAlign: 'center', flex: 1 }}>
-                <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                  {fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                  {' — '}
-                  {fechasSemana[fechasSemana.length - 1].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {totalAsigs} asignación{totalAsigs !== 1 ? 'es' : ''} · {personalConTarea.length} persona{personalConTarea.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-
-              {!rangoPersonalizado ? (
-                <button onClick={() => setLunesBase(d => addDays(d, 7))}
-                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
-              ) : <div style={{ width: 40 }} />}
-            </div>
-
-            {/* Botón seleccionar fechas */}
-            <div style={{ display: 'flex', gap: 6, marginTop: showDatePicker || rangoPersonalizado ? 10 : 8 }}>
-              <button
-                onClick={() => {
-                  if (showDatePicker) { setShowDatePicker(false); return }
-                  setInputInicio(rangoPersonalizado ? fechaISO(rangoPersonalizado.inicio) : '')
-                  setInputFin(rangoPersonalizado ? fechaISO(rangoPersonalizado.fin) : '')
-                  setShowDatePicker(true)
-                }}
-                style={{
-                  flex: 1, padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: rangoPersonalizado ? 'var(--primary)' : 'var(--primary-light)',
-                  color: rangoPersonalizado ? '#fff' : 'var(--primary-dark)',
-                  fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                }}
-              >
-                📅 {rangoPersonalizado ? 'Cambiar fechas' : 'Seleccionar fechas'}
-              </button>
-            </div>
-
-            {/* Formulario de rango */}
-            {showDatePicker && (
-              <div style={{ marginTop: 10 }}>
-                <MiniCalRango
-                  key={inputInicio || 'empty'}
-                  inicio={inputInicio}
-                  fin={inputFin}
-                  anteriorInicio={rangoAnterior ? fechaISO(rangoAnterior.inicio) : ''}
-                  anteriorFin={rangoAnterior ? fechaISO(rangoAnterior.fin) : ''}
-                  zonaFiltro={zonaFiltro}
-                  onChange={(newInicio, newFin) => {
-                    setInputInicio(newInicio)
-                    setInputFin(newFin)
-                  }}
-                />
-                {inputInicio && inputFin && (() => {
-                  const dias = Math.round((new Date(inputFin + 'T12:00:00') - new Date(inputInicio + 'T12:00:00')) / 86400000) + 1
-                  const fmtCorta = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
-                  return (
-                    <div style={{ marginTop: 8 }}>
-                      <p style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--primary-dark)', marginBottom: 6 }}>
-                        📅 {fmtCorta(inputInicio)} → {fmtCorta(inputFin)} · <strong>{dias} {dias === 1 ? 'día' : 'días'}</strong>
-                      </p>
-                      <button
-                        onClick={() => {
-                          setRangoAnterior(rangoPersonalizado)
-                          const newRango = { inicio: new Date(inputInicio + 'T12:00:00'), fin: new Date(inputFin + 'T12:00:00') }
-                          setRangoPersonalizado(newRango)
-                          if (channelRef.current) {
-                            channelRef.current.send({
-                              type: 'broadcast',
-                              event: 'rango_change',
-                              payload: { inicio: newRango.inicio.toISOString(), fin: newRango.fin.toISOString() },
-                            })
-                          }
-                          setGuardadoOk(true)
-                          setTimeout(() => setGuardadoOk(false), 2500)
-                          setShowDatePicker(false)
-                        }}
-                        style={{
-                          width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
-                          cursor: 'pointer', background: 'var(--primary)', color: '#fff',
-                          fontWeight: 800, fontSize: 15, letterSpacing: '0.02em',
-                          boxShadow: '0 2px 8px rgba(var(--primary-rgb, 59,130,246),0.35)',
-                        }}
-                      >
-                        Guardar período
-                      </button>
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
+          <div style={{ marginBottom: 12 }}>
+            <BarraFecha
+              titulo={`${fechasSemana[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${fechasSemana[fechasSemana.length - 1].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`}
+              subtitulo={`${rangoPersonalizado ? '📅 Período elegido · ' : ''}${totalAsigs} asignación${totalAsigs !== 1 ? 'es' : ''} · ${personalConTarea.length} persona${personalConTarea.length !== 1 ? 's' : ''}`}
+              onAnterior={() => moverSemana(-1)}
+              onSiguiente={() => moverSemana(1)}
+              modo="rango"
+              rango={rangoPersonalizado || { inicio: fechasSemana[0], fin: fechasSemana[fechasSemana.length - 1] }}
+              onElegirRango={guardarPeriodo}
+            />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -1420,17 +1241,14 @@ export default function SemanaPlan() {
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>🧮 Conteo semanal</p>
 
               {/* Navegador de semana */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => setSemanaConteo(d => addDays(d, -7))}
-                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>‹</button>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                    {semanaConteo.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — {domConteo.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                  </p>
-                </div>
-                <button onClick={() => setSemanaConteo(d => addDays(d, 7))}
-                  style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 16 }}>›</button>
-              </div>
+              <BarraFecha
+                titulo={`${semanaConteo.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — ${domConteo.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`}
+                subtitulo="Conteo de la semana"
+                onAnterior={() => setSemanaConteo(d => addDays(d, -7))}
+                onSiguiente={() => setSemanaConteo(d => addDays(d, 7))}
+                valorCalendario={semanaConteo}
+                onElegirDia={d => { const l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7)); l.setHours(0, 0, 0, 0); setSemanaConteo(l) }}
+              />
 
 
               {/* Cards por turno — siempre 7 días */}

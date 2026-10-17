@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import BarraFecha from '../components/BarraFecha'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { pullFromSupabase } from '../hooks/useAsignaciones'
@@ -207,28 +208,24 @@ export default function HistorialPersonal() {
           </div>
         </div>
 
-        {/* Navegador — mes si no hay zona, semana si hay zona */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'var(--bg-card)', border: '1.5px solid var(--border)',
-          borderRadius: 12, padding: '10px 8px', marginBottom: 12,
-        }}>
-          <button
-            onClick={() => { filtroZona ? setLunesSemana(d => addDays(d, -7)) : mesAnterior(); setSelId(null) }}
-            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20 }}
-          >‹</button>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', textTransform: 'capitalize' }}>
-              {labelPeriodo}
-            </span>
-            {filtroZona && (
-              <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>📆 Vista por semana</p>
-            )}
-          </div>
-          <button
-            onClick={() => { filtroZona ? setLunesSemana(d => addDays(d, 7)) : mesSiguiente(); setSelId(null) }}
-            style={{ background: 'var(--primary-light)', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 20 }}
-          >›</button>
+        {/* Navegador — mes si no hay zona, semana si hay zona (misma barra que el resto) */}
+        <div style={{ marginBottom: 12 }}>
+          <BarraFecha
+            titulo={labelPeriodo.charAt(0).toUpperCase() + labelPeriodo.slice(1)}
+            subtitulo={filtroZona ? '📆 Vista por semana' : 'Vista por mes'}
+            onAnterior={() => { filtroZona ? setLunesSemana(d => addDays(d, -7)) : mesAnterior(); setSelId(null) }}
+            onSiguiente={() => { filtroZona ? setLunesSemana(d => addDays(d, 7)) : mesSiguiente(); setSelId(null) }}
+            valorCalendario={filtroZona ? lunesSemana : new Date(histAnio, histMes, 1)}
+            onElegirDia={d => {
+              if (filtroZona) {
+                const l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7)); l.setHours(0, 0, 0, 0)
+                setLunesSemana(l)
+              } else {
+                setHistAnio(d.getFullYear()); setHistMes(d.getMonth())
+              }
+              setSelId(null)
+            }}
+          />
         </div>
 
         {/* Selector de zona */}

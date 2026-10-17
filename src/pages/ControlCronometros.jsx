@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import BarraFecha from '../components/BarraFecha'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { pullFromSupabase } from '../hooks/useAsignaciones'
@@ -13,26 +14,6 @@ function hoy() { return localISO(new Date()) }
 function ayer() {
   const d = new Date(); d.setDate(d.getDate() - 1)
   return localISO(d)
-}
-function fechasSemanaActual() {
-  const d = new Date()
-  const dow = d.getDay()
-  const lunes = new Date(d)
-  lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
-  return Array.from({ length: 7 }, (_, i) => {
-    const x = new Date(lunes); x.setDate(lunes.getDate() + i)
-    return localISO(x)
-  })
-}
-function fechasSemanaAnterior() {
-  const d = new Date(); d.setDate(d.getDate() - 7)
-  const dow = d.getDay()
-  const lunes = new Date(d)
-  lunes.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
-  return Array.from({ length: 7 }, (_, i) => {
-    const x = new Date(lunes); x.setDate(lunes.getDate() + i)
-    return localISO(x)
-  })
 }
 function formatHora(isoStr) {
   if (!isoStr) return '—'
@@ -198,19 +179,25 @@ function eliminarTodoElHistorial() {
 }
 
 // ── página principal ──────────────────────────────────────────────
-const OPCIONES_FECHA = [
-  { key: 'hoy',          label: 'Hoy' },
-  { key: 'ayer',         label: 'Ayer' },
-  { key: 'semana',       label: 'Esta semana' },
-  { key: 'semana_ant',   label: 'Semana pasada' },
-]
+// Lunes de la semana de una fecha ISO
+function lunesISO(iso) {
+  const d = new Date(iso + 'T12:00:00')
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return localISO(d)
+}
+function sumarDias(iso, n) {
+  const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n)
+  return localISO(d)
+}
 
 export default function ControlCronometros() {
   const navigate = useNavigate()
 
   const [turno,     setTurno]     = useState('mañana')
-  const [diaKey,    setDiaKey]    = useState('hoy')
-  const [showFiltro, setShowFiltro] = useState(false)
+  // Antes: lista "Hoy / Ayer / Esta semana / Semana pasada". Ahora la misma
+  // barra que el resto (‹ › + 📅), por día o por semana
+  const [diaSel,    setDiaSel]    = useState(hoy)
+  const [porSemana, setPorSemana] = useState(false)
   const { personal } = usePersonal()
   const personalMap = useMemo(() => Object.fromEntries(personal.map(p => [p.id, p])), [personal])
   const [tick, setTick] = useState(0)
@@ -253,16 +240,16 @@ export default function ControlCronometros() {
   void tick
 
   // Fechas a mostrar según filtro
-  const fechas = (() => {
-    if (diaKey === 'hoy')        return [hoy()]
-    if (diaKey === 'ayer')       return [ayer()]
-    if (diaKey === 'semana')     return fechasSemanaActual()
-    if (diaKey === 'semana_ant') return fechasSemanaAnterior()
-    return [hoy()]
-  })()
+  const fechas = porSemana
+    ? Array.from({ length: 7 }, (_, i) => sumarDias(lunesISO(diaSel), i))
+    : [diaSel]
 
   const esMultiDia = fechas.length > 1
-  const labelFiltro = OPCIONES_FECHA.find(o => o.key === diaKey)?.label || 'Hoy'
+  const fmtDia = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })
+  const labelFiltro = porSemana
+    ? (lunesISO(diaSel) === lunesISO(hoy()) ? 'Esta semana' : lunesISO(diaSel) === lunesISO(ayer()) && lunesISO(ayer()) !== lunesISO(hoy()) ? 'Semana pasada' : 'Semana')
+    : (diaSel === hoy() ? 'Hoy' : diaSel === ayer() ? 'Ayer' : fmtDia(diaSel))
+  const puedeAvanzar = porSemana ? lunesISO(diaSel) < lunesISO(hoy()) : diaSel < hoy()
 
   const labelRangoFecha = (() => {
     if (fechas.length === 1) return fechas[0]
@@ -328,65 +315,26 @@ export default function ControlCronometros() {
           <button className="header-back" onClick={() => navigate('/asignacion')}>‹</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Control de limpiezas</p>
-            <p className="header-sub" style={{ textTransform: 'capitalize' }}>{labelFiltro}</p>
+            <p className="header-sub">{labelFiltro.charAt(0).toUpperCase() + labelFiltro.slice(1)}</p>
           </div>
         </div>
 
-        {/* Filtro de fechas — desplegable */}
-        <div style={{ marginBottom: 14 }}>
-          <button
-            onClick={() => setShowFiltro(v => !v)}
-            style={{
-              width: '100%', padding: '11px 16px',
-              background: showFiltro ? 'var(--primary)' : 'var(--bg-card)',
-              border: `1.5px solid ${showFiltro ? 'var(--primary)' : 'var(--border)'}`,
-              borderRadius: showFiltro ? '10px 10px 0 0' : 10,
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              boxShadow: 'var(--shadow)', transition: 'all 0.15s',
-            }}
-          >
-            <span style={{ fontWeight: 700, fontSize: 14, color: showFiltro ? '#fff' : 'var(--text)' }}>
-              📅 {labelFiltro}
-            </span>
-            <span style={{ color: showFiltro ? '#fff' : 'var(--text-muted)', fontSize: 13 }}>
-              {showFiltro ? '▲' : '▼'}
-            </span>
-          </button>
-
-          {showFiltro && (
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--primary)', borderTop: 'none',
-              borderRadius: '0 0 10px 10px',
-              display: 'flex', flexDirection: 'column', gap: 4,
-              padding: '8px 10px 10px',
-              boxShadow: 'var(--shadow)',
-            }}>
-              {OPCIONES_FECHA.map(({ key, label }) => {
-                const activo = diaKey === key
-                return (
-                  <button
-                    key={key}
-                    onClick={() => { setDiaKey(key); setShowFiltro(false) }}
-                    style={{
-                      width: '100%', padding: '10px 14px',
-                      borderRadius: 8, cursor: 'pointer',
-                      border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
-                      background: activo ? 'var(--primary)' : 'transparent',
-                      color: activo ? '#fff' : 'var(--text)',
-                      fontWeight: 700, fontSize: 14, textAlign: 'left',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {label}
-                    {activo && <span style={{ fontSize: 12 }}>✓</span>}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+        {/* Fecha: por día o por semana, con ‹ › y 📅 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          <div className="tabs" style={{ marginBottom: 0 }}>
+            <button className={`tab ${!porSemana ? 'active' : ''}`} onClick={() => setPorSemana(false)}>Por día</button>
+            <button className={`tab ${porSemana ? 'active' : ''}`} onClick={() => setPorSemana(true)}>Por semana</button>
+          </div>
+          <BarraFecha
+            titulo={labelFiltro.charAt(0).toUpperCase() + labelFiltro.slice(1)}
+            subtitulo={porSemana || !['Hoy', 'Ayer'].includes(labelFiltro) ? labelRangoFecha : fmtDia(diaSel)}
+            onAnterior={() => setDiaSel(d => sumarDias(d, porSemana ? -7 : -1))}
+            onSiguiente={() => setDiaSel(d => { const n = sumarDias(d, porSemana ? 7 : 1); return n > hoy() ? hoy() : n })}
+            puedeSiguiente={puedeAvanzar}
+            valorCalendario={new Date(diaSel + 'T12:00:00')}
+            max={new Date()}
+            onElegirDia={d => setDiaSel(localISO(d))}
+          />
         </div>
 
         {/* Turno Mañana / Noche */}

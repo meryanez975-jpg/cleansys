@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BarraFecha from '../components/BarraFecha'
 import { useNavigate } from 'react-router-dom'
 import { useMateriales } from '../hooks/useMateriales'
 import { useGuardiaNavegacion } from '../hooks/useGuardiaNavegacion'
@@ -319,30 +320,15 @@ export default function Materiales() {
           return (
             <>
               {/* Navegador de mes */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'var(--bg-card)', border: '1.5px solid var(--border)',
-                borderRadius: 12, padding: '10px 8px', marginBottom: 12,
-              }}>
-                <button
-                  onClick={mesContAnterior}
-                  style={{
-                    background: '#dcfce7', border: 'none', borderRadius: 8,
-                    padding: '8px 20px', cursor: 'pointer',
-                    color: '#059669', fontWeight: 700, fontSize: 20,
-                  }}
-                >‹</button>
-                <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', textTransform: 'capitalize' }}>
-                  {mesNombre}
-                </span>
-                <button
-                  onClick={mesContSiguiente}
-                  style={{
-                    background: '#dcfce7', border: 'none', borderRadius: 8,
-                    padding: '8px 20px', cursor: 'pointer',
-                    color: '#059669', fontWeight: 700, fontSize: 20,
-                  }}
-                >›</button>
+              <div style={{ marginBottom: 12 }}>
+                <BarraFecha
+                  titulo={mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}
+                  subtitulo="Contabilidad del mes"
+                  onAnterior={mesContAnterior}
+                  onSiguiente={mesContSiguiente}
+                  valorCalendario={new Date(contAnio, contMes, 1)}
+                  onElegirDia={d => { setContAnio(d.getFullYear()); setContMes(d.getMonth()) }}
+                />
               </div>
 
               {materiales.length === 0 ? (
