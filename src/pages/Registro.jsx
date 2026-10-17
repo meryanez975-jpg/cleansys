@@ -5,6 +5,7 @@ import { useRegistros } from '../hooks/useRegistros'
 import { pullRegistros } from '../hooks/useRegistros'
 import { useInstallPWA } from '../hooks/useInstallPWA'
 import { usePersonal, normalizarNombre } from '../hooks/usePersonal'
+import Avatar from '../components/Avatar'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -35,7 +36,7 @@ function formatHora(isoStr) {
   return new Date(isoStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
 
-// ── Cronómetro ────────────────────────────────────────────────────
+// ── Cronómetro (anillo: una vuelta por hora) ─────────────────────
 function Cronometro({ horaEntrada }) {
   const [seg, setSeg] = useState(0)
 
@@ -53,24 +54,42 @@ function Cronometro({ horaEntrada }) {
   const m = Math.floor((seg % 3600) / 60)
   const s = seg % 60
   const fmt = n => String(n).padStart(2, '0')
+  const R = 84
+  const largo = 2 * Math.PI * R
+  const avance = (seg % 3600) / 3600
 
   return (
-    <div style={{
-      background: '#fffbeb', border: '1.5px solid #fbbf24',
-      borderRadius: 12, padding: '14px 16px', textAlign: 'center',
-    }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        ⏱ Tiempo en limpieza
-      </p>
-      <p style={{
-        fontSize: 38, fontWeight: 800, color: '#b45309',
-        fontVariantNumeric: 'tabular-nums', letterSpacing: 2, lineHeight: 1,
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+      <div style={{ position: 'relative', width: 200, height: 200 }}>
+        <svg width="200" height="200" viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
+          <defs>
+            <linearGradient id="anillo" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#5AA0F7" />
+              <stop offset="100%" stopColor="#1F6FEB" />
+            </linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r={R} fill="none" stroke="var(--primary-light)" strokeWidth="12" />
+          <circle cx="100" cy="100" r={R} fill="none" stroke="url(#anillo)" strokeWidth="12" strokeLinecap="round"
+            strokeDasharray={largo} strokeDashoffset={largo * (1 - Math.max(avance, 0.01))}
+            style={{ transition: 'stroke-dashoffset 1s linear' }} />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ fontSize: 34, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', lineHeight: 1 }}>
+            {fmt(h)}:{fmt(m)}:{fmt(s)}
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>Tiempo transcurrido</p>
+        </div>
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, alignSelf: 'stretch',
+        background: 'var(--primary-xlight)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 14px',
       }}>
-        {fmt(h)}:{fmt(m)}:{fmt(s)}
-      </p>
-      <p style={{ fontSize: 12, color: '#92400e', marginTop: 6 }}>
-        Inicio: {formatHora(horaEntrada)}
-      </p>
+        <span style={{ fontSize: 22 }}>🕙</span>
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Inicio</p>
+          <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{formatHora(horaEntrada)}</p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -146,27 +165,31 @@ function CalendarioPuntitos({ personal_id }) {
 }
 
 // ── Checkbox estilizado ───────────────────────────────────────────
-function CheckItem({ checked, onChange, label, emoji }) {
+function CheckItem({ checked, onChange, label }) {
   return (
     <label style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-      border: `2px solid ${checked ? '#15803d' : 'var(--border)'}`,
-      background: checked ? '#f0fdf4' : 'var(--bg)',
-      transition: 'all 0.15s',
+      padding: '13px 14px', borderRadius: 14, cursor: 'pointer',
+      border: '1px solid var(--border)',
+      background: checked ? 'var(--primary-xlight)' : 'var(--bg-card)',
+      transition: 'background 0.15s',
     }}>
       <div style={{
-        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-        border: `2px solid ${checked ? '#15803d' : 'var(--border)'}`,
-        background: checked ? '#15803d' : 'transparent',
+        width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+        border: `2px solid ${checked ? 'var(--primary)' : '#C9D5E6'}`,
+        background: checked ? 'var(--primary)' : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.15s',
       }}>
-        {checked && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+        {checked && <span style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>✓</span>}
       </div>
-      <span style={{ fontSize: 14, fontWeight: checked ? 700 : 500, color: checked ? '#15803d' : 'var(--text)' }}>
-        {emoji} {label}
-      </span>
+      <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
+      {checked && (
+        <span style={{
+          width: 24, height: 24, borderRadius: '50%', background: 'var(--success)', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800,
+        }}>✓</span>
+      )}
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ display: 'none' }} />
     </label>
   )
@@ -309,152 +332,117 @@ export default function Registro() {
 
   // ── PANTALLA 1: elegir nombre ──────────────────────────────────
   if (!empleadoId) {
+    const fechaCorta = new Date().toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #1e3a8a 0%, #3b82f6 45%, #7c3aed 100%)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '40px 16px 40px',
-      }}>
-        <div style={{ width: '100%', maxWidth: 480 }}>
+      <div className="page" style={{ paddingTop: 20 }}>
+        <div className="container">
 
-          {/* Header */}
-          <div style={{ marginBottom: 32, textAlign: 'center' }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.18)',
-              border: '2px solid rgba(255,255,255,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 30, margin: '0 auto 16px',
-            }}>👤</div>
-            <p style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginBottom: 4 }}>
-              ¿Quién sos?
-            </p>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', textTransform: 'capitalize' }}>
-              {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
+          {/* Barra superior */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 26 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="icon-btn" style={{ fontSize: 20 }}>🧼</span>
+              <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>CleaSys</span>
+            </div>
+            <span className="chip chip-azul" style={{ textTransform: 'capitalize' }}>📅 {fechaCorta}</span>
           </div>
 
-          {/* Card de búsqueda */}
-          <div style={{
-            background: 'rgba(255,255,255,0.12)',
-            border: '1.5px solid rgba(255,255,255,0.22)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 20,
-            padding: '24px 20px',
-          }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: 12, textAlign: 'center' }}>
-              Escribí tu nombre para buscarte
-            </p>
+          {/* Saludo */}
+          <h1 style={{ fontSize: 36, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.05 }}>
+            Hola <span style={{ color: 'var(--primary)', fontSize: 26, verticalAlign: 'top' }}>✦</span>
+          </h1>
+          <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', lineHeight: 1.3, marginTop: 8, marginBottom: 22 }}>
+            ¿Quién sos? Buscá tu nombre<br />para ver tu limpieza de hoy
+          </p>
+
+          {/* Buscador */}
+          <label className="buscador">
+            <span style={{ fontSize: 18, color: 'var(--primary)' }}>🔍</span>
             <input
-              placeholder="Buscar nombre..."
+              placeholder="Buscar mi nombre..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               autoFocus
-              style={{
-                width: '100%', padding: '13px 16px', marginBottom: 14,
-                borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.3)',
-                background: 'rgba(255,255,255,0.15)',
-                color: '#fff', fontSize: 15, fontFamily: 'Inter, sans-serif',
-                outline: 'none',
-              }}
             />
-            {errorPersonal && (
-              <p style={{ fontSize: 12, color: '#fde68a', textAlign: 'center', marginBottom: 10 }}>
-                {personal.length > 0
-                  ? '⚠️ Sin conexión — mostrando la última lista guardada'
-                  : '⚠️ Sin conexión — reintentando cargar el personal…'}
-              </p>
+          </label>
+          {errorPersonal && (
+            <p className="chip chip-naranja" style={{ marginTop: 10, whiteSpace: 'normal' }}>
+              {personal.length > 0
+                ? '⚠️ Sin conexión — mostrando la última lista guardada'
+                : '⚠️ Sin conexión — reintentando cargar el personal…'}
+            </p>
+          )}
+
+          <div className="seccion">
+            <p className="seccion-titulo">Personal</p>
+            {busqueda.trim() && !loadingPersonal && (
+              <span className="seccion-accion">{personalFiltrado.length} encontrado{personalFiltrado.length !== 1 ? 's' : ''}</span>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
-              {loadingPersonal ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
-                  {[1, 2, 3].map(i => (
-                    <div key={i} style={{
-                      height: 44, borderRadius: 10,
-                      background: 'rgba(255,255,255,0.1)',
-                      opacity: 1 - i * 0.2,
-                      animation: 'pulse 1.4s ease-in-out infinite',
-                    }} />
-                  ))}
-                </div>
-              ) : !busqueda.trim() ? (
-                <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Escribí al menos una letra</p>
-              ) : personalFiltrado.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: 20, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Sin resultados</p>
-              ) : (
-                personalFiltrado.map(p => {
-                  const tareasDelDia = asignaciones.filter(a => a.personal_id === p.id)
-                  const tieneHoy    = tareasDelDia.length > 0
-                  const yaTermino   = tieneHoy && tareasDelDia.every(a => !!getRegistroPorAsignacion(a.id)?.hora_salida)
-                  const turnoHoy    = tieneHoy ? tareasDelDia[0].turno : null
-                  const puedeEntrar = tieneHoy && esHoraTurno(turnoHoy)
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }}
-                      style={{
-                        background: yaTermino
-                          ? 'rgba(16,185,129,0.25)'
-                          : tieneHoy ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
-                        border: `1.5px solid ${yaTermino ? 'rgba(16,185,129,0.6)' : tieneHoy ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)'}`,
-                        borderRadius: 12, padding: '12px 14px', cursor: 'pointer',
-                        textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
-                      }}
-                    >
-                      <div style={{
-                        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                        background: yaTermino ? '#10b981' : tieneHoy ? '#fff' : 'rgba(255,255,255,0.2)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: yaTermino ? '#fff' : tieneHoy ? 'var(--primary)' : '#fff',
-                        fontWeight: 800, fontSize: yaTermino ? 20 : 16,
-                      }}>
-                        {yaTermino ? '✓' : p.nombre.charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>{p.nombre}</p>
-                        {p.sector && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>{p.sector}</p>}
-                        {tieneHoy && !yaTermino && !puedeEntrar && (
-                          <p style={{ fontSize: 11, color: '#fde68a', marginTop: 3 }}>
-                            ⏰ Disponible desde las {horaDisponible(turnoHoy)}
-                          </p>
-                        )}
-                      </div>
-                      {yaTermino ? (
-                        <span style={{
-                          background: 'rgba(16,185,129,0.4)', border: '1px solid rgba(16,185,129,0.7)',
-                          borderRadius: 20, padding: '3px 10px',
-                          fontSize: 11, fontWeight: 700, color: '#fff',
-                        }}>
-                          ✅ Ya terminó
-                        </span>
-                      ) : tieneHoy ? (
-                        <span style={{
-                          background: puedeEntrar ? 'rgba(255,255,255,0.25)' : 'rgba(251,191,36,0.2)',
-                          border: `1px solid ${puedeEntrar ? 'rgba(255,255,255,0.4)' : 'rgba(251,191,36,0.5)'}`,
-                          borderRadius: 20, padding: '3px 10px',
-                          fontSize: 11, fontWeight: 700, color: '#fff',
-                        }}>
-                          {puedeEntrar ? 'Hacés limpieza hoy' : '🔒 Hacés limpieza hoy'}
-                        </span>
-                      ) : null}
-                    </button>
-                  )
-                })
-              )}
-            </div>
           </div>
 
+          {loadingPersonal ? (
+            <div className="lista">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="fila" style={{ cursor: 'default' }}>
+                  <span className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%' }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="skeleton" style={{ height: 14, width: '55%', marginBottom: 6 }} />
+                    <div className="skeleton" style={{ height: 10, width: '35%' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !busqueda.trim() ? (
+            <div className="card text-center" style={{ padding: '28px 20px' }}>
+              <p style={{ fontSize: 34, marginBottom: 8 }}>🧽</p>
+              <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>Escribí al menos una letra</p>
+              <p className="text-muted">Tu nombre aparece acá abajo para elegirlo</p>
+            </div>
+          ) : personalFiltrado.length === 0 ? (
+            <div className="card text-center" style={{ padding: '28px 20px' }}>
+              <p style={{ fontSize: 34, marginBottom: 8 }}>🔎</p>
+              <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Sin resultados</p>
+            </div>
+          ) : (
+            <div className="lista" style={{ maxHeight: 440, overflowY: 'auto' }}>
+              {personalFiltrado.map(p => {
+                const tareasDelDia = asignaciones.filter(a => a.personal_id === p.id)
+                const tieneHoy    = tareasDelDia.length > 0
+                const yaTermino   = tieneHoy && tareasDelDia.every(a => !!getRegistroPorAsignacion(a.id)?.hora_salida)
+                const enProceso   = tareasDelDia.some(a => {
+                  const r = getRegistroPorAsignacion(a.id)
+                  return r?.hora_entrada && !r?.hora_salida
+                })
+                const turnoHoy    = tieneHoy ? tareasDelDia[0].turno : null
+                const puedeEntrar = tieneHoy && esHoraTurno(turnoHoy)
+                return (
+                  <button
+                    key={p.id}
+                    className="fila"
+                    onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }}
+                  >
+                    <Avatar nombre={p.nombre}>{yaTermino ? '✓' : undefined}</Avatar>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p className="fila-nombre">{p.nombre}</p>
+                      {p.sector && <p className="fila-sub" style={{ textTransform: 'capitalize' }}>{p.sector}</p>}
+                    </div>
+                    {yaTermino ? (
+                      <span className="chip chip-verde">Completado</span>
+                    ) : enProceso ? (
+                      <span className="chip chip-azul">En proceso</span>
+                    ) : tieneHoy ? (
+                      puedeEntrar
+                        ? <span className="chip chip-azul">Limpia hoy</span>
+                        : <span className="chip chip-naranja">🔒 {horaDisponible(turnoHoy)}</span>
+                    ) : null}
+                    <span className="fila-flecha">›</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           {puedeInstalar && (
-            <button
-              onClick={instalar}
-              style={{
-                width: '100%', marginTop: 16, padding: '12px 0', borderRadius: 12,
-                background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)',
-                color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
+            <button className="btn btn-ghost btn-block" style={{ marginTop: 16, padding: '13px 0' }} onClick={instalar}>
               <span style={{ fontSize: 18 }}>📲</span> Instalar app
             </button>
           )}
@@ -470,13 +458,31 @@ export default function Registro() {
       <div className="container">
 
         {/* Header */}
-        <div className="header">
-          <button className="header-back" onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}>←</button>
-          <div style={{ flex: 1 }}>
-            <p className="header-title">{empleadoSeleccionado?.nombre}</p>
-            <p className="header-sub">
+        <div className="header" style={{ marginBottom: 18 }}>
+          <button className="header-back" onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}>‹</button>
+          <div style={{ flex: 1, textAlign: 'center', marginRight: 42 }}>
+            <p className="header-title" style={{ fontSize: 18 }}>Mi limpieza</p>
+            <p className="header-sub" style={{ textTransform: 'capitalize' }}>
               {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
+          </div>
+        </div>
+
+        {/* Perfil */}
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          <Avatar nombre={empleadoSeleccionado?.nombre || ''} size={62} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)' }}>{empleadoSeleccionado?.nombre}</p>
+            {empleadoSeleccionado?.sector && (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>{empleadoSeleccionado.sector}</p>
+            )}
+            <div style={{ marginTop: 8 }}>
+              {tareasHoy.length === 0 ? <span className="chip chip-gris">Sin limpieza hoy</span>
+                : todasCompletas ? <span className="chip chip-verde">Completado</span>
+                : tareasHoy.some(a => getRegistroPorAsignacion(a.id)?.hora_entrada && !getRegistroPorAsignacion(a.id)?.hora_salida)
+                  ? <span className="chip chip-azul">En proceso</span>
+                  : <span className="chip chip-naranja">Pendiente</span>}
+            </div>
           </div>
         </div>
 
@@ -492,9 +498,14 @@ export default function Registro() {
 
         {/* HOY */}
         <div style={{ marginBottom: 24 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-            Hoy
-          </p>
+          <div className="seccion" style={{ marginTop: 0 }}>
+            <p className="seccion-titulo">Hoy</p>
+            {tareasHoy.length > 0 && (
+              <span className="seccion-accion" style={{ color: 'var(--text-muted)' }}>
+                {tareasHoy.filter(a => getRegistroPorAsignacion(a.id)?.hora_salida).length} de {tareasHoy.length}
+              </span>
+            )}
+          </div>
 
           {syncingAsigs ? (
             <div className="card text-center" style={{ padding: 32 }}>
@@ -623,17 +634,17 @@ export default function Registro() {
                 const esManana     = a.turno === 'mañana'
 
                 return (
-                  <div
-                    key={a.id}
-                    className="card"
-                    style={{ borderLeft: `4px solid ${esManana ? 'var(--manana-badge)' : 'var(--noche-badge)'}` }}
-                  >
+                  <div key={a.id} className="card" style={{ padding: 20 }}>
                     {/* Info */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                      <span style={{ fontSize: 26 }}>{esManana ? '☀️' : '🌙'}</span>
-                      <div>
-                        <p style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)' }}>{a.zona?.nombre}</p>
-                        <span className={`badge badge-${esManana ? 'manana' : 'noche'}`}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+                      <span style={{
+                        width: 48, height: 48, borderRadius: 14, flexShrink: 0, fontSize: 24,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: esManana ? 'var(--manana-bg)' : 'var(--noche-bg)',
+                      }}>{esManana ? '☀️' : '🌙'}</span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{a.zona?.nombre}</p>
+                        <span className={`badge badge-${esManana ? 'manana' : 'noche'}`} style={{ marginTop: 4 }}>
                           Turno {esManana ? 'Mañana' : 'Noche'}
                         </span>
                       </div>
@@ -706,14 +717,13 @@ export default function Registro() {
                               if (tareas.length === 0) return null
                               return (
                                 <>
-                                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>¿Qué hiciste?</p>
+                                  <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', marginTop: 4 }}>Lista de tareas</p>
                                   {tareas.map((tarea, i) => (
                                     <CheckItem
                                       key={i}
                                       checked={!!checksZona[tarea]}
                                       onChange={v => setChecksZona(prev => ({ ...prev, [tarea]: v }))}
                                       label={tarea}
-                                      emoji="✅"
                                     />
                                   ))}
                                 </>
@@ -735,20 +745,19 @@ export default function Registro() {
                           </div>
                         ) : (
                           <button className="btn btn-primary btn-block btn-lg" onClick={() => setConfirmando(a.id)}>
-                            Marcar Salida →
+                            ✓ Finalizar limpieza
                           </button>
                         )}
                       </div>
 
                     ) : esHoraTurno(a.turno) ? (
-                      <button className="btn btn-outline btn-block btn-lg" onClick={() => marcarEntrada(a.id)}>
-                        📍 Marcar Entrada
+                      <button className="btn btn-primary btn-block btn-lg" onClick={() => marcarEntrada(a.id)}>
+                        ▶ Iniciar limpieza
                       </button>
                     ) : (
                       <div style={{
                         textAlign: 'center', padding: '22px 16px',
-                        background: '#fffbeb', borderRadius: 12,
-                        border: '1.5px solid #fde68a',
+                        background: 'var(--warning-light)', borderRadius: 14,
                       }}>
                         <p style={{ fontSize: 30, marginBottom: 8 }}>⏰</p>
                         <p style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 4 }}>

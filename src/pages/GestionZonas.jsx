@@ -52,7 +52,7 @@ export default function GestionZonas() {
 
         {/* Header */}
         <div className="header">
-          <button className="header-back" onClick={() => navigate('/asignacion')}>←</button>
+          <button className="header-back" onClick={() => navigate('/asignacion')}>‹</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Zonas de limpieza</p>
             <p className="header-sub">{zonas.length} zona{zonas.length !== 1 ? 's' : ''} activa{zonas.length !== 1 ? 's' : ''}</p>

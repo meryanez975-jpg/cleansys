@@ -19,7 +19,7 @@ export default function GestionPersonal() {
 
         {/* Header */}
         <div className="header">
-          <button className="header-back" onClick={() => navigate('/asignacion')}>←</button>
+          <button className="header-back" onClick={() => navigate('/asignacion')}>‹</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Personal</p>
             <p className="header-sub">{personal.length} persona{personal.length !== 1 ? 's' : ''} registrada{personal.length !== 1 ? 's' : ''}</p>

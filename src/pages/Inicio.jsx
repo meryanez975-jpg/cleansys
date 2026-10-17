@@ -35,7 +35,7 @@ export default function Inicio() {
           sub="Marcá tu entrada y tareas de limpieza"
           arrow="#fff"
           style={{
-            background: 'var(--primary)',
+            background: 'var(--primary-grad)',
             boxShadow: '0 4px 14px rgba(59,130,246,0.3)',
             border: 'none',
             marginBottom: 28,

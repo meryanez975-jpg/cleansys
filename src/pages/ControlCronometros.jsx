@@ -325,7 +325,7 @@ export default function ControlCronometros() {
 
         {/* Header */}
         <div className="header">
-          <button className="header-back" onClick={() => navigate('/asignacion')}>←</button>
+          <button className="header-back" onClick={() => navigate('/asignacion')}>‹</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Control de limpiezas</p>
             <p className="header-sub" style={{ textTransform: 'capitalize' }}>{labelFiltro}</p>

@@ -166,7 +166,7 @@ export default function Materiales() {
 
         {/* Header */}
         <div className="header">
-          <button className="header-back" onClick={() => navegarConGuardia(() => navigate('/asignacion'))}>←</button>
+          <button className="header-back" onClick={() => navegarConGuardia(() => navigate('/asignacion'))}>‹</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">Material de limpieza</p>
             <p className="header-sub">Inventario y reposición</p>
@@ -182,13 +182,13 @@ export default function Materiales() {
             onClick={() => setVista('agregados')}
             style={{
               flex: 1, padding: '14px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: vista === 'agregados' ? '#6d28d9' : '#ede9fe',
+              background: vista === 'agregados' ? '#1F6FEB' : '#E8F0FE',
               boxShadow: vista === 'agregados' ? '0 3px 10px rgba(109,40,217,0.35)' : 'none',
               transition: 'all 0.15s',
             }}
           >
-            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'agregados' ? '#fff' : '#6d28d9', margin: 0 }}>{materiales.length}</p>
-            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'agregados' ? '#fff' : '#6d28d9', margin: 0 }}>📦 Agregados</p>
+            <p style={{ fontSize: 22, fontWeight: 800, color: vista === 'agregados' ? '#fff' : '#1F6FEB', margin: 0 }}>{materiales.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: vista === 'agregados' ? '#fff' : '#1F6FEB', margin: 0 }}>📦 Agregados</p>
           </button>
 
           <button
@@ -250,22 +250,22 @@ export default function Materiales() {
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '12px 16px', borderRadius: abierto ? '12px 12px 0 0' : 12,
                             border: 'none', cursor: 'pointer',
-                            background: abierto ? '#6d28d9' : '#ede9fe',
+                            background: abierto ? '#1F6FEB' : '#E8F0FE',
                             transition: 'all 0.15s',
                           }}
                         >
-                          <span style={{ fontWeight: 700, fontSize: 14, color: abierto ? '#fff' : '#6d28d9' }}>🏷️ {sec}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: abierto ? 'rgba(255,255,255,0.8)' : '#7c3aed' }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: abierto ? '#fff' : '#1F6FEB' }}>🏷️ {sec}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: abierto ? 'rgba(255,255,255,0.8)' : '#1557C7' }}>
                             {mats.length} {mats.length === 1 ? 'producto' : 'productos'}
                           </span>
                         </button>
                         {abierto && (
-                          <div style={{ border: '1px solid #ede9fe', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                          <div style={{ border: '1px solid #E8F0FE', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
                             {mats.map(m => {
                               const estado   = estadoMaterial(m.fechaReposicion)
                               const prodOpen = !!productosAbiertos['ag-' + m.id]
                               return (
-                                <div key={m.id} style={{ borderLeft: `4px solid ${estado?.color || '#a78bfa'}`, background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
+                                <div key={m.id} style={{ borderLeft: `4px solid ${estado?.color || '#7FB0F7'}`, background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
                                   <button
                                     onClick={() => setProductosAbiertos(p => ({ ...p, ['ag-' + m.id]: !p['ag-' + m.id] }))}
                                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'transparent', border: 'none', cursor: 'pointer' }}
@@ -456,7 +456,7 @@ export default function Materiales() {
             </div>
 
             <div className="input-group">
-              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: '#6d28d9' }}>🏷️ Sector</label>
+              <label className="input-label" style={{ fontSize: 13, fontWeight: 800, color: '#1F6FEB' }}>🏷️ Sector</label>
               {(() => {
                 const sectoresGestion = zonas.map(z => z.nombre)
                 const sectoresCustom  = [...new Set([
@@ -465,9 +465,9 @@ export default function Materiales() {
                 ])]
                 const chipStyle = (activo) => ({
                   padding: '7px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
-                  border: `2px solid ${activo ? '#6d28d9' : '#e2e8f0'}`,
-                  background: activo ? '#ede9fe' : '#f8fafc',
-                  color: activo ? '#6d28d9' : '#64748b',
+                  border: `2px solid ${activo ? '#1F6FEB' : '#e2e8f0'}`,
+                  background: activo ? '#E8F0FE' : '#f8fafc',
+                  color: activo ? '#1F6FEB' : '#64748b',
                   fontWeight: activo ? 700 : 500, transition: 'all 0.12s',
                 })
                 return (
@@ -476,7 +476,7 @@ export default function Materiales() {
                     {/* Sección: sectores de gestión */}
                     {sectoresGestion.length > 0 && (
                       <div>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#1F6FEB', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                           De gestión
                         </p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -540,7 +540,7 @@ export default function Materiales() {
                               setSector(n); guardarCustomSector(n); setShowOtroInput(false)
                             }
                           }}
-                          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#6d28d9', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#1F6FEB', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
                         >
                           ✓
                         </button>
@@ -572,7 +572,7 @@ export default function Materiales() {
             <div className="input-group">
               <label className="input-label">Foto del material</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <label style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)', color: '#fff', borderRadius: 10, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                <label style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'linear-gradient(135deg, #0ea5e9, #1F6FEB)', color: '#fff', borderRadius: 10, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                   📷 Cámara
                   <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFoto} />
                 </label>

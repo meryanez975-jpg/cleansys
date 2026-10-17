@@ -48,7 +48,7 @@ export default function ModalConfirmSalida({ onConfirmar, onCancelar }) {
             onClick={onCancelar}
             style={{
               width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)',
+              background: 'var(--primary-grad)',
               color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(29,78,216,0.35)',
             }}

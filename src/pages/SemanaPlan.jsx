@@ -646,7 +646,6 @@ export default function SemanaPlan() {
     setTimeout(() => setGuardadoOk(false), 2500)
   }
 
-  const btnBase = { flex: 1, borderRadius: 12, padding: '14px 10px', textAlign: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }
   const semanaRef = useRef(null)
   const zonasRefs = useRef({})
 
@@ -702,50 +701,38 @@ export default function SemanaPlan() {
     }
   }
 
+  const saludo = (() => {
+    const h = new Date().getHours()
+    if (h >= 5  && h < 12) return 'Buenos días'
+    if (h >= 12 && h < 19) return 'Buenas tardes'
+    return 'Buenas noches'
+  })()
+
   return (
-    <div className="page" style={vista === 'inicio' ? {
-      background: 'linear-gradient(160deg, #1e3a8a 0%, #3b82f6 40%, #7c3aed 100%)',
-      minHeight: '100vh',
-    } : {}}>
+    <div className="page">
       <div className="container">
 
         {/* Header */}
-        <div className="header">
+        <div className="header" style={{ marginBottom: vista === 'inicio' ? 18 : 20 }}>
           {vista !== 'inicio' ? (
-            <button
-              onClick={() => confirmarSiHayDraft(() => setVista('inicio'))}
-              style={{
-                background: 'var(--primary-light)',
-                border: 'none', borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer', padding: '10px 16px',
-                fontSize: 20, fontWeight: 800, color: 'var(--primary-dark)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                lineHeight: 1,
-              }}
-            >
-              ←
-            </button>
+            <button className="header-back" onClick={() => confirmarSiHayDraft(() => setVista('inicio'))}>‹</button>
           ) : (
-            <button
-              onClick={() => confirmarSiHayDraft(() => setShowMenu(true))}
-              style={{
-                background: 'rgba(255,255,255,0.15)',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)', cursor: 'pointer', padding: '10px 12px',
-                display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <span style={{ display: 'block', width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
-              <span style={{ display: 'block', width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
-              <span style={{ display: 'block', width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
+            <button className="icon-btn" aria-label="Menú" onClick={() => confirmarSiHayDraft(() => setShowMenu(true))}
+              style={{ flexDirection: 'column', gap: 4 }}>
+              <span style={{ display: 'block', width: 17, height: 2, background: 'var(--text)', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 17, height: 2, background: 'var(--text)', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 17, height: 2, background: 'var(--text)', borderRadius: 2 }} />
             </button>
           )}
-          <div style={{ flex: 1 }}>
-            <p className="header-title" style={vista === 'inicio' ? { color: '#fff' } : {}}>
-              {zonaFiltro ? (zonas.find(z => z.id === zonaFiltro)?.nombre ?? 'Semana de trabajo') : 'Semana de trabajo'}
+          <div style={{ flex: 1, textAlign: vista === 'inicio' ? 'center' : 'left', marginRight: vista === 'inicio' ? 42 : 0 }}>
+            <p className="header-title">
+              {vista === 'inicio' ? 'Panel supervisor'
+                : zonaFiltro ? (zonas.find(z => z.id === zonaFiltro)?.nombre ?? 'Semana de trabajo') : 'Semana de trabajo'}
             </p>
-            <p className="header-sub" style={vista === 'inicio' ? { color: 'rgba(255,255,255,0.7)' } : {}}>
-              Hoy, {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            <p className="header-sub" style={{ textTransform: vista === 'inicio' ? 'none' : undefined }}>
+              {vista === 'inicio'
+                ? 'Control y seguimiento de limpiezas'
+                : `Hoy, ${new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
             </p>
           </div>
         </div>
@@ -754,123 +741,107 @@ export default function SemanaPlan() {
         {vista === 'inicio' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* Tarjeta principal de bienvenida */}
-            <div style={{
-              background: 'rgba(255,255,255,0.12)',
-              border: '1.5px solid rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(12px)',
-              borderRadius: 'var(--radius)',
-              padding: '24px 20px',
-              color: '#fff',
-            }}>
-              <p style={{ fontSize: 13, fontWeight: 600, opacity: 0.75, textTransform: 'capitalize' }}>
+            {/* Saludo + resumen de hoy */}
+            <div className="card" style={{ padding: '20px 18px' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                 {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
-              <p style={{ fontSize: 22, fontWeight: 800, marginTop: 6 }}>
-                {(() => {
-                  const h = new Date().getHours()
-                  if (h >= 5  && h < 12) return 'Buenos días 👋'
-                  if (h >= 12 && h < 19) return 'Buenas tardes 👋'
-                  return 'Buenas noches 👋'
-                })()}
+              <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginTop: 4, letterSpacing: '-0.01em' }}>
+                {saludo} <span style={{ color: 'var(--primary)' }}>✦</span>
               </p>
-              <p style={{ fontSize: 14, opacity: 0.85, marginTop: 6 }}>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4, marginBottom: 16 }}>
                 ¿Qué planeas hacer hoy?
               </p>
 
-              {/* Resumen hoy */}
-              <div style={{ marginTop: 16 }}>
-                {asigHoy.length === 0 ? (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '12px 14px',
-                  }}>
-                    <p style={{ fontSize: 13, fontWeight: 600 }}>💤 Sin asignaciones para hoy</p>
-                  </div>
-                ) : (
-                  <>
-                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.75, marginBottom: 8 }}>
-                      📋 {asigHoy.length} asignación{asigHoy.length !== 1 ? 'es' : ''} para hoy
-                    </p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <div style={{
-                        flex: 1, borderRadius: 12, padding: '12px 14px',
-                        background: 'rgba(251,191,36,0.22)',
-                        border: '1.5px solid rgba(251,191,36,0.45)',
-                        display: 'flex', alignItems: 'center', gap: 10,
-                      }}>
-                        <span style={{ fontSize: 22 }}>☀️</span>
-                        <div>
-                          <p style={{ fontSize: 22, fontWeight: 800, color: '#fef9c3', lineHeight: 1 }}>{asigHoyManana}</p>
-                          <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Mañana</p>
-                        </div>
-                      </div>
-                      <div style={{
-                        flex: 1, borderRadius: 12, padding: '12px 14px',
-                        background: 'rgba(99,102,241,0.30)',
-                        border: '1.5px solid rgba(129,140,248,0.45)',
-                        display: 'flex', alignItems: 'center', gap: 10,
-                      }}>
-                        <span style={{ fontSize: 22 }}>🌙</span>
-                        <div>
-                          <p style={{ fontSize: 22, fontWeight: 800, color: '#e0e7ff', lineHeight: 1 }}>{asigHoyNoche}</p>
-                          <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Noche</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
+              <div className="stats">
+                <div className="stat stat-azul">
+                  <span className="stat-icono">📋</span>
+                  <span className="stat-numero">{asigHoy.length}</span>
+                  <span className="stat-texto">Para hoy</span>
+                </div>
+                <div className="stat stat-naranja">
+                  <span className="stat-icono">☀️</span>
+                  <span className="stat-numero">{asigHoyManana}</span>
+                  <span className="stat-texto">Mañana</span>
+                </div>
+                <div className="stat" style={{ background: 'var(--noche-bg)' }}>
+                  <span className="stat-icono">🌙</span>
+                  <span className="stat-numero">{asigHoyNoche}</span>
+                  <span className="stat-texto">Noche</span>
+                </div>
               </div>
+              {asigHoy.length === 0 && (
+                <p className="chip chip-gris" style={{ marginTop: 12 }}>💤 Sin asignaciones para hoy</p>
+              )}
             </div>
 
+            {/* Accesos rápidos a cada zona (igual que elegirla en el menú) */}
+            {zonas.length > 0 && (
+              <div>
+                <div className="seccion" style={{ marginTop: 4 }}>
+                  <p className="seccion-titulo">Zonas</p>
+                  <span className="seccion-accion" style={{ color: 'var(--text-muted)' }}>{zonas.length}</span>
+                </div>
+                <div className="lista">
+                  {zonas.map(z => {
+                    const deHoy = asigsTodas.filter(a => a.fecha === hoyISO && a.zona_id === z.id).length
+                    return (
+                      <button key={z.id} className="fila" onClick={() => { setZonaFiltro(z.id); setVista('semana') }}>
+                        <span style={{
+                          width: 44, height: 44, borderRadius: 14, flexShrink: 0, fontSize: 21,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--primary-light)',
+                        }}>🏢</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className="fila-nombre">{z.nombre}</p>
+                          <p className="fila-sub">Plan semanal y conteo</p>
+                        </div>
+                        {deHoy > 0
+                          ? <span className="chip chip-azul">{deHoy} hoy</span>
+                          : <span className="chip chip-gris">Libre hoy</span>}
+                        <span className="fila-flecha">›</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {puedeInstalar && (
-              <button
-                onClick={instalar}
-                style={{
-                  width: '100%', padding: '12px 0', borderRadius: 12,
-                  background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)',
-                  color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
-              >
+              <button className="btn btn-ghost btn-block" style={{ padding: '13px 0' }} onClick={instalar}>
                 <span style={{ fontSize: 18 }}>📲</span> Instalar app
               </button>
             )}
 
             {errorPersonal && (
-              <div className="card" style={{ marginBottom: 12, padding: '10px 14px', fontSize: 13, color: 'var(--danger)' }}>
+              <p className="chip chip-naranja" style={{ whiteSpace: 'normal' }}>
                 {personalDB.length > 0
                   ? '⚠️ Sin conexión — mostrando la última lista de personal guardada'
                   : '⚠️ Sin conexión — reintentando cargar el personal…'}
-              </div>
+              </p>
             )}
 
             {/* Alertas de personal inactivo */}
             {alertasInactivos.map(({ nombre, asigs }) => (
-              <div key={nombre} style={{
-                background: '#fff7ed',
-                border: '2px solid #f97316',
-                borderRadius: 14, padding: '14px 16px',
+              <div key={nombre} className="card" style={{
+                background: 'var(--warning-light)', borderColor: '#F8D7A6',
                 display: 'flex', gap: 12, alignItems: 'flex-start',
               }}>
                 <span style={{ fontSize: 24, flexShrink: 0 }}>⚠️</span>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: '#9a3412', marginBottom: 4 }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: '#8A4B05', marginBottom: 4 }}>
                     {nombre} ya no está disponible
                   </p>
-                  <p style={{ fontSize: 13, color: '#c2410c', lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: '#B86A06', lineHeight: 1.5 }}>
                     Tiene <strong>{asigs.length} turno{asigs.length !== 1 ? 's' : ''}</strong> próximo{asigs.length !== 1 ? 's' : ''} sin cubrir. Reasignalo antes de esas fechas.
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {asigs.slice(0, 5).map(a => (
-                      <span key={a.id} style={{
-                        background: '#fed7aa', borderRadius: 8,
-                        padding: '3px 9px', fontSize: 11, fontWeight: 600, color: '#9a3412',
-                      }}>
+                      <span key={a.id} className="chip" style={{ background: '#fff', color: '#8A4B05' }}>
                         {new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} · {a.turno}
                       </span>
                     ))}
                     {asigs.length > 5 && (
-                      <span style={{ fontSize: 11, color: '#c2410c', fontWeight: 600 }}>+{asigs.length - 5} más</span>
+                      <span style={{ fontSize: 11, color: '#B86A06', fontWeight: 600 }}>+{asigs.length - 5} más</span>
                     )}
                   </div>
                 </div>
@@ -882,28 +853,17 @@ export default function SemanaPlan() {
 
         {/* Barra de navegación (visible en todas las vistas excepto inicio) */}
         {vista !== 'inicio' && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button onClick={() => confirmarSiHayDraft(() => setVista('semana'))} style={{
-              ...btnBase,
-              background: vista === 'semana' ? '#1d4ed8' : '#dbeafe',
-              boxShadow: vista === 'semana' ? '0 3px 10px rgba(29,78,216,0.35)' : 'none',
-            }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'semana' ? '#fff' : '#1d4ed8' }}>📅 Semana</p>
-            </button>
-            <button onClick={() => confirmarSiHayDraft(() => setVista('limpieza'))} style={{
-              ...btnBase,
-              background: vista === 'limpieza' ? '#15803d' : '#dcfce7',
-              boxShadow: vista === 'limpieza' ? '0 3px 10px rgba(21,128,61,0.35)' : 'none',
-            }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'limpieza' ? '#fff' : '#15803d' }}>🧹 Limpieza</p>
-            </button>
-            <button onClick={() => confirmarSiHayDraft(() => setVista('sinTarea'))} style={{
-              ...btnBase,
-              background: vista === 'sinTarea' ? '#475569' : '#f1f5f9',
-              boxShadow: vista === 'sinTarea' ? '0 3px 10px rgba(71,85,105,0.35)' : 'none',
-            }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: vista === 'sinTarea' ? '#fff' : '#64748b' }}>🧮 Conteo</p>
-            </button>
+          <div className="tabs">
+            {[
+              { v: 'semana',   label: '📅 Semana' },
+              { v: 'limpieza', label: '🧹 Limpieza' },
+              { v: 'sinTarea', label: '🧮 Conteo' },
+            ].map(b => (
+              <button key={b.v} className={`tab ${vista === b.v ? 'active' : ''}`}
+                onClick={() => confirmarSiHayDraft(() => setVista(b.v))}>
+                {b.label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -1019,7 +979,7 @@ export default function SemanaPlan() {
             </p>
             <button onClick={capturarSemana} style={{
               display: 'flex', alignItems: 'center', gap: 5,
-              background: 'linear-gradient(135deg, #0ea5e9, #6d28d9)',
+              background: 'var(--primary-grad)',
               border: 'none', borderRadius: 8, padding: '5px 10px',
               cursor: 'pointer', color: '#fff', fontSize: 11, fontWeight: 700,
               boxShadow: '0 2px 8px rgba(14,165,233,0.35)',
@@ -1027,14 +987,14 @@ export default function SemanaPlan() {
               📸 Capturar
             </button>
           </div>
-          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, background: '#fff', borderRadius: 12, padding: 4 }}>
+          <div ref={semanaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, background: 'transparent', borderRadius: 12, padding: 0 }}>
             {rangoPersonalizado
               ? patronSemanal.map((dia, i) => {
                   if (dia.count === 0) return null
                   const turnoOpenPat = turnosAbiertos['pat-' + i] ?? null
                   const turnos = [
-                    { key: 'mañana', emoji: '☀️', label: 'Mañana', bg: '#fef3c7', bgAct: '#d97706', txt: '#92400e', txtAct: '#fff' },
-                    { key: 'noche',  emoji: '🌙', label: 'Noche',  bg: '#ede9fe', bgAct: '#6d28d9', txt: '#4c1d95', txtAct: '#fff' },
+                    { key: 'mañana', emoji: '☀️', label: 'Mañana', bg: '#FFF1DE', bgAct: '#E58A0F', txt: '#8A4B05', txtAct: '#fff' },
+                    { key: 'noche',  emoji: '🌙', label: 'Noche',  bg: '#EEF0FF', bgAct: '#5B5BD6', txt: '#3F3FB0', txtAct: '#fff' },
                   ].filter(t => !filtroTurno || t.key === filtroTurno)
                   return (
                     <div key={'pat-' + i} className="card" style={{ borderLeft: '4px solid var(--border)', padding: '12px 14px' }}>
@@ -1133,8 +1093,8 @@ export default function SemanaPlan() {
                   const totalDia   = asigsDia.length
 
                   const turnos = [
-                    { key: 'mañana', emoji: '☀️', label: 'Mañana', lista: asigManana, bg: '#fef3c7', bgAct: '#d97706', txt: '#92400e', txtAct: '#fff' },
-                    { key: 'noche',  emoji: '🌙', label: 'Noche',  lista: asigNoche,  bg: '#ede9fe', bgAct: '#6d28d9', txt: '#4c1d95', txtAct: '#fff' },
+                    { key: 'mañana', emoji: '☀️', label: 'Mañana', lista: asigManana, bg: '#FFF1DE', bgAct: '#E58A0F', txt: '#8A4B05', txtAct: '#fff' },
+                    { key: 'noche',  emoji: '🌙', label: 'Noche',  lista: asigNoche,  bg: '#EEF0FF', bgAct: '#5B5BD6', txt: '#3F3FB0', txtAct: '#fff' },
                   ].filter(t => !filtroTurno || t.key === filtroTurno)
 
                   return (

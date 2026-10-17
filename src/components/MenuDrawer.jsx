@@ -42,7 +42,7 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
       }}>
         {/* Header drawer */}
         <div style={{
-          background: 'var(--primary)',
+          background: 'var(--primary-grad)',
           padding: '28px 20px 20px',
           display: 'flex',
           alignItems: 'center',
