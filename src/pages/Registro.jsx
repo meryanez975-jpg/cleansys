@@ -4,6 +4,7 @@ import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
 import { pullRegistros } from '../hooks/useRegistros'
 import { useInstallPWA } from '../hooks/useInstallPWA'
+import { usePersonal, normalizarNombre } from '../hooks/usePersonal'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function hoy() {
@@ -224,21 +225,7 @@ export default function Registro() {
   const fechaHoy = hoy()
   const { puedeInstalar, instalar } = useInstallPWA()
 
-  const [personal, setPersonal]               = useState([])
-  const [loadingPersonal, setLoadingPersonal] = useState(true)
-
-  useEffect(() => {
-    supabase.from('com_personal').select('id, nombre, sector, turno').neq('activo', false).order('nombre')
-      .then(({ data, error }) => {
-        if (error) console.error('Registro personal:', error)
-        else if (data) {
-          setPersonal(data)
-          try { localStorage.setItem('cleansys_personal', JSON.stringify(data)) } catch {}
-        }
-      })
-      .catch(err => console.error('Registro personal:', err))
-      .finally(() => setLoadingPersonal(false))
-  }, [])
+  const { personal, loading: loadingPersonal, error: errorPersonal } = usePersonal()
 
   const { asignaciones, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
   const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, getAllRegistrosPorAsignacion, regError, refetch: refetchReg } = useRegistros(fechaHoy)
@@ -309,7 +296,7 @@ export default function Registro() {
   const empleadoSeleccionado = personal.find(p => p.id === empleadoId)
   const tareasHoy = asignaciones.filter(a => a.personal_id === empleadoId)
   const personalFiltrado = personal.filter(p =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    normalizarNombre(p.nombre).includes(normalizarNombre(busqueda))
   )
   const todasCompletas = !syncingAsigs && tareasHoy.length > 0 && tareasHoy.every(a => !!getRegistroPorAsignacion(a.id)?.hora_salida)
 
@@ -372,6 +359,13 @@ export default function Registro() {
                 outline: 'none',
               }}
             />
+            {errorPersonal && (
+              <p style={{ fontSize: 12, color: '#fde68a', textAlign: 'center', marginBottom: 10 }}>
+                {personal.length > 0
+                  ? '⚠️ Sin conexión — mostrando la última lista guardada'
+                  : '⚠️ Sin conexión — reintentando cargar el personal…'}
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
               {loadingPersonal ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
