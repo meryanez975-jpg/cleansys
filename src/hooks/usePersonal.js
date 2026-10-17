@@ -29,7 +29,7 @@ export function usePersonal() {
     try {
       const { data, error } = await supabase
         .from('com_personal')
-        .select('id, nombre, sector, turno, activo, "diaLibre"')
+        .select('id, nombre, sector, turno, activo, "diaLibre", "modoTurno", "horarioTodosInicio", "horariosPorDia"')
         .neq('activo', false)
         .order('nombre')
       if (error) throw error
