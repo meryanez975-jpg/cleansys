@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { pullFromSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
+import { usePersonal } from '../hooks/usePersonal'
 
 function formatMesLargo(anio, mes) {
   return new Date(anio, mes, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -57,8 +58,7 @@ export default function HistorialPersonal() {
   const [selId, setSelId]           = useState(null)
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
   const [filtroZona, setFiltroZona] = useState(null)
-  const [personalSupabase, setPersonalSupabase] = useState([])
-  const [loadingPersonal, setLoadingPersonal]   = useState(true)
+  const { personal: personalSupabase, loading: loadingPersonal } = usePersonal()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [deletingZona, setDeletingZona] = useState(false)
   const [tick, setTick] = useState(0)
@@ -92,16 +92,6 @@ export default function HistorialPersonal() {
       document.removeEventListener('visibilitychange', handleVisibilidad)
       supabase.removeChannel(channel)
     }
-  }, [])
-
-  useEffect(() => {
-    supabase.from('com_personal').select('id, nombre, sector, turno').neq('activo', false).order('nombre')
-      .then(({ data, error }) => {
-        if (error) console.error('HistorialPersonal personal:', error)
-        else if (data) setPersonalSupabase(data)
-      })
-      .catch(err => console.error('HistorialPersonal personal:', err))
-      .finally(() => setLoadingPersonal(false))
   }, [])
 
   function mesAnterior() {

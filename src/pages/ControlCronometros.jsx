@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { pullFromSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
+import { usePersonal } from '../hooks/usePersonal'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function localISO(d) {
@@ -210,22 +211,10 @@ export default function ControlCronometros() {
   const [turno,     setTurno]     = useState('mañana')
   const [diaKey,    setDiaKey]    = useState('hoy')
   const [showFiltro, setShowFiltro] = useState(false)
-  const [personalMap, setPersonalMap] = useState({})
+  const { personal } = usePersonal()
+  const personalMap = useMemo(() => Object.fromEntries(personal.map(p => [p.id, p])), [personal])
   const [tick, setTick] = useState(0)
   const [confirmandoZona, setConfirmandoZona] = useState(null) // zonaId a eliminar
-
-  useEffect(() => {
-    supabase.from('com_personal').select('id, nombre, sector').eq('activo', true)
-      .then(({ data, error }) => {
-        if (error) { console.error('ControlCronometros personal:', error); return }
-        if (data) {
-          const map = {}
-          data.forEach(p => { map[p.id] = p })
-          setPersonalMap(map)
-        }
-      })
-      .catch(err => console.error('ControlCronometros personal:', err))
-  }, [])
 
   useEffect(() => {
     Promise.all([pullFromSupabase(), pullRegistros()]).then(() => setTick(t => t + 1))

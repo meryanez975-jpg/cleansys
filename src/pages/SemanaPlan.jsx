@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as store from '../data/store'
 import { supabase } from '../supabase/client'
@@ -8,7 +8,6 @@ import ZonaModal from '../components/ZonaModal'
 import PersonalModal from '../components/PersonalModal'
 import ModalConfirmSalida from '../components/ModalConfirmSalida'
 import { useZonas } from '../hooks/useZonas'
-import { usePersonal } from '../hooks/usePersonal'
 import { usePersonalComidas } from '../hooks/usePersonalComidas'
 import { pullFromSupabase, pushToSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
@@ -186,7 +185,6 @@ export default function SemanaPlan() {
   const { puedeInstalar, instalar } = useInstallPWA()
   const [lunesBase, setLunesBase] = useState(getLunesDeHoy)
   const [tick, setTick] = useState(0)
-  const [personalMap, setPersonalMap] = useState({})
   const [filtroTurno, setFiltroTurno] = useState(null)
   const [vista, setVista] = useState('inicio') // 'inicio' | 'semana' | 'limpieza' | 'sinTarea'
   const [editandoId, setEditandoId] = useState(null)
@@ -339,21 +337,12 @@ export default function SemanaPlan() {
   }, [])
 
   const { zonas, crearZona, editarZona, desactivarZona } = useZonas()
-  const { personal, refetch: refetchPersonal } = usePersonal()
-  const { personal: personalDB } = usePersonalComidas(null)
-
-  useEffect(() => {
-    supabase.from('com_personal').select('id, nombre').neq('activo', false)
-      .then(({ data, error }) => {
-        if (error) { console.error('SemanaPlan personal:', error); return }
-        if (data) {
-          const map = {}
-          data.forEach(p => { map[p.id] = p.nombre })
-          setPersonalMap(map)
-        }
-      })
-      .catch(err => console.error('SemanaPlan personal:', err))
-  }, [])
+  // Una sola carga del personal, con reintento y copia guardada (ver usePersonal)
+  const { personal: personalDB, error: errorPersonal } = usePersonalComidas(null)
+  const personalMap = useMemo(
+    () => Object.fromEntries(personalDB.map(p => [p.id, p.nombre])),
+    [personalDB]
+  )
 
   const fechasSemana = (() => {
     if (rangoPersonalizado) {
@@ -845,6 +834,14 @@ export default function SemanaPlan() {
               >
                 <span style={{ fontSize: 18 }}>📲</span> Instalar app
               </button>
+            )}
+
+            {errorPersonal && (
+              <div className="card" style={{ marginBottom: 12, padding: '10px 14px', fontSize: 13, color: 'var(--danger)' }}>
+                {personalDB.length > 0
+                  ? '⚠️ Sin conexión — mostrando la última lista de personal guardada'
+                  : '⚠️ Sin conexión — reintentando cargar el personal…'}
+              </div>
             )}
 
             {/* Alertas de personal inactivo */}
