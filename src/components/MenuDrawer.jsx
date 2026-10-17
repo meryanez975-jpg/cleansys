@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZonas, zonas = [], onSeleccionarZona }) {
   const navigate = useNavigate()
+  const { supervisor, logout } = useAuth()
 
   function ir(path) {
     onClose()
@@ -116,6 +118,18 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
             sub="Agregar, editar y eliminar zonas"
             onClick={() => ir('/zonas')}
           />
+
+          {supervisor && (
+            <>
+              <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+              <MenuItem
+                icono="🚪"
+                texto="Cerrar sesión"
+                sub={supervisor.email}
+                onClick={() => { onClose(); logout(); navigate('/') }}
+              />
+            </>
+          )}
 
         </div>
       </div>

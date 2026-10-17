@@ -92,7 +92,7 @@ export default function Inicio() {
           iconBg="var(--primary-light)"
           title="Plan semanal"
           sub="Asignaciones y conteo de la semana"
-          onClick={() => navigate('/login-supervisor')}
+          onClick={() => navigate('/semana')}
         />
 
         <p style={{ marginTop: 36, fontSize: 11, color: 'var(--text-light)', textAlign: 'center' }}>
