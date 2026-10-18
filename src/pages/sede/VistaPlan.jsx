@@ -35,6 +35,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   const [guardando, setGuardando] = useState(false)
   const [error, setError]     = useState('')
   const [exito, setExito]     = useState('')
+  const [recien, setRecien]   = useState(false)   // muestra "¡Guardado!" en el botón unos segundos
 
   const hoy  = hoyIso()
   const zona = zonas.find(z => z.id === zonaId) || null
@@ -119,6 +120,8 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
       }
       setElegido({})
       await cargar(); await recargarBase()
+      setRecien(true)
+      setTimeout(() => setRecien(false), 2500)
       setExito(`✅ Guardado: ${zona.nombre}, ${infoTurno.label.toLowerCase()}, del ${fechaChica(rango.desde)} al ${fechaChica(rango.hasta)}` +
         (ocupadas ? ` · ${ocupadas} día${ocupadas !== 1 ? 's' : ''} no se pudo porque esa persona ya tenía tarea en otra tienda` : ''))
     } catch (err) {
@@ -291,8 +294,12 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
       }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
           {exito && !cambios.length && <p style={{ fontSize: 12, color: '#15803d', fontWeight: 700, textAlign: 'center', marginBottom: 6 }}>{exito}</p>}
-          <button className="btn btn-primary btn-block" onClick={guardar} disabled={!cambios.length || guardando}>
-            {guardando ? '⏳ Guardando…' : cambios.length ? `💾 Guardar (${cambios.length} día${cambios.length !== 1 ? 's' : ''} de la semana)` : '✓ Todo guardado'}
+          <button className="btn btn-primary btn-block" onClick={guardar} disabled={!cambios.length || guardando}
+            style={recien && !cambios.length ? { background: '#15803d', borderColor: '#15803d', opacity: 1 } : undefined}>
+            {guardando ? '⏳ Guardando…'
+              : recien && !cambios.length ? '✅ ¡Guardado!'
+              : cambios.length ? `💾 Guardar (${cambios.length} día${cambios.length !== 1 ? 's' : ''} de la semana)`
+              : '✓ Todo guardado'}
           </button>
         </div>
       </div>

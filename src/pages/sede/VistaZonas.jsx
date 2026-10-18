@@ -20,6 +20,7 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
   const [borrar, setBorrar]         = useState(null)
   const [error, setError]           = useState('')
   const [semana, setSemana]         = useState([])     // asignaciones de esta semana
+  const [guardado, setGuardado]     = useState('')
 
   useEffect(() => {
     const lunes = lunesDeSemana(0)
@@ -75,6 +76,8 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
       await guardarZona(sesion.token, { id: editando.id, nombre: editando.nombre, tareas, horarios: editando.horarios })
       setEditando(null); setNuevaTarea('')
       await recargarBase()
+      setGuardado('✅ Zona guardada')
+      setTimeout(() => setGuardado(''), 2500)
     } catch (err) { setError(err.message) } finally { setGuardando(false) }
   }
 
@@ -190,6 +193,13 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
           </div>
         )
       }))}
+
+      {guardado && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 90, transform: 'translateX(-50%)', zIndex: 300,
+          background: '#15803d', color: '#fff', fontWeight: 800, padding: '10px 18px', borderRadius: 999, boxShadow: '0 6px 18px rgba(0,0,0,0.2)' }}>
+          {guardado}
+        </div>
+      )}
 
       {borrar && (
         <div className="modal-overlay" onClick={() => setBorrar(null)}>

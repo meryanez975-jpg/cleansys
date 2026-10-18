@@ -96,3 +96,17 @@ export const asignar = (token, { zonaId, personalId, turno, fechas }) =>
 export const quitarAsignacion = (token, id) => rpc('limp_sede_quitar_asignacion', { p_token: token, p_id: id })
 export const cambiarPersona   = (token, id, personalId) =>
   rpc('limp_sede_cambiar_persona', { p_token: token, p_id: id, p_personal_id: personalId })
+
+// ── Compras de materiales de la tienda ──
+export async function comprasDeSede(sedeId) {
+  const { data, error } = await supabase
+    .from('limpieza_compras')
+    .select('id, material_id, fecha, paquetes, unidades_por_paquete, precio_paquete, nota')
+    .eq('sede_id', sedeId)
+    .order('fecha', { ascending: false })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+export const registrarCompra = (token, materialId, datos) =>
+  rpc('limp_sede_registrar_compra', { p_token: token, p_material_id: materialId, p_datos: datos })
+export const eliminarCompra = (token, id) => rpc('limp_sede_eliminar_compra', { p_token: token, p_id: id })
