@@ -67,7 +67,7 @@ export async function personalDeSede(sedeNombre) {
 export async function materialesDeSede(sedeId) {
   const { data, error } = await supabase
     .from('limpieza_materiales')
-    .select('id, nombre, cantidad, unidad, "fechaCompra", "fechaFin", "fechaReposicion"')
+    .select('id, nombre, unidad, minimo')
     .eq('sede_id', sedeId)
     .eq('activo', true)
     .order('nombre')
@@ -97,16 +97,19 @@ export const quitarAsignacion = (token, id) => rpc('limp_sede_quitar_asignacion'
 export const cambiarPersona   = (token, id, personalId) =>
   rpc('limp_sede_cambiar_persona', { p_token: token, p_id: id, p_personal_id: personalId })
 
-// ── Compras de materiales de la tienda ──
-export async function comprasDeSede(sedeId) {
+// ── Inventario de la tienda: entradas (compras) y salidas (lo que se usa) ──
+export async function movimientosDeSede(sedeId) {
   const { data, error } = await supabase
-    .from('limpieza_compras')
-    .select('id, material_id, fecha, paquetes, unidades_por_paquete, precio_paquete, nota')
+    .from('limpieza_movimientos')
+    .select('id, material_id, tipo, fecha, cantidad, paquetes, unidades_por_paquete, precio_paquete, nota, creado')
     .eq('sede_id', sedeId)
     .order('fecha', { ascending: false })
+    .order('creado', { ascending: false })
   if (error) throw new Error(error.message)
   return data || []
 }
-export const registrarCompra = (token, materialId, datos) =>
-  rpc('limp_sede_registrar_compra', { p_token: token, p_material_id: materialId, p_datos: datos })
-export const eliminarCompra = (token, id) => rpc('limp_sede_eliminar_compra', { p_token: token, p_id: id })
+// datos: { tipo: 'entrada', fecha, paquetes, unidades_por_paquete, precio_paquete, nota }
+//     o  { tipo: 'salida', fecha, cantidad, nota }
+export const registrarMovimiento = (token, materialId, datos) =>
+  rpc('limp_sede_movimiento', { p_token: token, p_material_id: materialId, p_datos: datos })
+export const eliminarMovimiento = (token, id) => rpc('limp_sede_eliminar_movimiento', { p_token: token, p_id: id })

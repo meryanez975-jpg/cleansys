@@ -3,13 +3,13 @@ import { zonasDeSede, personalDeSede, asignacionesDeSede } from '../../lib/sedes
 import { lunesDeSemana, sumarDias, hoyIso } from './fechas'
 import VistaZonas from './VistaZonas'
 import VistaPlan from './VistaPlan'
-import VistaMateriales from './VistaMateriales'
+import VistaInventario from './VistaInventario'
 import VistaPersonal from './VistaPersonal'
 
 const VISTAS = [
   { id: 'zonas',      icono: '🧹', titulo: 'Zonas de limpieza', sub: 'Zonas, tareas y quién limpia' },
   { id: 'plan',       icono: '📅', titulo: 'Plan semanal',      sub: 'Quién limpia qué, por semana' },
-  { id: 'materiales', icono: '🧴', titulo: 'Materiales',        sub: 'Qué hay, cuánto dura, reposición' },
+  { id: 'inventario', icono: '📦', titulo: 'Inventario',        sub: 'Cuánto hay, agregar y usar' },
   { id: 'personal',   icono: '👥', titulo: 'Personal de la tienda', sub: 'Quiénes hacen limpieza aquí' },
 ]
 
@@ -69,7 +69,7 @@ export default function PanelSede({ sesion, onSalir }) {
 
         {vista === 'zonas'      && <VistaZonas {...comun} />}
         {vista === 'plan'       && <VistaPlan {...comun} />}
-        {vista === 'materiales' && <VistaMateriales sesion={sesion} />}
+        {vista === 'inventario' && <VistaInventario sesion={sesion} />}
         {vista === 'personal'   && <VistaPersonal personal={personal} sede={sede} zonas={zonas} />}
       </div>
 
