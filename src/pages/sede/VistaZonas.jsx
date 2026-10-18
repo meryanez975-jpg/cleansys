@@ -58,11 +58,15 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
     <>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>⚠️ {error}</p>}
 
+      {/* Botón flotante: nueva zona */}
       {!editando && (
-        <button className="btn btn-primary btn-block" style={{ marginBottom: 16 }}
-          onClick={() => { setEditando({ id: null, nombre: '', tareas: [] }); setNuevaTarea('') }}>
-          ➕ Nueva zona de limpieza
-        </button>
+        <button aria-label="Nueva zona de limpieza" title="Nueva zona de limpieza"
+          onClick={() => { setEditando({ id: null, nombre: '', tareas: [] }); setNuevaTarea(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          style={{
+            position: 'fixed', right: 18, bottom: 22, zIndex: 95, width: 56, height: 56, borderRadius: '50%',
+            border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 28, cursor: 'pointer',
+            boxShadow: '0 6px 18px rgba(59,130,246,0.4)',
+          }}>＋</button>
       )}
 
       {editando && (
@@ -100,7 +104,7 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
       )}
 
       {zonas.length === 0 ? (
-        <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Todavía no hay zonas. Creá la primera.</p>
+        <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Todavía no hay zonas. Tocá ＋ abajo a la derecha para crear la primera.</p>
       ) : zonas.map(z => {
         const quienes = quienesLimpian(z.id)
         return (
