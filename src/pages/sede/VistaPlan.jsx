@@ -72,7 +72,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   const valorDe = dj => (dj in elegido ? elegido[dj] : actualDe(dj))
   const cambios = Object.keys(elegido).filter(dj => elegido[dj] !== actualDe(Number(dj)))
 
-  // Quién puede limpiar ese día de la semana en este turno
+  // Quién se puede elegir ese día en este turno. Regla: en su día libre no aparece.
   const opcionesDe = dj => personal.filter(p => !noVieneEseDia(p, dj) && trabajaEnTurno(p, turno, dj))
 
   async function guardar() {
@@ -226,7 +226,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
               </div>
               <select className="input" style={{ flex: 1, minWidth: 0, borderColor: yaNoEsta ? '#fca5a5' : undefined }}
                 value={valor} onChange={e => { setElegido(prev => ({ ...prev, [dj]: e.target.value })); setExito('') }}>
-                <option value="">{opciones.length ? '— Sin asignar —' : '🏖️ Nadie viene este día'}</option>
+                <option value="">— Sin asignar —</option>
                 {valor === VARIA && (
                   <option value={VARIA} disabled>Varía: {idsActuales.map(id => persona(id)?.nombre?.split(' ')[0] || '⚠️').join(' / ')}</option>
                 )}
