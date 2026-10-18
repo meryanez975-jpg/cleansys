@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Inicio from './pages/Inicio'
-import Registro from './pages/Registro'
 import LoginSupervisor from './pages/LoginSupervisor'
 import SemanaPlan from './pages/SemanaPlan'
 import Materiales from './pages/Materiales'
@@ -10,6 +9,7 @@ import ControlCronometros from './pages/ControlCronometros'
 import GestionPersonal from './pages/GestionPersonal'
 import Sedes from './pages/Sedes'
 import SedeApp from './pages/SedeApp'
+import MarcarTienda, { RegistroCerrado } from './pages/MarcarTienda'
 
 // Pantallas del supervisor: piden iniciar sesión con correo y contraseña
 function Protegida({ children }) {
@@ -26,7 +26,9 @@ export default function App() {
     <Routes>
       {/* Públicas: el personal marca su limpieza; el historial se ve desde el panel Sistema */}
       <Route path="/" element={<Inicio />} />
-      <Route path="/registro" element={<Registro />} />
+      {/* El registro general se cerró: cada tienda marca desde su link */}
+      <Route path="/registro" element={<RegistroCerrado />} />
+      <Route path="/tienda/:slug/marcar" element={<MarcarTienda />} />
       <Route path="/historial" element={<HistorialPersonal />} />
       <Route path="/login-supervisor" element={<LoginSupervisor />} />
       {/* App de cada tienda: se entra con la contraseña de la tienda (/sede es el link anterior) */}

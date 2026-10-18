@@ -27,23 +27,6 @@ export default function Inicio() {
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sistema de Limpieza — Turno Mañana &amp; Noche</p>
         </div>
 
-        {/* Registro Personal — acción principal */}
-        <Card
-          icon="👤"
-          iconBg="rgba(255,255,255,0.2)"
-          title="Registro Personal"
-          sub="Marcá tu entrada y tareas de limpieza"
-          arrow="#fff"
-          style={{
-            background: 'var(--primary-grad)',
-            boxShadow: '0 4px 14px rgba(59,130,246,0.3)',
-            border: 'none',
-            marginBottom: 28,
-          }}
-          titleColor="#fff"
-          subColor="rgba(255,255,255,0.75)"
-          onClick={() => navigate('/registro')}
-        />
 
         {/* Zonas — dinámicas desde Supabase */}
         <SectionLabel>Zonas</SectionLabel>

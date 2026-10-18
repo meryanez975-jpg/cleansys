@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { entrarSede, sesionSede, cambiarPasswordSede, salirSede } from '../lib/sedes'
+import { entrarSede, sesionSede, cambiarPasswordSede, salirSede, usarManifiestoTienda } from '../lib/sedes'
 import PanelSede from './sede/PanelSede'
 
 // App de una sede (/sede/:slug): se entra con la contraseña de la sede y la
@@ -33,6 +33,9 @@ export default function SedeApp() {
 
   // Al abrir: confirmar que la sesión sigue valiendo (contraseña reiniciada
   // o sede desactivada → pide entrar de nuevo). Sin internet se mantiene.
+  // Para instalar la app de la encargada con el nombre de la tienda
+  useEffect(() => { usarManifiestoTienda(slug) }, [slug])
+
   useEffect(() => {
     if (!sesion?.token) return
     sesionSede(sesion.token)

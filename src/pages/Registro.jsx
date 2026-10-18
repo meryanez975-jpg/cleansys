@@ -251,13 +251,18 @@ function horaDisponible(a) {
 }
 
 // ── Pantallas ─────────────────────────────────────────────────────
-export default function Registro() {
+// tienda: se marca desde el celular fijo de esa tienda (/tienda/:slug/marcar).
+// Solo aparecen su personal y las tareas de sus zonas, y el celular no recuerda
+// a la última persona (lo usan todas).
+export default function Registro({ tienda }) {
   const fechaHoy = hoy()
   const { puedeInstalar, instalar } = useInstallPWA()
 
-  const { personal, loading: loadingPersonal, error: errorPersonal } = usePersonal()
+  const { personal: todoElPersonal, loading: loadingPersonal, error: errorPersonal } = usePersonal()
+  const personal = todoElPersonal.filter(p => normalizarNombre(p.sector) === normalizarNombre(tienda.nombre))
 
-  const { asignaciones, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
+  const { asignaciones: todasLasTareas, loading: syncingAsigs, sincronizar } = useAsignaciones(fechaHoy)
+  const asignaciones = todasLasTareas.filter(a => a.zona?.sede_id === tienda.id)
   const { marcarEntrada, marcarSalida, getRegistroPorAsignacion, getAllRegistrosPorAsignacion, regError, refetch: refetchReg } = useRegistros(fechaHoy)
 
   // Recargar automáticamente a medianoche para mostrar datos del nuevo día
@@ -305,7 +310,17 @@ export default function Registro() {
     return () => supabase.removeChannel(channel)
   }, [sincronizar, refetchReg])
 
-  const [empleadoId, setEmpleadoId]       = useState(() => localStorage.getItem('cleansys_reg_emp') || null)
+  const [empleadoId, setEmpleadoId]       = useState(null)
+
+  // Celular compartido: si nadie toca la pantalla por 3 minutos, vuelve a la lista de nombres
+  useEffect(() => {
+    if (!empleadoId) return
+    let timer = setTimeout(() => setEmpleadoId(null), 180000)
+    const reiniciar = () => { clearTimeout(timer); timer = setTimeout(() => setEmpleadoId(null), 180000) }
+    window.addEventListener('pointerdown', reiniciar)
+    window.addEventListener('keydown', reiniciar)
+    return () => { clearTimeout(timer); window.removeEventListener('pointerdown', reiniciar); window.removeEventListener('keydown', reiniciar) }
+  }, [empleadoId])
   const [busqueda, setBusqueda]           = useState('')
   const [confirmando, setConfirmando]     = useState(null)
   const [checksZona, setChecksZona]       = useState({})
@@ -348,7 +363,7 @@ export default function Registro() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 26 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span className="icon-btn" style={{ fontSize: 20 }}>🧼</span>
-              <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>CleaSys</span>
+              <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>🏬 {tienda.nombre}</span>
             </div>
             <span className="chip chip-azul" style={{ textTransform: 'capitalize' }}>📅 {fechaCorta}</span>
           </div>
@@ -425,7 +440,7 @@ export default function Registro() {
                   <button
                     key={p.id}
                     className="fila"
-                    onClick={() => { setEmpleadoId(p.id); localStorage.setItem('cleansys_reg_emp', p.id) }}
+                    onClick={() => { setEmpleadoId(p.id) }}
                   >
                     <Avatar nombre={p.nombre}>{yaTermino ? '✓' : undefined}</Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -466,7 +481,7 @@ export default function Registro() {
 
         {/* Header */}
         <div className="header" style={{ marginBottom: 18 }}>
-          <button className="header-back" onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}>‹</button>
+          <button className="header-back" onClick={() => { setEmpleadoId(null) }}>‹</button>
           <div style={{ flex: 1, textAlign: 'center', marginRight: 42 }}>
             <p className="header-title" style={{ fontSize: 18 }}>Mi limpieza</p>
             <p className="header-sub" style={{ textTransform: 'capitalize' }}>
@@ -578,7 +593,6 @@ export default function Registro() {
                     })
                     setTimeout(() => {
                       setEmpleadoId(null)
-                      localStorage.removeItem('cleansys_reg_emp')
                     }, 800)
                   }}
                   style={{
@@ -604,7 +618,7 @@ export default function Registro() {
                   </button>
                 ) : null)}
                 <button
-                  onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}
+                  onClick={() => { setEmpleadoId(null) }}
                   style={{
                     width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
                     background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -701,7 +715,6 @@ export default function Registro() {
                               })
                               setTimeout(() => {
                                 setEmpleadoId(null)
-                                localStorage.removeItem('cleansys_reg_emp')
                               }, 800)
                             }}
                             style={{
@@ -798,7 +811,7 @@ export default function Registro() {
 
         {tareasHoy.length === 0 && (
           <div style={{ textAlign: 'center', marginTop: 8 }}>
-            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => { setEmpleadoId(null); localStorage.removeItem('cleansys_reg_emp') }}>← Volver</button>
+            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => { setEmpleadoId(null) }}>← Volver</button>
           </div>
         )}
 

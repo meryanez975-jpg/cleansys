@@ -17,6 +17,16 @@ async function rpc(nombre, params) {
 }
 
 export const linkDeSede = slug => `${window.location.origin}/tienda/${slug}`
+// Link para el celular fijo de la tienda, donde el personal marca su limpieza
+export const linkMarcar = slug => `${window.location.origin}/tienda/${slug}/marcar`
+
+// Cambia el manifiesto de la página para instalarla con el nombre de la tienda
+export function usarManifiestoTienda(slug, tipo) {
+  if (!slug) return
+  let link = document.querySelector('link[rel="manifest"]')
+  if (!link) { link = document.createElement('link'); link.rel = 'manifest'; document.head.appendChild(link) }
+  link.href = `/api/manifest?slug=${encodeURIComponent(slug)}${tipo === 'marcar' ? '&tipo=marcar' : ''}`
+}
 
 // ── Supervisor general (token de su sesión) ──
 export const listarSedes   = token => rpc('limp_admin_listar_sedes', { p_token: token })

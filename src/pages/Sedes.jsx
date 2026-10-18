@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { listarSedes, resetearSede, linkDeSede, PASSWORD_INICIAL_SEDE } from '../lib/sedes'
+import { listarSedes, resetearSede, linkDeSede, linkMarcar, PASSWORD_INICIAL_SEDE } from '../lib/sedes'
 
 // Supervisor de limpieza: ve las tiendas y comparte el link de cada una.
 // Las tiendas se crean en Comidas → Administrador → 🏬 Tiendas; las zonas
@@ -32,12 +32,12 @@ export default function Sedes() {
     } catch (err) { setError(err.message) }
   }
 
-  async function copiar(s) {
+  async function copiar(s, link = linkDeSede(s.slug), clave = s.id) {
     try {
-      await navigator.clipboard.writeText(linkDeSede(s.slug))
-      setCopiado(s.id)
+      await navigator.clipboard.writeText(link)
+      setCopiado(clave)
       setTimeout(() => setCopiado(null), 2000)
-    } catch { window.prompt('Copiá el link:', linkDeSede(s.slug)) }
+    } catch { window.prompt('Copiá el link:', link) }
   }
 
   function compartir(s) {
@@ -69,7 +69,16 @@ export default function Sedes() {
               {s.zonas} zona{s.zonas !== 1 ? 's' : ''} · {s.activo ? 'Activa' : 'Desactivada'} ·{' '}
               {s.debe_cambiar ? `🔑 Contraseña inicial (${PASSWORD_INICIAL_SEDE})` : '✅ Ya cambió la contraseña'}
             </p>
-            <p style={{ fontSize: 12, color: 'var(--primary-dark)', wordBreak: 'break-all', marginBottom: 10 }}>{linkDeSede(s.slug)}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>🔑 Encargada (con contraseña)</p>
+            <p style={{ fontSize: 12, color: 'var(--primary-dark)', wordBreak: 'break-all', marginBottom: 8 }}>{linkDeSede(s.slug)}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>🧹 Para marcar (celular fijo, sin contraseña)</p>
+            <p style={{ fontSize: 12, color: 'var(--primary-dark)', wordBreak: 'break-all', marginBottom: 6 }}>{linkMarcar(s.slug)}</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => copiar(s, linkMarcar(s.slug), s.id + '-m')}>{copiado === s.id + '-m' ? '✅ Copiado' : '🧹 Copiar link para marcar'}</button>
+              <button className="btn btn-outline btn-sm" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`🧹 Marcar limpieza — ${s.nombre}
+${linkMarcar(s.slug)}
+(Abrilo en el celular de la tienda y tocá "Agregar a pantalla de inicio")`)}`, '_blank')}>💬 WhatsApp</button>
+            </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button className="btn btn-outline btn-sm" onClick={() => copiar(s)}>{copiado === s.id ? '✅ Copiado' : '🔗 Copiar link'}</button>
               <button className="btn btn-outline btn-sm" onClick={() => compartir(s)}>💬 WhatsApp</button>
