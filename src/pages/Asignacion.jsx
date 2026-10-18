@@ -498,7 +498,7 @@ export default function Asignacion() {
     if (rows.length > 0) {
       const { error } = await supabase
         .from('limpieza_asignaciones')
-        .upsert(rows, { onConflict: 'personal_id,fecha,turno' })
+        .upsert(rows, { onConflict: 'personal_id,fecha,turno,zona_id' })
       if (error) {
         setErrForm('Error al guardar: ' + error.message)
         setGuardando(false)

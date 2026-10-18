@@ -89,7 +89,7 @@ export function useAsignaciones(fecha) {
       activo: true,
     }
 
-    const { error } = await supabase.from('limpieza_asignaciones').upsert(nueva, { onConflict: 'personal_id,fecha,turno' })
+    const { error } = await supabase.from('limpieza_asignaciones').upsert(nueva, { onConflict: 'personal_id,fecha,turno,zona_id' })
     if (error) return { error: error.message }
 
     // Actualizar caché local

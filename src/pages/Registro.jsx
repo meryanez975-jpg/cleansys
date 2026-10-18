@@ -635,6 +635,9 @@ export default function Registro() {
           ) : todasCompletas ? null : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {tareasHoy.map(a => {
+                // Otra tarea de hoy ya empezada y sin terminar (se hacen de a una)
+                const enCursoOtra  = t => tareasHoy.find(o => o.id !== t.id &&
+                  getRegistroPorAsignacion(o.id)?.hora_entrada && !getRegistroPorAsignacion(o.id)?.hora_salida)
                 const reg          = getRegistroPorAsignacion(a.id)
                 const tieneEntrada = !!reg?.hora_entrada
                 const tieneSalida  = !!reg?.hora_salida
@@ -654,6 +657,11 @@ export default function Registro() {
                         <span className={`badge badge-${esManana ? 'manana' : 'noche'}`} style={{ marginTop: 4 }}>
                           Turno {esManana ? 'Mañana' : 'Noche'}
                         </span>
+                        {a.zona?.horarios?.[a.turno] && (
+                          <p className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                            🕐 {a.zona.horarios[a.turno].desde}–{a.zona.horarios[a.turno].hasta}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -757,6 +765,11 @@ export default function Registro() {
                         )}
                       </div>
 
+                    ) : enCursoOtra(a) ? (
+                      <div style={{ textAlign: 'center', padding: '16px', background: 'var(--bg)', borderRadius: 14 }}>
+                        <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>⏳ Primero terminá {enCursoOtra(a).zona?.nombre || 'la otra tarea'}</p>
+                        <p className="text-muted" style={{ fontSize: 12 }}>Las tareas se hacen de a una.</p>
+                      </div>
                     ) : esHoraTurno(a) ? (
                       <button className="btn btn-primary btn-block btn-lg" onClick={() => marcarEntrada(a.id)}>
                         ▶ Iniciar limpieza

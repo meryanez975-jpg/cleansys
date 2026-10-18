@@ -363,7 +363,7 @@ export default function SemanaPlan() {
       activo: true,
     }))
     const { error: errIns } = await supabase.from('limpieza_asignaciones')
-      .upsert(newRows, { onConflict: 'personal_id,fecha,turno' })
+      .upsert(newRows, { onConflict: 'personal_id,fecha,turno,zona_id' })
     if (errIns) { setSwapError('Error: ' + errIns.message); setSwapLoading(false); return }
 
     // 3. Actualizar caché local
@@ -468,7 +468,7 @@ export default function SemanaPlan() {
     }
 
     setGuardandoPatron(true)
-    const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno' })
+    const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno,zona_id' })
     setGuardandoPatron(false)
 
     if (error) {
@@ -536,7 +536,7 @@ export default function SemanaPlan() {
     }))
 
     if (rows.length > 0) {
-      const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno' })
+      const { error } = await supabase.from('limpieza_asignaciones').upsert(rows, { onConflict: 'personal_id,fecha,turno,zona_id' })
       if (error) { console.error('handleAddAsignacion error:', error); return }
       const cached = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
       localStorage.setItem('cleansys_asignaciones', JSON.stringify([

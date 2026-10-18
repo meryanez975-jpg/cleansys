@@ -81,6 +81,21 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   const valorDe = dj => (dj in elegido ? elegido[dj] : actualDe(dj))
   const cambios = Object.keys(elegido).filter(dj => elegido[dj] !== actualDe(Number(dj)))
 
+  // Otras zonas donde esa persona ya limpia ese día de la semana (mismo turno)
+  // y si el horario choca con esta zona. Se permite igual: las hace de a una.
+  function otrasZonas(personalId, dj) {
+    if (!personalId || personalId === VARIA) return []
+    const fs = fechasVer(dj)
+    const ids = [...new Set(asig.filter(a => a.personal_id === personalId && a.turno === turno && a.zona_id !== zonaId && fs.includes(a.fecha)).map(a => a.zona_id))]
+    const mio = zonaSel?.horarios?.[turno]
+    return ids.map(id => {
+      const otra = zonas.find(z => z.id === id)
+      const h = otra?.horarios?.[turno]
+      const choca = mio && h ? (mio.desde < h.hasta && h.desde < mio.hasta) : null   // null = sin horario para saber
+      return { nombre: otra?.nombre || 'otra zona', h, choca }
+    })
+  }
+
   // Quién se puede elegir ese día en este turno. Regla: en su día libre no aparece.
   const opcionesDe = dj => personal.filter(p => !noVieneEseDia(p, dj) && trabajaEnTurno(p, turno, dj))
 
@@ -238,6 +253,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
                   {bloqueado ? '👁️ ya pasó' : `${fechasDe(dj).length} día${fechasDe(dj).length !== 1 ? 's' : ''}`}
                 </p>
               </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
               <select className="input" disabled={bloqueado}
                 style={{
                   flex: 1, minWidth: 0, fontWeight: asignado ? 800 : 400,
@@ -257,6 +273,12 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
                 )}
                 {opciones.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
               </select>
+              {!bloqueado && otrasZonas(valor, dj).map((o, k) => (
+                <p key={k} style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: o.choca ? '#b45309' : 'var(--text-muted)' }}>
+                  {o.choca ? '⚠️ Choca con' : 'ℹ️ También limpia'} {o.nombre}{o.h ? ` (${o.h.desde}–${o.h.hasta})` : ''}{o.choca ? ' — las hace de a una' : ''}
+                </p>
+              ))}
+              </div>
             </div>
           )
         })}
