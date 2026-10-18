@@ -10,7 +10,6 @@ const UNIDADES = {
 }
 const nUnidad = (u, n) => { const x = UNIDADES[u] || [u || 'unidad', u || 'unidades']; return Number(n) === 1 ? x[0] : x[1] }
 const fmt = n => (n == null || isNaN(n) ? '—' : Number(n).toLocaleString('es-BO', { maximumFractionDigits: 2 }))
-const bs  = n => (n == null || isNaN(n) ? '—' : `Bs ${Number(n).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
 const num = v => (v === '' || v == null ? null : Number(String(v).replace(',', '.')))
 const VENTANA_DIAS = 60   // el consumo se calcula con lo usado en los últimos 60 días
 
@@ -59,15 +58,18 @@ function archivoExcel(sede, productos, movs) {
     const c = calcular(movs.filter(m => m.material_id === p.id))
     filas.push([p.nombre, p.unidad, n(c.hay), n(c.precioActual), n(c.porDia), c.seAcaba || '', c.cadaCuanto ?? ''])
   })
-  filas.push([], ['Movimientos'], ['Fecha', 'Producto', 'Tipo', 'Cantidad', 'Unidad', 'Paquetes', 'Por paquete', 'Precio paquete (Bs)', 'Total (Bs)', 'Nota'])
+  const hora = m => (m.creado ? new Date(m.creado).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '')
+  filas.push([], ['Movimientos'], ['Fecha', 'Hora', 'Producto', 'Tipo', 'Cantidad', 'Unidad', 'Paquetes', 'Por paquete', 'Precio paquete (Bs)', 'Total (Bs)', 'Nota'])
   ;[...movs].sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(m => {
     const p = productos.find(x => x.id === m.material_id)
-    filas.push([m.fecha, p?.nombre || '', m.tipo === 'entrada' ? 'Compra' : 'Uso', n(m.cantidad), p?.unidad || '',
+    filas.push([m.fecha, hora(m), p?.nombre || '', m.tipo === 'entrada' ? 'Compra' : 'Uso', n(m.cantidad), p?.unidad || '',
       n(m.paquetes), n(m.unidades_por_paquete), n(m.precio_paquete),
       m.precio_paquete != null && m.paquetes != null ? n(m.precio_paquete * m.paquetes) : '', m.nota || ''])
   })
   const total = movs.filter(m => m.tipo === 'entrada' && m.precio_paquete != null).reduce((s, m) => s + m.precio_paquete * m.paquetes, 0)
-  filas.push([], ['TOTAL GASTADO', '', '', '', '', '', '', '', n(total)])
+  const mes = hoyIso().slice(0, 7)
+  const totalMes = movs.filter(m => m.tipo === 'entrada' && m.precio_paquete != null && m.fecha.startsWith(mes)).reduce((s, m) => s + m.precio_paquete * m.paquetes, 0)
+  filas.push([], ['GASTADO ESTE MES', '', '', '', '', '', '', '', '', n(totalMes)], ['TOTAL GASTADO', '', '', '', '', '', '', '', '', n(total)])
   const csv = '\ufeff' + filas.map(f => f.map(celda).join(';')).join('\r\n')
   const nombre = `inventario-${sede.slug || 'tienda'}-${hoyIso()}.csv`
   return new File([csv], nombre, { type: 'text/csv' })
@@ -146,9 +148,6 @@ export default function VistaInventario({ sesion }) {
   function avisar(txt) { setAviso(txt); setTimeout(() => setAviso(''), 2500) }
 
   const movsDe = id => movs.filter(m => m.material_id === id)
-  const mes = hoyIso().slice(0, 7)
-  const gastoMes = movs.filter(m => m.tipo === 'entrada' && m.fecha.startsWith(mes) && m.precio_paquete != null)
-    .reduce((s, m) => s + m.precio_paquete * m.paquetes, 0)
   const lista = productos.filter(p => p.nombre.toLowerCase().includes(buscar.trim().toLowerCase()))
 
   function abrir(p, modo = 'menu') {
@@ -156,7 +155,7 @@ export default function VistaInventario({ sesion }) {
     setAbierto({
       producto: p, modo, fecha: hoyIso(), nota: '',
       paquetes: '1', unidades_por_paquete: u ? String(Number(u.unidades_por_paquete)) : '1',
-      precio_paquete: u?.precio_paquete != null ? String(Number(u.precio_paquete)) : '',
+      precio_paquete: '', conPrecio: false,
       cantidad: '1', nombre: p.nombre, unidad: p.unidad || 'unidad', minimo: p.minimo != null ? String(p.minimo) : '',
     })
     setError('')
@@ -215,7 +214,6 @@ export default function VistaInventario({ sesion }) {
   // Campos de una compra: paquetes, cuánto trae cada uno y el precio
   function camposCompra(f, set, unidad) {
     const total = (num(f.paquetes) || 0) * (num(f.unidades_por_paquete) || 0)
-    const plata = num(f.precio_paquete) != null ? (num(f.paquetes) || 0) * num(f.precio_paquete) : null
     return (
       <>
         <div className="input-group">
@@ -226,14 +224,21 @@ export default function VistaInventario({ sesion }) {
           <label className="input-label">Cada paquete trae ({nUnidad(unidad, 2)})</label>
           <input className="input" inputMode="decimal" value={f.unidades_por_paquete} onChange={e => set('unidades_por_paquete', e.target.value)} />
         </div>
-        <div className="input-group">
-          <label className="input-label">Precio de cada paquete (Bs) — opcional</label>
-          <input className="input" inputMode="decimal" placeholder="Ej: 25" value={f.precio_paquete} onChange={e => set('precio_paquete', e.target.value)} />
-        </div>
         <div style={{ background: '#dcfce7', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 14 }}>
           ➕ <strong>{fmt(total)} {nUnidad(unidad, total)}</strong>
-          {plata != null && <> · 💰 <strong>{bs(plata)}</strong>{total > 0 && <> ({bs(plata / total)} c/u)</>}</>}
         </div>
+        {/* El precio es opcional: solo se pone cuando hace falta (se ve en el Excel) */}
+        {f.conPrecio ? (
+          <div className="input-group">
+            <label className="input-label">Precio de cada paquete (Bs)</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" style={{ flex: 1 }} inputMode="decimal" placeholder="Ej: 25" value={f.precio_paquete} autoFocus onChange={e => set('precio_paquete', e.target.value)} />
+              <button type="button" className="btn btn-ghost" onClick={() => { set('precio_paquete', ''); set('conPrecio', false) }}>✕</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={() => set('conPrecio', true)}>💰 Agregar precio (opcional)</button>
+        )}
       </>
     )
   }
@@ -245,12 +250,9 @@ export default function VistaInventario({ sesion }) {
     <div style={{ paddingBottom: 80 }}>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>⚠️ {error}</p>}
 
-      <div className="card flex-between" style={{ marginBottom: 10, gap: 10 }}>
-        <div>
-          <p className="text-muted" style={{ fontSize: 12 }}>Gastado este mes</p>
-          <p style={{ fontWeight: 800, fontSize: 20, color: 'var(--primary-dark)' }}>{bs(gastoMes)}</p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="card" style={{ marginBottom: 10 }}>
+        <p className="text-muted" style={{ fontSize: 12, marginBottom: 6 }}>El Excel trae todo: cantidades, fechas, horas y lo gastado.</p>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button className="btn btn-outline btn-sm" disabled={!productos.length} onClick={() => { descargar(archivoExcel(sede, productos, movs)); avisar('📥 Excel descargado') }}>📥 Descargar Excel</button>
           <button className="btn btn-sm" disabled={!productos.length} onClick={() => compartirExcel(sede, productos, movs)}
             style={{ background: '#25d366', color: '#fff', border: 'none', fontWeight: 700 }}>💬 Enviar por WhatsApp</button>
@@ -279,10 +281,9 @@ export default function VistaInventario({ sesion }) {
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{p.nombre}</p>
-                  <p className="text-muted" style={{ fontSize: 12 }}>
-                    {c.precioActual != null ? `${bs(c.precioActual)} c/${nUnidad(p.unidad, 1)}` : 'sin precio'}
-                    {c.seAcaba && c.hay > 0 ? ` · se acaba aprox. ${fechaCorta(c.seAcaba)}` : ''}
-                  </p>
+                  {c.seAcaba && c.hay > 0 && (
+                    <p className="text-muted" style={{ fontSize: 12 }}>se acaba aprox. {fechaCorta(c.seAcaba)}</p>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontWeight: 800, fontSize: 17, color: e.color }}>{fmt(c.hay)}</p>
@@ -303,7 +304,7 @@ export default function VistaInventario({ sesion }) {
       )}
 
       <button aria-label="Producto nuevo" title="Producto nuevo" onClick={() => {
-        setNuevo({ nombre: '', unidad: 'unidad', minimo: '', conStock: true, paquetes: '1', unidades_por_paquete: '1', precio_paquete: '' }); setError('')
+        setNuevo({ nombre: '', unidad: 'unidad', minimo: '', conStock: true, paquetes: '1', unidades_por_paquete: '1', precio_paquete: '', conPrecio: false }); setError('')
       }} style={{
         position: 'fixed', right: 18, bottom: 22, zIndex: 95, width: 56, height: 56, borderRadius: '50%',
         border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 28, cursor: 'pointer', boxShadow: '0 6px 18px rgba(59,130,246,0.4)',
@@ -341,16 +342,6 @@ export default function VistaInventario({ sesion }) {
                     <p style={{ fontWeight: 800, fontSize: 14 }}>{ca.cadaCuanto ? `${ca.cadaCuanto} días` : '—'}</p>
                   </div>
                 </div>
-                {ca.precioActual != null && (
-                  <p style={{ fontSize: 12, marginBottom: 12 }}>
-                    💰 Precio: <strong>{bs(ca.precioActual)}</strong> c/{nUnidad(a.producto.unidad, 1)}
-                    {ca.precioAntes != null && ca.precioAntes !== ca.precioActual && (
-                      <span style={{ color: ca.precioActual > ca.precioAntes ? '#b91c1c' : '#15803d', fontWeight: 700 }}>
-                        {' '}(antes {bs(ca.precioAntes)} {ca.precioActual > ca.precioAntes ? '▲' : '▼'})
-                      </span>
-                    )}
-                  </p>
-                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                   <button className="btn btn-success btn-lg" onClick={() => setA('modo', 'agregar')}>➕ Agregar</button>
                   <button className="btn btn-danger btn-lg" disabled={ca.hay <= 0} onClick={() => setA('modo', 'usar')}>➖ Usar</button>
@@ -428,7 +419,7 @@ export default function VistaInventario({ sesion }) {
                         <span className="text-muted" style={{ fontWeight: 500, textTransform: 'capitalize' }}> · {fechaCorta(m.fecha)}</span>
                       </p>
                       {m.tipo === 'entrada' && (
-                        <p className="text-muted">{fmt(m.paquetes)} paq. × {fmt(m.unidades_por_paquete)}{m.precio_paquete != null ? ` · ${bs(m.precio_paquete)} c/paq. = ${bs(m.precio_paquete * m.paquetes)}` : ''}</p>
+                        <p className="text-muted">{fmt(m.paquetes)} paq. × {fmt(m.unidades_por_paquete)}</p>
                       )}
                       {m.nota && <p className="text-muted">📝 {m.nota}</p>}
                     </div>
