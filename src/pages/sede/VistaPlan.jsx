@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { asignacionesDeSede, asignar, quitarAsignacion } from '../../lib/sedes'
 import { trabajaEnTurno, noVieneEseDia } from '../../hooks/usePersonalComidas'
 import { lunesDeSemana, sumarDias, deIso, hoyIso, fechaCorta, DIAS_CORTO, SEMANA_JS } from './fechas'
@@ -6,9 +6,10 @@ import { lunesDeSemana, sumarDias, deIso, hoyIso, fechaCorta, DIAS_CORTO, SEMANA
 // Se planifica de a semanas, hasta un mes: esta semana y las 3 siguientes
 const SEMANAS = 4
 const TURNOS = [
-  { id: 'mañana', icono: '☀️', label: 'Mañana' },
-  { id: 'noche',  icono: '🌙', label: 'Noche' },
+  { id: 'mañana', icono: '☀️', label: 'Mañana', color: '#c2410c', bg: '#ffedd5' },
+  { id: 'noche',  icono: '🌙', label: 'Noche',  color: '#4338ca', bg: '#e0e7ff' },
 ]
+const DIAS_LARGO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const fechaChica = f => { const d = deIso(f); return `${d.getDate()} ${MESES[d.getMonth()]}` }
 
@@ -19,30 +20,36 @@ const disponible = (p, fecha, turno) => {
 }
 const clave = (fecha, turno, personalId) => `${fecha}|${turno}|${personalId}`
 
-// Plan semanal, con el mismo formato que el menú de comidas: zona → semana →
-// día, se tocan los nombres y al final "Guardar todo". Lo editado queda como
-// borrador en todas las semanas hasta guardar.
+// Plan semanal con el formato del Registro de comidas: arriba el turno, la
+// zona en un desplegable y los días en vertical; en cada día se tildan las
+// personas que limpian. Lo marcado queda como borrador hasta "Guardar todo".
 export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBase }) {
-  const [zonaIdx, setZonaIdx]   = useState(0)
+  // Turnos que existen en esta tienda (si nadie trabaja de mañana, solo Noche)
+  const conGente = TURNOS.filter(t => personal.some(p => SEMANA_JS.some(dj => trabajaEnTurno(p, t.id, dj))))
+  const turnosTienda = conGente.length ? conGente : TURNOS
+
+  const [turno, setTurno]       = useState(turnosTienda[0]?.id || 'mañana')
+  const [zonaId, setZonaId]     = useState(zonas[0]?.id || '')
   const [semana, setSemana]     = useState(0)
-  const [diaIdx, setDiaIdx]     = useState(() => (new Date().getDay() + 6) % 7)
   const [guardadas, setGuardadas] = useState([])   // asignaciones del mes en la base
   const [borrador, setBorrador] = useState({})     // clave → zona_id (o null = quitar)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError]       = useState('')
   const [exito, setExito]       = useState('')
+  const [verResumen, setVerResumen] = useState(false)
   const [rapida, setRapida]     = useState(null)   // asignación rápida por período
-  const scrollRef = useRef(null)
 
-  const hoy     = hoyIso()
-  const desde   = lunesDeSemana(0)
-  const hasta   = sumarDias(desde, SEMANAS * 7 - 1)
-  const lunes   = lunesDeSemana(semana)
-  const fechas  = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i))
-  const fecha   = fechas[diaIdx]
-  const zona    = zonas[zonaIdx] || null
-  const pasado  = fecha < hoy
+  const hoy    = hoyIso()
+  const desde  = lunesDeSemana(0)
+  const hasta  = sumarDias(desde, SEMANAS * 7 - 1)
+  const lunes  = lunesDeSemana(semana)
+  const fechas = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i))
+  const zona   = zonas.find(z => z.id === zonaId) || null
+  const infoTurno = TURNOS.find(t => t.id === turno)
+
+  useEffect(() => { if (!zonas.some(z => z.id === zonaId)) setZonaId(zonas[0]?.id || '') }, [zonas])
+  useEffect(() => { if (turnosTienda.length && !turnosTienda.some(t => t.id === turno)) setTurno(turnosTienda[0].id) }, [personal])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -52,27 +59,19 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   }, [zonas, desde, hasta])
   useEffect(() => { cargar() }, [cargar])
 
-  useEffect(() => {
-    const item = scrollRef.current?.children[zonaIdx]
-    if (item) item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-  }, [zonaIdx])
-
-  // Lo guardado por clave, y lo efectivo (borrador encima de lo guardado)
+  // Lo guardado por clave; lo efectivo es el borrador encima de lo guardado
   const guardadoPor = {}
   guardadas.forEach(a => { guardadoPor[clave(a.fecha, a.turno, a.personal_id)] = a })
-  const zonaDe = k => (k in borrador ? borrador[k] : guardadoPor[k]?.zona_id ?? null)
+  const efectivo = (b, k) => (k in b ? b[k] : guardadoPor[k]?.zona_id ?? null)
   const cambios = Object.keys(borrador).filter(k => borrador[k] !== (guardadoPor[k]?.zona_id ?? null))
-  const pendienteDia = (f, zonaId) => cambios.some(k => k.startsWith(f + '|') &&
-    (borrador[k] === zonaId || guardadoPor[k]?.zona_id === zonaId))
 
   // Personas en una zona, fecha y turno (incluye a quien ya no está en la tienda)
-  function asignadosA(zonaId, f, turno) {
+  function asignadosA(b, zId, f, t) {
     const ids = new Set()
-    guardadas.forEach(a => { if (a.fecha === f && a.turno === turno) ids.add(a.personal_id) })
-    Object.keys(borrador).forEach(k => { const [kf, kt, kp] = k.split('|'); if (kf === f && kt === turno) ids.add(kp) })
-    return [...ids].filter(id => zonaDe(clave(f, turno, id)) === zonaId)
+    guardadas.forEach(a => { if (a.fecha === f && a.turno === t) ids.add(a.personal_id) })
+    Object.keys(b).forEach(k => { const [kf, kt, kp] = k.split('|'); if (kf === f && kt === t) ids.add(kp) })
+    return [...ids].filter(id => efectivo(b, clave(f, t, id)) === zId)
   }
-  const tieneAlguien = (zonaId, f) => TURNOS.some(t => asignadosA(zonaId, f, t.id).length > 0)
   const persona = id => personal.find(p => p.id === id)
   const nombreZona = id => zonas.find(z => z.id === id)?.nombre
 
@@ -84,69 +83,37 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
     return () => window.removeEventListener('beforeunload', avisar)
   }, [cambios.length])
 
-  function poner(k, zonaId) {
-    setBorrador(prev => ({ ...prev, [k]: zonaId }))
+  // Tildar / destildar: asigna a esta zona (si estaba en otra, se mueve) o quita
+  function tildar(f, personalId) {
+    if (!zona || f < hoy) return
+    const k = clave(f, turno, personalId)
+    setBorrador(prev => ({ ...prev, [k]: efectivo(prev, k) === zona.id ? null : zona.id }))
     setExito('')
   }
 
-  // Tocar un nombre: lo asigna a esta zona (si estaba en otra, se mueve) o lo quita
-  function tocar(turno, personalId) {
-    if (!zona || pasado) return
-    const k = clave(fecha, turno, personalId)
-    poner(k, zonaDe(k) === zona.id ? null : zona.id)
-  }
-
-  // Copia el día elegido de esta zona a otros días (solo a quien viene ese día)
-  function copiarA(destinos) {
+  // Copia lo tildado de un día a otros días (zona y turno elegidos; solo a quien viene)
+  function copiar(origen, destinos) {
     if (!zona) return
     setBorrador(prev => {
       const nuevo = { ...prev }
-      const efectivo = k => (k in nuevo ? nuevo[k] : guardadoPor[k]?.zona_id ?? null)
-      destinos.filter(f => f >= hoy && f !== fecha).forEach(f => {
-        TURNOS.forEach(t => {
-          const origen = asignadosA(zona.id, fecha, t.id)
-          // Quitar de esta zona a quien no está en el día de origen
-          asignadosA(zona.id, f, t.id).forEach(id => { if (!origen.includes(id)) nuevo[clave(f, t.id, id)] = null })
-          origen.forEach(id => {
-            const p = persona(id)
-            if (p && disponible(p, f, t.id) && efectivo(clave(f, t.id, id)) !== zona.id) nuevo[clave(f, t.id, id)] = zona.id
-          })
-        })
-      })
-      return nuevo
-    })
-    setExito('')
-  }
-  const copiarSemana = () => copiarA(fechas.slice(0, 5))
-  function repetirEnElMes() {
-    if (!zona) return
-    // Cada día de esta semana se copia al mismo día de las semanas siguientes
-    fechas.forEach((f, i) => {
-      for (let s = semana + 1; s < SEMANAS; s++) copiarDesde(f, sumarDias(lunesDeSemana(s), i))
-    })
-  }
-  function copiarDesde(origen, destino) {
-    if (destino < hoy) return
-    setBorrador(prev => {
-      const nuevo = { ...prev }
-      const efectivo = k => (k in nuevo ? nuevo[k] : guardadoPor[k]?.zona_id ?? null)
-      const ids = (f, turno) => {
-        const s = new Set()
-        guardadas.forEach(a => { if (a.fecha === f && a.turno === turno) s.add(a.personal_id) })
-        Object.keys(nuevo).forEach(k => { const [kf, kt, kp] = k.split('|'); if (kf === f && kt === turno) s.add(kp) })
-        return [...s].filter(id => efectivo(clave(f, turno, id)) === zona.id)
-      }
-      TURNOS.forEach(t => {
-        const origenIds = ids(origen, t.id)
-        ids(destino, t.id).forEach(id => { if (!origenIds.includes(id)) nuevo[clave(destino, t.id, id)] = null })
-        origenIds.forEach(id => {
+      destinos.filter(f => f >= hoy && f !== origen).forEach(f => {
+        const deOrigen = asignadosA(nuevo, zona.id, origen, turno)
+        asignadosA(nuevo, zona.id, f, turno).forEach(id => { if (!deOrigen.includes(id)) nuevo[clave(f, turno, id)] = null })
+        deOrigen.forEach(id => {
           const p = persona(id)
-          if (p && disponible(p, destino, t.id)) nuevo[clave(destino, t.id, id)] = zona.id
+          if (p && disponible(p, f, turno)) nuevo[clave(f, turno, id)] = zona.id
         })
       })
       return nuevo
     })
     setExito('')
+  }
+  function repetirEnElMes() {
+    fechas.forEach((f, i) => {
+      const destinos = []
+      for (let s = semana + 1; s < SEMANAS; s++) destinos.push(sumarDias(lunesDeSemana(s), i))
+      copiar(f, destinos)
+    })
   }
 
   async function guardarTodo() {
@@ -159,14 +126,14 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
       }
       const grupos = {}
       cambios.filter(k => borrador[k]).forEach(k => {
-        const [f, turno, personalId] = k.split('|')
-        const g = `${borrador[k]}|${turno}|${personalId}`
+        const [f, t, personalId] = k.split('|')
+        const g = `${borrador[k]}|${t}|${personalId}`
         ;(grupos[g] = grupos[g] || []).push(f)
       })
       let ocupadas = 0
       for (const [g, fs] of Object.entries(grupos)) {
-        const [zonaId, turno, personalId] = g.split('|')
-        const r = await asignar(sesion.token, { zonaId, personalId, turno, fechas: fs })
+        const [zId, t, personalId] = g.split('|')
+        const r = await asignar(sesion.token, { zonaId: zId, personalId, turno: t, fechas: fs })
         ocupadas += r.ocupadas || 0
       }
       setBorrador({})
@@ -182,7 +149,8 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   // ── Asignación rápida por período (botón flotante) ──
   function abrirRapida() {
     setError('')
-    setRapida({ zonaId: zona?.id || zonas[0]?.id || '', turno: 'mañana', personalId: '', desde: fecha < hoy ? hoy : fecha, hasta: sumarDias(lunesDeSemana(semana), 4) < hoy ? hoy : sumarDias(lunesDeSemana(semana), 4), dias: [1, 2, 3, 4, 5] })
+    const viernes = sumarDias(lunes, 4)
+    setRapida({ zonaId: zona?.id || zonas[0]?.id || '', turno, personalId: '', desde: lunes < hoy ? hoy : lunes, hasta: viernes < hoy ? hoy : viernes, dias: [1, 2, 3, 4, 5] })
   }
   function fechasRapida() {
     const r = rapida
@@ -205,10 +173,14 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
       ok.forEach(f => { nuevo[clave(f, rapida.turno, rapida.personalId)] = rapida.zonaId })
       return nuevo
     })
-    const i = zonas.findIndex(z => z.id === rapida.zonaId)
-    if (i >= 0) setZonaIdx(i)
-    setRapida(null)
-    setExito('')
+    setZonaId(rapida.zonaId); setTurno(rapida.turno)
+    setRapida(null); setExito('')
+  }
+
+  function irAlAviso(a) {
+    const s = Math.floor((deIso(a.fecha) - deIso(desde)) / (7 * 86400000))
+    setSemana(Math.max(0, Math.min(SEMANAS - 1, s)))
+    setTurno(a.turno); setZonaId(a.zona_id)
   }
 
   if (zonas.length === 0) return <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Primero creá una zona en 🧹 Zonas de limpieza.</p>
@@ -216,25 +188,20 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
 
   const etiquetaSemana = semana === 0 ? 'Esta semana' : semana === 1 ? 'Próxima semana' : `Dentro de ${semana} semanas`
   const cambiosSemana = cambios.filter(k => fechas.some(f => k.startsWith(f + '|'))).length
+  const avisosMes = avisos.filter(a => a.fecha <= hasta)
   const previo = rapida ? fechasRapida() : null
 
   return (
     <div style={{ paddingBottom: 90 }}>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>⚠️ {error}</p>}
 
-      {/* ── Tareas cuya persona ya no está: tocar lleva a ese día ── */}
-      {avisos.filter(a => a.fecha <= hasta).length > 0 && (
+      {/* ── Tareas cuya persona ya no está ── */}
+      {avisosMes.length > 0 && (
         <div className="card" style={{ marginBottom: 12, background: '#fef2f2', borderColor: '#fecaca' }}>
           <p style={{ fontWeight: 800, color: '#b91c1c', marginBottom: 4 }}>⚠️ Tareas sin persona</p>
-          <p style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 6 }}>Esa persona ya no está en la tienda. Tocá para ir al día, quitala y elegí a otra.</p>
-          {avisos.filter(a => a.fecha <= hasta).map(a => (
-            <button key={a.id} onClick={() => {
-              const s = Math.floor((deIso(a.fecha) - deIso(desde)) / (7 * 86400000))
-              setSemana(Math.max(0, Math.min(SEMANAS - 1, s)))
-              setDiaIdx((deIso(a.fecha).getDay() + 6) % 7)
-              const i = zonas.findIndex(z => z.id === a.zona_id)
-              if (i >= 0) setZonaIdx(i)
-            }} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid #fecaca', padding: '6px 0', cursor: 'pointer', fontSize: 13 }}>
+          <p style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 6 }}>Esa persona ya no está en la tienda. Tocá para ir, destildala y tildá a otra.</p>
+          {avisosMes.map(a => (
+            <button key={a.id} onClick={() => irAlAviso(a)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid #fecaca', padding: '6px 0', cursor: 'pointer', fontSize: 13 }}>
               <span style={{ textTransform: 'capitalize' }}>{fechaCorta(a.fecha)}</span> · {a.turno === 'mañana' ? '☀️' : '🌙'} {nombreZona(a.zona_id) || 'Zona'}
               <span className="text-muted"> (antes: {a.personalNombre || '—'})</span> ›
             </button>
@@ -242,16 +209,32 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
         </div>
       )}
 
-      {/* ── Zonas (como las comidas en el menú) ── */}
-      <div ref={scrollRef} style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6, marginBottom: 12 }}>
-        {zonas.map((z, i) => (
-          <button key={z.id} onClick={() => setZonaIdx(i)} style={{
-            flexShrink: 0, padding: '12px 16px', borderRadius: 14, cursor: 'pointer', fontWeight: 800, fontSize: 14,
-            border: `2px solid ${zonaIdx === i ? 'var(--primary)' : 'transparent'}`,
-            background: zonaIdx === i ? 'var(--primary-light)' : 'var(--bg-card)',
-            color: zonaIdx === i ? 'var(--primary-dark)' : 'var(--text)', boxShadow: 'var(--shadow)',
-          }}>🧹 {z.nombre}</button>
-        ))}
+      {/* ── Turno (en lugar de las comidas): solo los que hay en esta tienda ── */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+        {turnosTienda.map(t => {
+          const activo = turno === t.id
+          return (
+            <button key={t.id} onClick={() => setTurno(t.id)} style={{
+              flex: 1, padding: '12px 10px', borderRadius: 18, cursor: 'pointer',
+              border: `2px solid ${activo ? t.color : 'transparent'}`, background: t.bg,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            }}>
+              <span style={{ fontSize: 28, lineHeight: 1 }}>{t.icono}</span>
+              <span style={{ fontWeight: 800, fontSize: 14, color: t.color }}>{t.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Zona (desplegable, así no se llena la pantalla) ── */}
+      <div className="input-group" style={{ marginBottom: 10 }}>
+        <label className="input-label">🧹 Zona de limpieza</label>
+        <select className="input" value={zonaId} onChange={e => setZonaId(e.target.value)} style={{ fontWeight: 700 }}>
+          {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+        </select>
+        {(zona?.tareas || []).length > 0 && (
+          <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginTop: 4 }}>Tareas: {zona.tareas.join(' · ')}</p>
+        )}
       </div>
 
       {/* ── Semana ── */}
@@ -266,108 +249,83 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
         <button className="btn btn-outline btn-sm" disabled={semana === SEMANAS - 1} onClick={() => setSemana(s => s + 1)}>›</button>
       </div>
 
-      {/* ── Días ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 12 }}>
-        {fechas.map((f, i) => {
-          const activo = diaIdx === i
-          const pend = zona && pendienteDia(f, zona.id)
-          const lleno = zona && tieneAlguien(zona.id, f)
+      {/* ── Días en vertical: se tilda quién limpia ── */}
+      <div style={{ border: `1.5px solid ${infoTurno.color}`, borderRadius: 18, overflow: 'hidden', background: 'var(--bg-card)', marginBottom: 10 }}>
+        <div style={{ background: infoTurno.bg, padding: '10px 14px' }}>
+          <p style={{ fontWeight: 800, color: infoTurno.color }}>{infoTurno.icono} {zona?.nombre} · {infoTurno.label}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tildá a las personas que limpian cada día</p>
+        </div>
+        {cargando ? <div className="skeleton" style={{ height: 200 }} /> : fechas.map(f => {
+          const pasado = f < hoy
+          const enZona = zona ? asignadosA(borrador, zona.id, f, turno) : []
+          const yaNoEstan = enZona.filter(id => !persona(id))
+          const opciones = personal.filter(p => disponible(p, f, turno) || enZona.includes(p.id))
+          const pendiente = cambios.some(k => k.startsWith(`${f}|${turno}|`))
           return (
-            <button key={f} onClick={() => setDiaIdx(i)} style={{
-              padding: '8px 2px', borderRadius: 10, cursor: 'pointer', opacity: f < hoy ? 0.5 : 1,
-              border: `2px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
-              background: activo ? 'var(--primary-light)' : 'var(--bg-card)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+            <div key={f} style={{
+              display: 'flex', gap: 10, padding: '10px 14px', borderTop: '1px solid var(--border)',
+              borderLeft: `3px solid ${enZona.length ? infoTurno.color : 'transparent'}`, opacity: pasado ? 0.55 : 1,
             }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: activo ? 'var(--primary-dark)' : 'var(--text)' }}>{DIAS_CORTO[SEMANA_JS[i]]}</span>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{fechaChica(f)}</span>
-              <span style={{ fontSize: 11, height: 14 }}>{pend ? '✏️' : lleno ? '✅' : ''}</span>
-            </button>
+              <div style={{ width: 62, flexShrink: 0 }}>
+                <p style={{ fontWeight: 800, fontSize: 13 }}>{DIAS_LARGO[deIso(f).getDay()]}</p>
+                <p className="text-muted" style={{ fontSize: 11 }}>{fechaChica(f)}{f === hoy ? ' · hoy' : ''}</p>
+                {pendiente && <p style={{ fontSize: 11 }}>✏️</p>}
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                {pasado && enZona.length === 0 && <span className="text-muted" style={{ fontSize: 12 }}>Ya pasó</span>}
+                {yaNoEstan.map(id => (
+                  <button key={id} disabled={pasado} onClick={() => tildar(f, id)} style={{
+                    padding: '6px 10px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: pasado ? 'default' : 'pointer',
+                    border: '1.5px solid #fca5a5', background: '#fee2e2', color: '#b91c1c',
+                  }}>☑ ⚠️ {guardadoPor[clave(f, turno, id)]?.personalNombre || 'Persona'} (ya no está)</button>
+                ))}
+                {!pasado && opciones.length === 0 && yaNoEstan.length === 0 &&
+                  <span className="text-muted" style={{ fontSize: 12 }}>🏖️ Nadie viene este día en este turno</span>}
+                {opciones.filter(p => !pasado || enZona.includes(p.id)).map(p => {
+                  const sel = enZona.includes(p.id)
+                  const otra = !sel && efectivo(borrador, clave(f, turno, p.id))
+                  return (
+                    <button key={p.id} disabled={pasado} onClick={() => tildar(f, p.id)} style={{
+                      padding: '6px 10px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: pasado ? 'default' : 'pointer',
+                      border: `1.5px solid ${sel ? infoTurno.color : 'var(--border)'}`,
+                      background: sel ? infoTurno.color : 'var(--bg-card)', color: sel ? '#fff' : 'var(--text)',
+                    }}>
+                      {sel ? '☑' : '☐'} {p.nombre}
+                      {otra && <span style={{ fontWeight: 500, opacity: 0.7 }}> · en {nombreZona(otra)}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
       </div>
 
-      {/* ── Día elegido ── */}
-      {zona && (
-        <div className="card" style={{ marginBottom: 12 }}>
-          <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>🧹 {zona.nombre} — <span style={{ textTransform: 'capitalize' }}>{fechaCorta(fecha)}</span></p>
-          {pasado
-            ? <p className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>Este día ya pasó: solo se puede ver.</p>
-            : <p className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>Tocá un nombre para asignarlo o quitarlo.</p>}
-          {(zona.tareas || []).length > 0 && (
-            <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 10 }}>Tareas: {zona.tareas.join(' · ')}</p>
-          )}
+      {/* ── Atajos ── */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {fechas[0] >= hoy && <button className="btn btn-outline btn-sm" onClick={() => copiar(fechas[0], fechas.slice(1, 5))}>📋 Copiar el lunes a Mar–Vie</button>}
+        {semana < SEMANAS - 1 && <button className="btn btn-outline btn-sm" onClick={repetirEnElMes}>🔁 Repetir esta semana en todo el mes</button>}
+      </div>
 
-          {cargando ? <div className="skeleton" style={{ height: 80, borderRadius: 10 }} /> : TURNOS.map(t => {
-            const enZona = asignadosA(zona.id, fecha, t.id)
-            const yaNoEstan = enZona.filter(id => !persona(id))
-            const opciones = personal.filter(p => disponible(p, fecha, t.id) || enZona.includes(p.id))
-            return (
-              <div key={t.id} style={{ marginBottom: 12 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>{t.icono} {t.label}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {yaNoEstan.map(id => {
-                    const nombre = guardadoPor[clave(fecha, t.id, id)]?.personalNombre || 'Persona'
-                    return (
-                      <button key={id} disabled={pasado} onClick={() => tocar(t.id, id)} style={{
-                        padding: '7px 12px', borderRadius: 999, cursor: pasado ? 'default' : 'pointer', fontSize: 13, fontWeight: 700,
-                        border: '1.5px solid #fca5a5', background: '#fee2e2', color: '#b91c1c',
-                      }}>⚠️ {nombre} (ya no está) ✕</button>
-                    )
-                  })}
-                  {opciones.map(p => {
-                    const sel = enZona.includes(p.id)
-                    const otra = !sel && zonaDe(clave(fecha, t.id, p.id))
-                    return (
-                      <button key={p.id} disabled={pasado} onClick={() => tocar(t.id, p.id)} style={{
-                        padding: '7px 12px', borderRadius: 999, cursor: pasado ? 'default' : 'pointer', fontSize: 13, fontWeight: 700,
-                        border: `1.5px solid ${sel ? 'var(--primary)' : 'var(--border)'}`,
-                        background: sel ? 'var(--primary)' : 'var(--bg-card)', color: sel ? '#fff' : 'var(--text)',
-                      }}>
-                        {sel ? '✓ ' : ''}{p.nombre}{otra ? <span style={{ fontWeight: 500, opacity: 0.7 }}> · en {nombreZona(otra)}</span> : ''}
-                      </button>
-                    )
-                  })}
-                  {opciones.length === 0 && yaNoEstan.length === 0 &&
-                    <p className="text-muted" style={{ fontSize: 12 }}>Nadie de la tienda viene este día en este turno.</p>}
-                </div>
-              </div>
-            )
-          })}
-
-          {!pasado && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-              <button className="btn btn-outline btn-sm" onClick={copiarSemana}>📋 Copiar este día a Lun–Vie</button>
-              {semana < SEMANAS - 1 && <button className="btn btn-outline btn-sm" onClick={repetirEnElMes}>🔁 Repetir esta semana en todo el mes</button>}
-            </div>
-          )}
-          {diaIdx < 6 && (
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => setDiaIdx(d => d + 1)}>
-              Siguiente día: {DIAS_CORTO[SEMANA_JS[diaIdx + 1]]} {fechaChica(fechas[diaIdx + 1])} ›
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Resumen de la semana: todas las zonas ── */}
+      {/* ── Resumen de la semana: todas las zonas (desplegable) ── */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>📅 Resumen — {etiquetaSemana}</p>
-        {fechas.map((f, i) => {
+        <button onClick={() => setVerResumen(v => !v)} className="flex-between" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <span style={{ fontWeight: 800, fontSize: 14 }}>📅 Resumen de todas las zonas — {etiquetaSemana}</span>
+          <span>{verResumen ? '▲' : '▼'}</span>
+        </button>
+        {verResumen && fechas.map((f, i) => {
           const filas = zonas.map(z => ({
-            z, gente: TURNOS.flatMap(t => asignadosA(z.id, f, t.id).map(id => `${t.icono}${persona(id)?.nombre?.split(' ')[0] || '⚠️'}`)),
+            z, gente: turnosTienda.flatMap(t => asignadosA(borrador, z.id, f, t.id).map(id => `${t.icono}${persona(id)?.nombre?.split(' ')[0] || '⚠️'}`)),
           })).filter(x => x.gente.length)
           return (
-            <button key={f} onClick={() => setDiaIdx(i)} style={{
-              display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
-              padding: '6px 0', borderTop: i ? '1px solid var(--border)' : 'none', opacity: f < hoy ? 0.6 : 1,
-            }}>
+            <div key={f} style={{ padding: '6px 0', borderTop: i ? '1px solid var(--border)' : 'none', marginTop: i ? 0 : 8, opacity: f < hoy ? 0.6 : 1 }}>
               <span style={{ fontSize: 12, fontWeight: 800 }}>{DIAS_CORTO[SEMANA_JS[i]]} {fechaChica(f)}</span>
               {filas.length === 0
                 ? <span className="text-muted" style={{ fontSize: 12 }}> — sin limpieza</span>
                 : filas.map(({ z, gente }) => (
-                  <span key={z.id} style={{ display: 'block', fontSize: 12, color: 'var(--text)' }}>🧹 {z.nombre}: {gente.join(', ')}</span>
+                  <span key={z.id} style={{ display: 'block', fontSize: 12 }}>🧹 {z.nombre}: {gente.join(', ')}</span>
                 ))}
-            </button>
+            </div>
           )
         })}
       </div>
@@ -385,7 +343,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
         </div>
       </div>
 
-      {/* ── Botón flotante: asignación rápida por período ── */}
+      {/* ── Botón flotante: asignar por período ── */}
       <button onClick={abrirRapida} aria-label="Asignar limpieza por período" title="Asignar por período" style={{
         position: 'fixed', right: 18, bottom: 86, zIndex: 95, width: 56, height: 56, borderRadius: '50%',
         border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 28, cursor: 'pointer',
@@ -402,15 +360,17 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
                 {zonas.map(z => <option key={z.id} value={z.id}>🧹 {z.nombre}</option>)}
               </select>
             </div>
-            <div className="input-group">
-              <label className="input-label">Turno</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {TURNOS.map(t => (
-                  <button key={t.id} type="button" className={`btn ${rapida.turno === t.id ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1 }}
-                    onClick={() => setRapida(r => ({ ...r, turno: t.id, personalId: '' }))}>{t.icono} {t.label}</button>
-                ))}
+            {turnosTienda.length > 1 && (
+              <div className="input-group">
+                <label className="input-label">Turno</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {turnosTienda.map(t => (
+                    <button key={t.id} type="button" className={`btn ${rapida.turno === t.id ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1 }}
+                      onClick={() => setRapida(r => ({ ...r, turno: t.id, personalId: '' }))}>{t.icono} {t.label}</button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div className="input-group">
               <label className="input-label">Persona</label>
               <select className="input" value={rapida.personalId} onChange={e => setRapida(r => ({ ...r, personalId: e.target.value }))}>
@@ -440,12 +400,12 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
             </div>
             {rapida.personalId && previo && (
               <p style={{ fontSize: 12, color: 'var(--primary-dark)', marginBottom: 10 }}>
-                Se marcan <strong>{previo.ok.length}</strong> día{previo.ok.length !== 1 ? 's' : ''}
+                Se tildan <strong>{previo.ok.length}</strong> día{previo.ok.length !== 1 ? 's' : ''}
                 {previo.saltadas > 0 && ` · se saltan ${previo.saltadas} que no viene o no es su turno`}. Después tocá “Guardar todo”.
               </p>
             )}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={!rapida.zonaId || !rapida.personalId || rapida.dias.length === 0}>Marcar</button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={!rapida.zonaId || !rapida.personalId || rapida.dias.length === 0}>Tildar</button>
               <button type="button" className="btn btn-ghost" onClick={() => setRapida(null)}>Cancelar</button>
             </div>
           </form>
