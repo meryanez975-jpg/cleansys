@@ -51,7 +51,7 @@ function estado(c, minimo) {
 }
 
 // Excel (.csv que Excel abre directo): inventario de hoy y todos los movimientos
-function descargarExcel(sede, productos, movs) {
+function archivoExcel(sede, productos, movs) {
   const n = v => (v == null || isNaN(v) ? '' : Number(v).toFixed(2).replace('.', ','))
   const celda = t => `"${String(t ?? '').replace(/"/g, '""')}"`
   const filas = [[`Inventario ${sede.nombre} al ${hoyIso()}`], ['Producto', 'Unidad', 'Hay', 'Precio por unidad (Bs)', 'Se usa por día', 'Se acaba aprox.', 'Se compra cada (días)']]
@@ -68,13 +68,47 @@ function descargarExcel(sede, productos, movs) {
   })
   const total = movs.filter(m => m.tipo === 'entrada' && m.precio_paquete != null).reduce((s, m) => s + m.precio_paquete * m.paquetes, 0)
   filas.push([], ['TOTAL GASTADO', '', '', '', '', '', '', '', n(total)])
-  const csv = '﻿' + filas.map(f => f.map(celda).join(';')).join('\r\n')
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const csv = '\ufeff' + filas.map(f => f.map(celda).join(';')).join('\r\n')
+  const nombre = `inventario-${sede.slug || 'tienda'}-${hoyIso()}.csv`
+  return new File([csv], nombre, { type: 'text/csv' })
+}
+
+// Descarga que funciona también en celulares y en la app instalada
+function descargar(archivo) {
+  const url = URL.createObjectURL(archivo)
   const a = document.createElement('a')
   a.href = url
-  a.download = `inventario-${sede.slug || 'tienda'}-${hoyIso()}.csv`
+  a.download = archivo.name
+  a.rel = 'noopener'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 30000)
+}
+
+// Resumen en texto para WhatsApp (cuando el celular no deja adjuntar el archivo)
+function textoResumen(sede, productos, movs) {
+  const lineas = productos.map(p => {
+    const c = calcular(movs.filter(m => m.material_id === p.id))
+    return `• ${p.nombre}: ${fmt(c.hay)} ${nUnidad(p.unidad, c.hay)}${c.seAcaba && c.hay > 0 ? ` (se acaba aprox. ${fechaCorta(c.seAcaba)})` : ''}`
+  })
+  return `📦 Inventario ${sede.nombre} — ${fechaCorta(hoyIso())}\n${lineas.join('\n')}`
+}
+
+// Compartir el Excel: menú del celular (WhatsApp, correo…) con el archivo adjunto
+async function compartirExcel(sede, productos, movs) {
+  const archivo = archivoExcel(sede, productos, movs)
+  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try {
+      await navigator.share({ files: [archivo], title: archivo.name, text: `Inventario ${sede.nombre}` })
+      return
+    } catch (err) {
+      if (err?.name === 'AbortError') return   // se canceló el menú de compartir
+    }
+  }
+  // Sin compartir archivos: se descarga y se abre WhatsApp con el resumen
+  descargar(archivo)
+  window.open(`https://wa.me/?text=${encodeURIComponent(textoResumen(sede, productos, movs) + '\n\n(El Excel se descargó en el celular: adjuntalo desde Descargas)')}`, '_blank')
 }
 
 const Stepper = ({ valor, onCambiar, paso = 1 }) => (
@@ -216,7 +250,11 @@ export default function VistaInventario({ sesion }) {
           <p className="text-muted" style={{ fontSize: 12 }}>Gastado este mes</p>
           <p style={{ fontWeight: 800, fontSize: 20, color: 'var(--primary-dark)' }}>{bs(gastoMes)}</p>
         </div>
-        <button className="btn btn-outline btn-sm" disabled={!productos.length} onClick={() => descargarExcel(sede, productos, movs)}>📥 Excel</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <button className="btn btn-outline btn-sm" disabled={!productos.length} onClick={() => { descargar(archivoExcel(sede, productos, movs)); avisar('📥 Excel descargado') }}>📥 Descargar Excel</button>
+          <button className="btn btn-sm" disabled={!productos.length} onClick={() => compartirExcel(sede, productos, movs)}
+            style={{ background: '#25d366', color: '#fff', border: 'none', fontWeight: 700 }}>💬 Enviar por WhatsApp</button>
+        </div>
       </div>
 
       {productos.length > 4 && (
