@@ -16,7 +16,7 @@ async function rpc(nombre, params) {
   return data
 }
 
-export const linkDeSede = slug => `${window.location.origin}/sede/${slug}`
+export const linkDeSede = slug => `${window.location.origin}/tienda/${slug}`
 
 // ── Supervisor general (token de su sesión) ──
 export const listarSedes   = token => rpc('limp_admin_listar_sedes', { p_token: token })

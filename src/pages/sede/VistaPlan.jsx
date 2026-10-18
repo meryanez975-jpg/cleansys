@@ -65,7 +65,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
     try {
       const r = await asignar(sesion.token, { zonaId: form.zonaId, personalId: form.personalId, turno: form.turno, fechas: ok })
       setMensaje(`✅ ${r.asignadas} día${r.asignadas !== 1 ? 's' : ''} asignado${r.asignadas !== 1 ? 's' : ''}` +
-        (r.ocupadas ? ` · ${r.ocupadas} ya tenía tarea en otra sede` : ''))
+        (r.ocupadas ? ` · ${r.ocupadas} ya tenía tarea en otra tienda` : ''))
       setForm(null)
       await cargar(); await recargarBase()
     } catch (err) { setError(err.message) }
@@ -97,7 +97,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
       {avisos.length > 0 && (
         <div className="card" style={{ marginBottom: 14, background: '#fef2f2', borderColor: '#fecaca' }}>
           <p style={{ fontWeight: 800, color: '#b91c1c', marginBottom: 6 }}>⚠️ Tareas sin persona</p>
-          <p style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 8 }}>Estas personas ya no están en la sede. Elegí a otra para cada día.</p>
+          <p style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 8 }}>Estas personas ya no están en la tienda. Elegí a otra para cada día.</p>
           {avisos.map(a => (
             <div key={a.id} className="flex-between" style={{ padding: '6px 0', borderTop: '1px solid #fecaca', gap: 8 }}>
               <span style={{ fontSize: 13 }}>
@@ -113,7 +113,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
       {zonas.length === 0 ? (
         <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Primero creá una zona en 🧹 Zonas de limpieza.</p>
       ) : personal.length === 0 ? (
-        <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Esta sede todavía no tiene personal. Mirá 👥 Personal de la sede.</p>
+        <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Esta tienda todavía no tiene personal. Mirá 👥 Personal de la tienda.</p>
       ) : !form && (
         <button className="btn btn-primary btn-block" style={{ marginBottom: 14 }} onClick={abrirForm}>➕ Asignar limpieza</button>
       )}
@@ -237,7 +237,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
                 <button key={p.id} className="btn btn-outline" onClick={() => ponerPersona(p.id)}>{p.nombre}</button>
               ))}
               {personal.filter(p => disponible(p, cambiando.fecha, cambiando.turno)).length === 0 &&
-                <p className="text-muted" style={{ fontSize: 13 }}>Nadie de la sede viene ese día en ese turno.</p>}
+                <p className="text-muted" style={{ fontSize: 13 }}>Nadie de la tienda viene ese día en ese turno.</p>}
             </div>
             <button className="btn btn-ghost btn-block" onClick={() => setCambiando(null)}>Cancelar</button>
           </div>

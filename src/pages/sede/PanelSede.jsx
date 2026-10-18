@@ -10,7 +10,7 @@ const VISTAS = [
   { id: 'zonas',      icono: '🧹', titulo: 'Zonas de limpieza', sub: 'Zonas, tareas y quién limpia' },
   { id: 'plan',       icono: '📅', titulo: 'Plan semanal',      sub: 'Quién limpia qué, por semana' },
   { id: 'materiales', icono: '🧴', titulo: 'Materiales',        sub: 'Qué hay, cuánto dura, reposición' },
-  { id: 'personal',   icono: '👥', titulo: 'Personal de la sede', sub: 'Quiénes hacen limpieza aquí' },
+  { id: 'personal',   icono: '👥', titulo: 'Personal de la tienda', sub: 'Quiénes hacen limpieza aquí' },
 ]
 
 // Panel de una sede: menú ☰ con sus secciones. Todo lo que se ve y se cambia
@@ -52,7 +52,7 @@ export default function PanelSede({ sesion, onSalir }) {
           <button className="icon-btn" aria-label="Menú" onClick={() => setMenu(true)}>☰</button>
           <div style={{ flex: 1 }}>
             <p className="header-title">{actual.icono} {actual.titulo}</p>
-            <p className="header-sub">📍 {sede.nombre}</p>
+            <p className="header-sub">🏬 {sede.nombre}</p>
           </div>
         </div>
 
@@ -81,8 +81,8 @@ export default function PanelSede({ sesion, onSalir }) {
             background: 'var(--bg-card)', boxShadow: '4px 0 24px rgba(59,130,246,0.15)', display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ background: 'var(--primary-grad)', padding: '28px 20px 20px' }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 17 }}>📍 {sede.nombre}</p>
-              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 }}>CleaSys — Sede</p>
+              <p style={{ color: '#fff', fontWeight: 700, fontSize: 17 }}>🏬 {sede.nombre}</p>
+              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 }}>CleaSys — Tienda</p>
             </div>
             <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {VISTAS.map(v => (
@@ -114,7 +114,7 @@ export default function PanelSede({ sesion, onSalir }) {
         <div className="modal-overlay" onClick={() => setConfirmarSalir(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <p className="modal-title">¿Cerrar sesión?</p>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>Después hay que volver a entrar con la contraseña de la sede.</p>
+            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>Después hay que volver a entrar con la contraseña de la tienda.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-danger" style={{ flex: 1 }} onClick={onSalir}>Sí</button>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmarSalir(false)}>No</button>

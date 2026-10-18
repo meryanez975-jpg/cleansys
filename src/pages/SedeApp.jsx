@@ -79,9 +79,9 @@ function Entrar({ slug, onEntrar }) {
   return (
     <div className="page" style={{ justifyContent: 'center', minHeight: '100vh' }}>
       <div className="container" style={{ maxWidth: 340 }}>
-        <Encabezado titulo="CleaSys" sub="Entrá con la contraseña de tu sede" />
+        <Encabezado titulo="CleaSys" sub="Entrá con la contraseña de tu tienda" />
         <form onSubmit={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input type="password" autoComplete="current-password" placeholder="Contraseña de la sede" value={password}
+          <input type="password" autoComplete="current-password" placeholder="Contraseña de la tienda" value={password}
             onChange={e => { setPassword(e.target.value); setError('') }} required style={estiloInput} />
           {error && <p style={estiloError}>{error}</p>}
           <button type="submit" className="btn btn-primary btn-block" disabled={cargando || !password}>
@@ -115,7 +115,7 @@ function NuevaPassword({ sesion, onListo, onSalir }) {
   return (
     <div className="page" style={{ justifyContent: 'center', minHeight: '100vh' }}>
       <div className="container" style={{ maxWidth: 340 }}>
-        <Encabezado titulo={`📍 ${sesion.sede?.nombre}`} sub="Primera vez: elegí la contraseña de la sede" />
+        <Encabezado titulo={`🏬 ${sesion.sede?.nombre}`} sub="Primera vez: elegí la contraseña de la tienda" />
         <form onSubmit={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input type="password" autoComplete="new-password" placeholder="Contraseña nueva" value={nueva}
             onChange={e => { setNueva(e.target.value); setError('') }} required style={estiloInput} />

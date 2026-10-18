@@ -9,10 +9,10 @@ export default function VistaPersonal({ personal, sede }) {
     <>
       <p className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
         El personal se carga en Comidas → Agregar personal, eligiendo el sector <strong>{sede.nombre}</strong>.
-        Si alguien sale de Comidas, deja de aparecer aquí y sus tareas quedan marcadas para cambiar.
+        Si alguien sale de Comidas o cambia de tienda, deja de aparecer aquí y sus tareas quedan marcadas para cambiar.
       </p>
       {personal.length === 0 ? (
-        <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Todavía no hay personal con sector {sede.nombre}.</p>
+        <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Todavía no hay personal con la tienda {sede.nombre} como sector.</p>
       ) : personal.map(p => {
         const noViene = SEMANA_JS.filter(dj => noVieneEseDia(p, dj)).map(dj => DIAS_CORTO[dj])
         const turnos = [...new Set(SEMANA_JS.flatMap(dj => turnosDePersona(p, dj)))]

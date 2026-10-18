@@ -83,9 +83,9 @@ export default function Inicio() {
         <Card
           icon="🏢"
           iconBg="var(--primary-light)"
-          title="Sedes de limpieza"
-          sub="Crear sedes y compartir el link de cada una"
-          onClick={() => navigate('/sedes')}
+          title="Tiendas"
+          sub="Link de cada tienda para compartir"
+          onClick={() => navigate('/tiendas')}
         />
         <Card
           icon="📋"

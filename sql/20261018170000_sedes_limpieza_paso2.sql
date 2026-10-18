@@ -1,5 +1,6 @@
 -- ====================================================================
--- CleanSys: sedes de limpieza (paso 2)
+-- CleanSys: tiendas de limpieza (paso 2)
+-- (en la base las tablas siguen llamándose limpieza_sedes; en pantalla son "tiendas")
 --
 -- * El sector de cada persona (Comidas -> Agregar personal) es su sede.
 --   Al renombrar una sede, el personal de esa sede se actualiza solo.
@@ -23,9 +24,9 @@ declare
   n int := 1;
 begin
   perform _limp_exigir_supervisor(p_token);
-  if v_nombre = '' then raise exception 'Escribí el nombre de la sede.'; end if;
+  if v_nombre = '' then raise exception 'Escribí el nombre de la tienda.'; end if;
   if exists (select 1 from limpieza_sedes where lower(trim(nombre)) = lower(v_nombre) and id is distinct from p_id) then
-    raise exception 'Ya existe una sede con ese nombre.';
+    raise exception 'Ya existe una tienda con ese nombre.';
   end if;
 
   if p_id is null then
@@ -41,7 +42,7 @@ begin
     values (v.id, extensions.crypt('limpieza123', extensions.gen_salt('bf')), true);
   else
     select nombre into v_viejo from limpieza_sedes where id = p_id;
-    if v_viejo is null then raise exception 'Sede no encontrada.'; end if;
+    if v_viejo is null then raise exception 'Tienda no encontrada.'; end if;
     update limpieza_sedes set nombre = v_nombre, activo = coalesce(p_activo, activo)
     where id = p_id returning * into v;
     if lower(trim(v_viejo)) <> lower(v_nombre) then
@@ -89,7 +90,7 @@ begin
       "fechaReposicion" = nullif(p_datos->>'fechaReposicion', '')::date
     where id = p_id and sede_id = s.id and activo
     returning * into m;
-    if m.id is null then raise exception 'Material no encontrado en esta sede.'; end if;
+    if m.id is null then raise exception 'Material no encontrado en esta tienda.'; end if;
   end if;
   return to_jsonb(m) - 'foto';
 end $$;
@@ -126,11 +127,11 @@ begin
   s := _limp_sede_de_sesion(p_token);
   if p_turno not in ('mañana', 'noche') then raise exception 'Turno inválido.'; end if;
   if not exists (select 1 from limpieza_zonas where id = p_zona_id and sede_id = s.id and activo) then
-    raise exception 'Esa zona no es de esta sede.';
+    raise exception 'Esa zona no es de esta tienda.';
   end if;
   select id, nombre, sector into p from com_personal
   where id = p_personal_id and activo is distinct from false and lower(trim(sector)) = lower(trim(s.nombre));
-  if p.id is null then raise exception 'Esa persona no es personal de esta sede.'; end if;
+  if p.id is null then raise exception 'Esa persona no es personal de esta tienda.'; end if;
 
   for f in select (x)::date from jsonb_array_elements_text(coalesce(p_fechas, '[]'::jsonb)) x loop
     select a.id, z.sede_id into v_existente
@@ -179,10 +180,10 @@ begin
   s := _limp_sede_de_sesion(p_token);
   select x.* into a from limpieza_asignaciones x join limpieza_zonas z on z.id = x.zona_id
   where x.id = p_id and z.sede_id = s.id;
-  if a.id is null then raise exception 'Asignación no encontrada en esta sede.'; end if;
+  if a.id is null then raise exception 'Asignación no encontrada en esta tienda.'; end if;
   select id, nombre, sector into p from com_personal
   where id = p_personal_id and activo is distinct from false and lower(trim(sector)) = lower(trim(s.nombre));
-  if p.id is null then raise exception 'Esa persona no es personal de esta sede.'; end if;
+  if p.id is null then raise exception 'Esa persona no es personal de esta tienda.'; end if;
   if exists (select 1 from limpieza_asignaciones where personal_id::text = p.id::text and fecha = a.fecha and turno = a.turno and activo and id <> a.id) then
     raise exception '% ya tiene una tarea ese día y turno.', p.nombre;
   end if;
@@ -192,6 +193,114 @@ begin
   where id = a.id;
 end $$;
 
+
+-- ---- Mensajes con "tienda" en lugar de "sede" ---------------------
+create or replace function public._limp_sede_de_sesion(p_token text)
+returns public.limpieza_sedes language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare v public.limpieza_sedes;
+begin
+  update limpieza_sede_sesiones set ultimo_uso = now()
+  where token_hash = _hash_token(p_token) and ultimo_uso > now() - interval '365 days';
+  select s.* into v
+  from limpieza_sede_sesiones x join limpieza_sedes s on s.id = x.sede_id
+  where x.token_hash = _hash_token(p_token)
+    and x.ultimo_uso > now() - interval '365 days'
+    and s.activo;
+  if v.id is null then raise exception 'Sesión vencida. Volvé a entrar con la contraseña de la tienda.'; end if;
+  return v;
+end $$;
+
+create or replace function public.limp_sede_login(p_slug text, p_password text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare
+  v public.limpieza_sedes;
+  c public.limpieza_sede_credenciales;
+  v_token text;
+begin
+  select * into v from limpieza_sedes where slug = lower(trim(p_slug)) and activo;
+  if v.id is null then return jsonb_build_object('error', 'Esta tienda no existe o está desactivada.'); end if;
+  select * into c from limpieza_sede_credenciales where sede_id = v.id;
+  if c.sede_id is null then return jsonb_build_object('error', 'La tienda no tiene contraseña. Pedísela al supervisor.'); end if;
+  if c.bloqueado_hasta is not null and c.bloqueado_hasta > now() then
+    return jsonb_build_object('error', 'Demasiados intentos. Esperá unos minutos y probá de nuevo.');
+  end if;
+  if c.password_hash <> extensions.crypt(coalesce(p_password, ''), c.password_hash) then
+    update limpieza_sede_credenciales
+    set intentos = intentos + 1,
+        bloqueado_hasta = case when intentos + 1 >= 5 then now() + interval '5 minutes' end
+    where sede_id = v.id;
+    perform pg_sleep(1);
+    return jsonb_build_object('error', 'Contraseña incorrecta.');
+  end if;
+
+  update limpieza_sede_credenciales set intentos = 0, bloqueado_hasta = null where sede_id = v.id;
+  delete from limpieza_sede_sesiones where ultimo_uso < now() - interval '365 days';
+  v_token := encode(extensions.gen_random_bytes(32), 'hex');
+  insert into limpieza_sede_sesiones (token_hash, sede_id) values (_hash_token(v_token), v.id);
+  return jsonb_build_object('token', v_token, 'sede', to_jsonb(v), 'debe_cambiar', c.debe_cambiar);
+end $$;
+
+create or replace function public.limp_sede_guardar_zona(p_token text, p_id text, p_nombre text, p_tareas jsonb)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare
+  s public.limpieza_sedes;
+  z public.limpieza_zonas;
+  v_nombre text := trim(coalesce(p_nombre, ''));
+  v_tareas jsonb := coalesce((
+    select jsonb_agg(trim(t)) from jsonb_array_elements_text(coalesce(p_tareas, '[]'::jsonb)) t where trim(t) <> ''
+  ), '[]'::jsonb);
+begin
+  s := _limp_sede_de_sesion(p_token);
+  if v_nombre = '' then raise exception 'Escribí el nombre de la zona.'; end if;
+  if exists (select 1 from limpieza_zonas where sede_id = s.id and activo
+             and lower(trim(nombre)) = lower(v_nombre) and id is distinct from p_id) then
+    raise exception 'Ya hay una zona con ese nombre en esta tienda.';
+  end if;
+
+  if p_id is null then
+    insert into limpieza_zonas (id, nombre, activo, sede_id, tareas)
+    values (replace(gen_random_uuid()::text, '-', ''), v_nombre, true, s.id, v_tareas)
+    returning * into z;
+  else
+    update limpieza_zonas set nombre = v_nombre, tareas = v_tareas
+    where id = p_id and sede_id = s.id and activo
+    returning * into z;
+    if z.id is null then raise exception 'Zona no encontrada en esta tienda.'; end if;
+  end if;
+  return to_jsonb(z);
+end $$;
+
+create or replace function public.limp_admin_resetear_sede(p_token text, p_id uuid)
+returns void language plpgsql security definer
+set search_path = public, extensions
+as $$
+begin
+  perform _limp_exigir_supervisor(p_token);
+  insert into limpieza_sede_credenciales (sede_id, password_hash, debe_cambiar)
+  values (p_id, extensions.crypt('limpieza123', extensions.gen_salt('bf')), true)
+  on conflict (sede_id) do update
+    set password_hash = excluded.password_hash, debe_cambiar = true,
+        intentos = 0, bloqueado_hasta = null, actualizado = now();
+  delete from limpieza_sede_sesiones where sede_id = p_id;
+end $$;
+
+create or replace function public._limp_exigir_supervisor(p_token text)
+returns public.com_admins language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare v public.com_admins;
+begin
+  v := _usuario_de_sesion(p_token);
+  if v.id is null then raise exception 'Sesión vencida. Volvé a iniciar sesión.'; end if;
+  if v.rol not in ('cleansys', 'admin') then raise exception 'Solo el administrador o el supervisor general pueden hacer esto.'; end if;
+  return v;
+end $$;
 
 -- ---- Permisos --------------------------------------------------------
 revoke all on function public.limp_sede_guardar_material(text, text, jsonb)          from public;

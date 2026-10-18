@@ -29,7 +29,8 @@ export default function App() {
       <Route path="/registro" element={<Registro />} />
       <Route path="/historial" element={<HistorialPersonal />} />
       <Route path="/login-supervisor" element={<LoginSupervisor />} />
-      {/* App de cada sede: se entra con la contraseña de la sede */}
+      {/* App de cada tienda: se entra con la contraseña de la tienda (/sede es el link anterior) */}
+      <Route path="/tienda/:slug" element={<SedeApp />} />
       <Route path="/sede/:slug" element={<SedeApp />} />
 
       {/* Supervisor */}
@@ -38,9 +39,10 @@ export default function App() {
       <Route path="/semana" element={<Protegida><SemanaPlan /></Protegida>} />
       <Route path="/materiales" element={<Protegida><Materiales /></Protegida>} />
       <Route path="/control" element={<Protegida><ControlCronometros /></Protegida>} />
-      {/* Las zonas ahora las crea cada sede; el supervisor general maneja las sedes */}
-      <Route path="/zonas" element={<Navigate to="/sedes" replace />} />
-      <Route path="/sedes" element={<Protegida><Sedes /></Protegida>} />
+      {/* Las zonas las crea cada tienda; las tiendas se crean en Comidas → Administrador */}
+      <Route path="/zonas" element={<Navigate to="/tiendas" replace />} />
+      <Route path="/sedes" element={<Navigate to="/tiendas" replace />} />
+      <Route path="/tiendas" element={<Protegida><Sedes /></Protegida>} />
       <Route path="/personal" element={<Protegida><GestionPersonal /></Protegida>} />
     </Routes>
   )
