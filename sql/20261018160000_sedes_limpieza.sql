@@ -55,7 +55,9 @@ do $$
 begin
   if (select data_type from information_schema.columns
       where table_schema = 'public' and table_name = 'limpieza_zonas' and column_name = 'tareas') = 'ARRAY' then
+    alter table public.limpieza_zonas alter column tareas drop default;
     alter table public.limpieza_zonas alter column tareas type jsonb using to_jsonb(tareas);
+    alter table public.limpieza_zonas alter column tareas set default '[]'::jsonb;
   elsif not exists (select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'limpieza_zonas' and column_name = 'tareas') then
     alter table public.limpieza_zonas add column tareas jsonb not null default '[]'::jsonb;
