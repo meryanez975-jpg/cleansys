@@ -9,7 +9,7 @@ import ControlCronometros from './pages/ControlCronometros'
 import GestionPersonal from './pages/GestionPersonal'
 import Sedes from './pages/Sedes'
 import SedeApp from './pages/SedeApp'
-import MarcarTienda, { RegistroCerrado } from './pages/MarcarTienda'
+import MarcarTienda, { RegistroCerrado, MarcarViejo } from './pages/MarcarTienda'
 
 // Pantallas del supervisor: piden iniciar sesión con correo y contraseña
 function Protegida({ children }) {
@@ -28,7 +28,8 @@ export default function App() {
       <Route path="/" element={<Inicio />} />
       {/* El registro general se cerró: cada tienda marca desde su link */}
       <Route path="/registro" element={<RegistroCerrado />} />
-      <Route path="/tienda/:slug/marcar" element={<MarcarTienda />} />
+      <Route path="/marcar/:slug" element={<MarcarTienda />} />
+      <Route path="/tienda/:slug/marcar" element={<MarcarViejo />} />
       <Route path="/historial" element={<HistorialPersonal />} />
       <Route path="/login-supervisor" element={<LoginSupervisor />} />
       {/* App de cada tienda: se entra con la contraseña de la tienda (/sede es el link anterior) */}

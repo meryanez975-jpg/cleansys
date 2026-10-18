@@ -17,8 +17,10 @@ async function rpc(nombre, params) {
 }
 
 export const linkDeSede = slug => `${window.location.origin}/tienda/${slug}`
-// Link para el celular fijo de la tienda, donde el personal marca su limpieza
-export const linkMarcar = slug => `${window.location.origin}/tienda/${slug}/marcar`
+// Link para el celular fijo de la tienda, donde el personal marca su limpieza.
+// Va fuera de /tienda/:slug para que se instale como otra app (si estuviera
+// adentro, el celular lo abre con la app de la encargada en vez de instalarlo).
+export const linkMarcar = slug => `${window.location.origin}/marcar/${slug}`
 
 // Cambia el manifiesto de la página para instalarla con el nombre de la tienda
 export function usarManifiestoTienda(slug, tipo) {

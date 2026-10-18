@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Navigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { usarManifiestoTienda } from '../lib/sedes'
 import Registro from './Registro'
 
-// /tienda/:slug/marcar — el celular fijo de la tienda, sin contraseña:
+// /marcar/:slug — el celular fijo de la tienda, sin contraseña:
 // el personal de esa tienda marca entrada, tareas y salida.
 export default function MarcarTienda() {
   const { slug } = useParams()
@@ -32,6 +32,12 @@ export default function MarcarTienda() {
     )
   }
   return <Registro tienda={tienda} />
+}
+
+// Link anterior (/tienda/:slug/marcar): lleva al nuevo
+export function MarcarViejo() {
+  const { slug } = useParams()
+  return <Navigate to={`/marcar/${slug}`} replace />
 }
 
 // La página general /registro ya no se usa

@@ -251,7 +251,7 @@ function horaDisponible(a) {
 }
 
 // ── Pantallas ─────────────────────────────────────────────────────
-// tienda: se marca desde el celular fijo de esa tienda (/tienda/:slug/marcar).
+// tienda: se marca desde el celular fijo de esa tienda (/marcar/:slug).
 // Solo aparecen su personal y las tareas de sus zonas, y el celular no recuerda
 // a la última persona (lo usan todas).
 export default function Registro({ tienda }) {

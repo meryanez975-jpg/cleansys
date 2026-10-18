@@ -4,7 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CleaSys — Sistema de Limpieza</title>
-    <link rel="manifest" href="/manifest.json" />
+    <script>
+      // Cada link de tienda trae su propio manifiesto desde el inicio, así el
+      // celular la instala como app aparte (con el general, scope "/", decía
+      // "abrir en la app" en vez de instalar).
+      (function () {
+        var m = location.pathname.match(/^\/(tienda|sede|marcar)\/([a-z0-9-]+)\/?(marcar)?\/?$/i)
+        var href = '/manifest.json'
+        if (m) href = '/api/manifest?slug=' + m[2].toLowerCase() + (m[1] === 'marcar' || m[3] ? '&tipo=marcar' : '')
+        document.write('<link rel="manifest" href="' + href + '" />')
+      })()
+    </script>
     <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#F2F6FC" />
