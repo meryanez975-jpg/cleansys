@@ -9,7 +9,7 @@ import PersonalModal from '../components/PersonalModal'
 import ModalConfirmSalida from '../components/ModalConfirmSalida'
 import BarraFecha from '../components/BarraFecha'
 import { useZonas } from '../hooks/useZonas'
-import { usePersonalComidas } from '../hooks/usePersonalComidas'
+import { usePersonalComidas, trabajaEnTurno, noVieneEseDia } from '../hooks/usePersonalComidas'
 import { pullFromSupabase, pushToSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
 import { useInstallPWA } from '../hooks/useInstallPWA'
@@ -32,20 +32,13 @@ function fechaISO(date) {
 }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
 function formatMes(date) { return date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) }
-function turnoDePersona(turnoSupabase) {
-  if (!turnoSupabase) return null
-  const t = turnoSupabase.toLowerCase().normalize('NFC').trim()
-  if (t === 'mañana' || t === 'manana' || t === 'diurno') return 'mañana'
-  if (t === 'tarde' || t === 'noche') return 'noche'
-  return null
-}
 
-const DIAS_NORM = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 function genId() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36) }
-function normStr(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim() }
-function esDiaLibre(persona, diaIdx) {
-  if (!persona.diaLibre) return false
-  return normStr(persona.diaLibre) === DIAS_NORM[diaIdx]
+// diaIdx: 0 = lunes … 6 = domingo. Se ofrece solo a quien viene ese día y
+// trabaja en ese turno (misma regla que MenuSoft)
+function disponible(persona, diaIdx, turno) {
+  const diaJs = (diaIdx + 1) % 7
+  return !noVieneEseDia(persona, diaJs) && trabajaEnTurno(persona, turno, diaJs)
 }
 function diaIdxDeISO(iso) {
   const d = new Date(iso + 'T12:00:00')
@@ -872,7 +865,7 @@ export default function SemanaPlan() {
                                     <div style={{ background: '#fff', borderRadius: 8, padding: '10px', border: `1.5px solid ${t.bgAct}66`, marginTop: lista.length > 0 ? 4 : 0 }}>
                                       <p style={{ fontSize: 11, fontWeight: 700, color: t.txt, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Elegir persona</p>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
-                                        {personalDB.filter(p => !esDiaLibre(p, i)).map(p => (
+                                        {personalDB.filter(p => disponible(p, i, addingFor.turno)).map(p => (
                                           <button key={p.id} onClick={() => {
                                             setDraftPatron(prev => {
                                               const filtrado = prev.filter(d => !(d.patKey === 'pat-' + i && d.turno === addingFor.turno))
@@ -980,7 +973,7 @@ export default function SemanaPlan() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, maxHeight: 200, overflowY: 'auto' }}>
                                         {(() => {
                                           const cachedLocal = JSON.parse(localStorage.getItem('cleansys_asignaciones') || '[]')
-                                          return personalDB.filter(p => !esDiaLibre(p, diaIdxDeISO(iso))).map(p => {
+                                          return personalDB.filter(p => disponible(p, diaIdxDeISO(iso), addingFor.turno)).map(p => {
                                             const existente = cachedLocal.find(a =>
                                               a.personal_id === p.id && a.turno === addingFor.turno && a.fecha === iso && a.activo !== false
                                             )

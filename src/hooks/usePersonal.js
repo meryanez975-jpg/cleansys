@@ -17,6 +17,12 @@ export function normalizarNombre(texto) {
   return (texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
+// Sector como se escribe en MenuSoft
+const SECTORES = { bisuteria: 'Bisutería', cosmeticos: 'Cosméticos', libreria: 'Librería', lili: 'Lili', otros: 'Otros' }
+export function etiquetaSector(sector) {
+  return SECTORES[sector] || sector || ''
+}
+
 // Solo lectura — el personal se gestiona desde MenuSoft.
 // Antes se pedía una sola vez: si esa carga fallaba, la lista quedaba vacía
 // hasta medianoche. Ahora arranca con la copia guardada y reintenta sola.
@@ -29,7 +35,7 @@ export function usePersonal() {
     try {
       const { data, error } = await supabase
         .from('com_personal')
-        .select('id, nombre, sector, turno, activo, "diaLibre", "modoTurno", "horarioTodosInicio", "horariosPorDia"')
+        .select('id, nombre, sector, turno, activo, "diaLibre", ausencias, "modoTurno", "horarioTodosInicio", "horariosPorDia"')
         .neq('activo', false)
         .order('nombre')
       if (error) throw error

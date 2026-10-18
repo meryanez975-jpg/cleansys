@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { pullFromSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
-import { usePersonal } from '../hooks/usePersonal'
+import { usePersonal, etiquetaSector } from '../hooks/usePersonal'
 
 function formatMesLargo(anio, mes) {
   return new Date(anio, mes, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -359,7 +359,7 @@ export default function HistorialPersonal() {
                         {asig.persona?.nombre || '—'}
                       </p>
                       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                        {emoji} {label}{asig.persona?.sector ? ` · ${asig.persona.sector}` : ''}
+                        {emoji} {label}{asig.persona?.sector ? ` · ${etiquetaSector(asig.persona.sector)}` : ''}
                       </p>
                     </div>
                     {entrada && (

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase/client'
 import { pullFromSupabase } from '../hooks/useAsignaciones'
 import { pullRegistros } from '../hooks/useRegistros'
-import { usePersonal } from '../hooks/usePersonal'
+import { usePersonal, etiquetaSector } from '../hooks/usePersonal'
 
 // ── helpers de fecha ──────────────────────────────────────────────
 function localISO(d) {
@@ -261,7 +261,7 @@ export default function ControlCronometros() {
     return personalMap[f.personal_id]?.nombre || f.personalNombre || '—'
   }
   function getSector(f) {
-    return personalMap[f.personal_id]?.sector || f.personalSector || ''
+    return etiquetaSector(personalMap[f.personal_id]?.sector || f.personalSector || '')
   }
 
   async function handleEliminar(asignacion_id) {

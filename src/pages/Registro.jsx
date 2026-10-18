@@ -4,7 +4,7 @@ import { useAsignaciones } from '../hooks/useAsignaciones'
 import { useRegistros } from '../hooks/useRegistros'
 import { pullRegistros } from '../hooks/useRegistros'
 import { useInstallPWA } from '../hooks/useInstallPWA'
-import { usePersonal, normalizarNombre } from '../hooks/usePersonal'
+import { usePersonal, normalizarNombre, etiquetaSector } from '../hooks/usePersonal'
 import Avatar from '../components/Avatar'
 
 // ── helpers de fecha ──────────────────────────────────────────────
@@ -423,7 +423,7 @@ export default function Registro() {
                     <Avatar nombre={p.nombre}>{yaTermino ? '✓' : undefined}</Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p className="fila-nombre">{p.nombre}</p>
-                      {p.sector && <p className="fila-sub" style={{ textTransform: 'capitalize' }}>{p.sector}</p>}
+                      {p.sector && <p className="fila-sub">{etiquetaSector(p.sector)}</p>}
                     </div>
                     {yaTermino ? (
                       <span className="chip chip-verde">Completado</span>
@@ -474,7 +474,7 @@ export default function Registro() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)' }}>{empleadoSeleccionado?.nombre}</p>
             {empleadoSeleccionado?.sector && (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>{empleadoSeleccionado.sector}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{etiquetaSector(empleadoSeleccionado.sector)}</p>
             )}
             <div style={{ marginTop: 8 }}>
               {tareasHoy.length === 0 ? <span className="chip chip-gris">Sin limpieza hoy</span>
