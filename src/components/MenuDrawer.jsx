@@ -114,9 +114,9 @@ export default function MenuDrawer({ onClose, onIr, onAbrirPersonal, onAbrirZona
 
           <MenuItem
             icono="🏢"
-            texto="Zonas de limpieza"
-            sub="Agregar, editar y eliminar zonas"
-            onClick={() => ir('/zonas')}
+            texto="Sedes de limpieza"
+            sub="Crear sedes y compartir su link"
+            onClick={() => ir('/sedes')}
           />
 
           {supervisor && (

@@ -83,9 +83,9 @@ export default function Inicio() {
         <Card
           icon="🏢"
           iconBg="var(--primary-light)"
-          title="Zonas de limpieza"
-          sub="Agregar, editar y gestionar zonas"
-          onClick={() => navigate('/zonas')}
+          title="Sedes de limpieza"
+          sub="Crear sedes y compartir el link de cada una"
+          onClick={() => navigate('/sedes')}
         />
         <Card
           icon="📋"

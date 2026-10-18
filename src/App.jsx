@@ -7,8 +7,9 @@ import SemanaPlan from './pages/SemanaPlan'
 import Materiales from './pages/Materiales'
 import HistorialPersonal from './pages/HistorialPersonal'
 import ControlCronometros from './pages/ControlCronometros'
-import GestionZonas from './pages/GestionZonas'
 import GestionPersonal from './pages/GestionPersonal'
+import Sedes from './pages/Sedes'
+import SedeApp from './pages/SedeApp'
 
 // Pantallas del supervisor: piden iniciar sesión con correo y contraseña
 function Protegida({ children }) {
@@ -28,6 +29,8 @@ export default function App() {
       <Route path="/registro" element={<Registro />} />
       <Route path="/historial" element={<HistorialPersonal />} />
       <Route path="/login-supervisor" element={<LoginSupervisor />} />
+      {/* App de cada sede: se entra con la contraseña de la sede */}
+      <Route path="/sede/:slug" element={<SedeApp />} />
 
       {/* Supervisor */}
       <Route path="/asignacion" element={<Navigate to="/semana" replace />} />
@@ -35,7 +38,9 @@ export default function App() {
       <Route path="/semana" element={<Protegida><SemanaPlan /></Protegida>} />
       <Route path="/materiales" element={<Protegida><Materiales /></Protegida>} />
       <Route path="/control" element={<Protegida><ControlCronometros /></Protegida>} />
-      <Route path="/zonas" element={<Protegida><GestionZonas /></Protegida>} />
+      {/* Las zonas ahora las crea cada sede; el supervisor general maneja las sedes */}
+      <Route path="/zonas" element={<Navigate to="/sedes" replace />} />
+      <Route path="/sedes" element={<Protegida><Sedes /></Protegida>} />
       <Route path="/personal" element={<Protegida><GestionPersonal /></Protegida>} />
     </Routes>
   )
