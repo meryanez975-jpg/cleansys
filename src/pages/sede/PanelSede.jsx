@@ -70,7 +70,7 @@ export default function PanelSede({ sesion, onSalir }) {
         {vista === 'zonas'      && <VistaZonas {...comun} />}
         {vista === 'plan'       && <VistaPlan {...comun} />}
         {vista === 'materiales' && <VistaMateriales sesion={sesion} />}
-        {vista === 'personal'   && <VistaPersonal personal={personal} sede={sede} />}
+        {vista === 'personal'   && <VistaPersonal personal={personal} sede={sede} zonas={zonas} />}
       </div>
 
       {menuAbierto && (
