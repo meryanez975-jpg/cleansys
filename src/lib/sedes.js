@@ -34,14 +34,15 @@ export const sesionSede          = token => rpc('limp_sede_sesion', { p_token: t
 export const cambiarPasswordSede = (token, nueva) => rpc('limp_sede_cambiar_password', { p_token: token, p_nueva: nueva })
 export const salirSede           = token => rpc('limp_sede_logout', { p_token: token })
 
-export const guardarZona  = (token, { id = null, nombre, tareas }) =>
-  rpc('limp_sede_guardar_zona', { p_token: token, p_id: id, p_nombre: nombre, p_tareas: tareas })
+// horarios: { mañana: { desde, hasta }, noche: { desde, hasta } } (solo los turnos que se usan)
+export const guardarZona  = (token, { id = null, nombre, tareas, horarios }) =>
+  rpc('limp_sede_guardar_zona', { p_token: token, p_id: id, p_nombre: nombre, p_tareas: tareas, p_horarios: horarios })
 export const eliminarZona = (token, id) => rpc('limp_sede_eliminar_zona', { p_token: token, p_id: id })
 
 export async function zonasDeSede(sedeId) {
   const { data, error } = await supabase
     .from('limpieza_zonas')
-    .select('id, nombre, tareas')
+    .select('id, nombre, tareas, horarios')
     .eq('sede_id', sedeId)
     .eq('activo', true)
     .order('nombre')

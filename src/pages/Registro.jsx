@@ -230,17 +230,24 @@ function compartirWhatsApp({ nombre, zona, turno, fecha, horaEntrada, horaSalida
   }
 }
 
-// ── Horario habilitado por turno ──────────────────────────────────
-function esHoraTurno(turno) {
-  const h = new Date().getHours()
-  if (turno === 'mañana') return h >= 8
-  if (turno === 'noche')  return h >= 18
-  return true
+// ── Horario habilitado ────────────────────────────────────────────
+// Usa el horario de la zona para ese turno (lo carga cada tienda en Zonas de
+// limpieza). Si la zona no tiene horario, como antes: 8:00 mañana, 18:00 noche.
+const HORA_POR_DEFECTO = { mañana: '08:00', noche: '18:00' }
+function horaInicio(a) {
+  return a?.zona?.horarios?.[a?.turno]?.desde || HORA_POR_DEFECTO[a?.turno] || null
 }
-function horaDisponible(turno) {
-  if (turno === 'mañana') return '8:00 AM'
-  if (turno === 'noche')  return '6:00 PM'
-  return null
+function esHoraTurno(a) {
+  const desde = horaInicio(a)
+  if (!desde) return true
+  const ahora = new Date()
+  const hhmm = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`
+  return hhmm >= desde
+}
+function horaDisponible(a) {
+  const desde = horaInicio(a)
+  const hasta = a?.zona?.horarios?.[a?.turno]?.hasta
+  return desde ? (hasta ? `${desde} (hasta las ${hasta})` : desde) : null
 }
 
 // ── Pantallas ─────────────────────────────────────────────────────
@@ -412,8 +419,8 @@ export default function Registro() {
                   const r = getRegistroPorAsignacion(a.id)
                   return r?.hora_entrada && !r?.hora_salida
                 })
-                const turnoHoy    = tieneHoy ? tareasDelDia[0].turno : null
-                const puedeEntrar = tieneHoy && esHoraTurno(turnoHoy)
+                const tareaHoy    = tieneHoy ? tareasDelDia[0] : null
+                const puedeEntrar = tieneHoy && esHoraTurno(tareaHoy)
                 return (
                   <button
                     key={p.id}
@@ -432,7 +439,7 @@ export default function Registro() {
                     ) : tieneHoy ? (
                       puedeEntrar
                         ? <span className="chip chip-azul">Limpia hoy</span>
-                        : <span className="chip chip-naranja">🔒 {horaDisponible(turnoHoy)}</span>
+                        : <span className="chip chip-naranja">🔒 {horaDisponible(tareaHoy)}</span>
                     ) : null}
                     <span className="fila-flecha">›</span>
                   </button>
@@ -583,7 +590,7 @@ export default function Registro() {
                 >
                   <span style={{ fontSize: 18 }}>📲</span> Compartir en WhatsApp
                 </button>
-                {tareasHoy.map(a => esHoraTurno(a.turno) ? (
+                {tareasHoy.map(a => esHoraTurno(a) ? (
                   <button
                     key={a.id}
                     onClick={() => marcarEntrada(a.id)}
@@ -698,7 +705,7 @@ export default function Registro() {
                           >
                             <span style={{ fontSize: 18 }}>📲</span> Compartir en WhatsApp
                           </button>
-                          {esHoraTurno(a.turno) && (
+                          {esHoraTurno(a) && (
                             <button className="btn btn-outline btn-block" onClick={() => marcarEntrada(a.id)}>
                               🔄 Iniciar de nuevo
                             </button>
@@ -750,7 +757,7 @@ export default function Registro() {
                         )}
                       </div>
 
-                    ) : esHoraTurno(a.turno) ? (
+                    ) : esHoraTurno(a) ? (
                       <button className="btn btn-primary btn-block btn-lg" onClick={() => marcarEntrada(a.id)}>
                         ▶ Iniciar limpieza
                       </button>
@@ -765,7 +772,7 @@ export default function Registro() {
                         </p>
                         <p style={{ fontSize: 13, color: '#b45309' }}>
                           El botón de entrada estará disponible desde las{' '}
-                          <strong>{horaDisponible(a.turno)}</strong>
+                          <strong>{horaDisponible(a)}</strong>
                         </p>
                       </div>
                     )}

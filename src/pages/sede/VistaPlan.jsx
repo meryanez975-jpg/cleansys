@@ -22,7 +22,11 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   const turnosTienda = conGente.length ? conGente : TURNOS
 
   const [zonaId, setZonaId]   = useState(zonas[0]?.id || '')
-  const [turno, setTurno]     = useState(turnosTienda[0]?.id || 'mañana')
+  const zonaSel = zonas.find(z => z.id === zonaId) || null
+  // Si la zona tiene horario, solo sus turnos; si no, los de la tienda
+  const turnosZona = TURNOS.filter(t => zonaSel?.horarios?.[t.id])
+  const turnosVista = turnosZona.length ? turnosZona : turnosTienda
+  const [turno, setTurno]     = useState(turnosVista[0]?.id || 'mañana')
   // Por defecto: la próxima semana completa
   const [rango, setRango]     = useState(() => ({ desde: lunesDeSemana(1), hasta: sumarDias(lunesDeSemana(1), 6) }))
   const [asig, setAsig]       = useState([])
@@ -37,13 +41,14 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   const infoTurno = TURNOS.find(t => t.id === turno)
 
   useEffect(() => { if (!zonas.some(z => z.id === zonaId)) setZonaId(zonas[0]?.id || '') }, [zonas])
-  useEffect(() => { if (!turnosTienda.some(t => t.id === turno)) setTurno(turnosTienda[0].id) }, [personal])
+  useEffect(() => { if (!turnosVista.some(t => t.id === turno)) setTurno(turnosVista[0].id) }, [personal, zonaId, zonas])
 
   // Fechas del rango que todavía se pueden cambiar (de hoy en adelante)
   const fechasRango = []
   for (let f = rango.desde; f <= rango.hasta; f = sumarDias(f, 1)) fechasRango.push(f)
   const editables = fechasRango.filter(f => f >= hoy)
-  const diasDelRango = SEMANA_JS.filter(dj => editables.some(f => deIso(f).getDay() === dj))
+  const diasDelRango = SEMANA_JS.filter(dj => fechasRango.some(f => deIso(f).getDay() === dj))
+  const soloVer = editables.length === 0
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -58,16 +63,20 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
 
   const persona = id => personal.find(p => p.id === id)
   const nombreZona = id => zonas.find(z => z.id === id)?.nombre
+  // Fechas de ese día de la semana que se pueden cambiar (de hoy en adelante)
   const fechasDe = dj => editables.filter(f => deIso(f).getDay() === dj)
+  // Las que se muestran: las editables, o si ya pasaron todas, las pasadas (solo para ver)
+  const fechasVer = dj => (fechasDe(dj).length ? fechasDe(dj) : fechasRango.filter(f => deIso(f).getDay() === dj))
 
-  // Quién está hoy guardado ese día de la semana (en todo el rango)
+  // Quién está guardado ese día de la semana en el período
   function actualDe(dj) {
-    const ids = new Set(asig.filter(a => a.zona_id === zonaId && a.turno === turno && fechasDe(dj).includes(a.fecha)).map(a => a.personal_id))
+    const fs = fechasVer(dj)
+    const ids = new Set(asig.filter(a => a.zona_id === zonaId && a.turno === turno && fs.includes(a.fecha)).map(a => a.personal_id))
     if (ids.size === 0) return ''
     if (ids.size > 1) return VARIA
     const [id] = ids
-    // Si no está en todos esos días del rango, también varía
-    return fechasDe(dj).every(f => asig.some(a => a.zona_id === zonaId && a.turno === turno && a.fecha === f && a.personal_id === id)) ? id : VARIA
+    // Si no está en todos esos días del período, también varía
+    return fs.every(f => asig.some(a => a.zona_id === zonaId && a.turno === turno && a.fecha === f && a.personal_id === id)) ? id : VARIA
   }
   const valorDe = dj => (dj in elegido ? elegido[dj] : actualDe(dj))
   const cambios = Object.keys(elegido).filter(dj => elegido[dj] !== actualDe(Number(dj)))
@@ -111,15 +120,15 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
     return () => window.removeEventListener('beforeunload', avisar)
   }, [cambios.length])
 
+  // Se puede ir al pasado para ver; solo de hoy en adelante se puede cambiar
   function moverSemana(n) {
     const dias = Math.round((deIso(rango.hasta) - deIso(rango.desde)) / 86400000)
     const desde = sumarDias(rango.desde, n * 7)
-    if (sumarDias(desde, dias) < hoy) return
     setRango({ desde, hasta: sumarDias(desde, dias) })
   }
   function elegirRango({ inicio, fin }) {
-    let desde = iso(inicio), hasta = iso(fin)
-    if (desde < hoy) desde = hoy
+    const desde = iso(inicio)
+    let hasta = iso(fin)
     if (hasta < desde) hasta = desde
     if (Math.round((deIso(hasta) - deIso(desde)) / 86400000) > MAX_DIAS) hasta = sumarDias(desde, MAX_DIAS)
     setRango({ desde, hasta })
@@ -127,14 +136,15 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
   function irAlAviso(a) {
     setZonaId(a.zona_id); setTurno(a.turno)
     const l = sumarDias(a.fecha, -((deIso(a.fecha).getDay() + 6) % 7))
-    setRango({ desde: l < hoy ? hoy : l, hasta: sumarDias(l, 6) })
+    setRango({ desde: l, hasta: sumarDias(l, 6) })
   }
 
   if (zonas.length === 0) return <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Primero creá una zona en 🧹 Zonas de limpieza.</p>
   if (personal.length === 0) return <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Esta tienda todavía no tiene personal. Mirá 👥 Personal de la tienda.</p>
 
   const esSemana = (off) => rango.desde === lunesDeSemana(off) && rango.hasta === sumarDias(lunesDeSemana(off), 6)
-  const titulo = esSemana(0) ? 'Esta semana' : esSemana(1) ? 'Próxima semana' : 'Período elegido'
+  const titulo = esSemana(0) ? 'Esta semana' : esSemana(1) ? 'Próxima semana' : esSemana(-1) ? 'Semana pasada'
+    : rango.hasta < hoy ? 'Período pasado' : 'Período elegido'
   const avisosZona = avisos
 
   return (
@@ -168,7 +178,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
 
       {/* ── 2. Turno: solo los que hay en esta tienda ── */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-        {turnosTienda.map(t => {
+        {turnosVista.map(t => {
           const activo = turno === t.id
           return (
             <button key={t.id} onClick={() => setTurno(t.id)} style={{
@@ -178,6 +188,7 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
             }}>
               <span style={{ fontSize: 22, lineHeight: 1 }}>{t.icono}</span>
               <span style={{ fontWeight: 800, fontSize: 14, color: t.color }}>{t.label}</span>
+              {zonaSel?.horarios?.[t.id] && <span style={{ fontSize: 11, color: t.color }}>{zonaSel.horarios[t.id].desde}–{zonaSel.horarios[t.id].hasta}</span>}
             </button>
           )
         })}
@@ -190,10 +201,8 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
           subtitulo={`${fechaChica(rango.desde)} → ${fechaChica(rango.hasta)} · ${fechasRango.length} día${fechasRango.length !== 1 ? 's' : ''}`}
           onAnterior={() => moverSemana(-1)}
           onSiguiente={() => moverSemana(1)}
-          puedeAnterior={sumarDias(rango.hasta, -7) >= hoy}
           modo="rango"
           rango={{ inicio: deIso(rango.desde), fin: deIso(rango.hasta) }}
-          min={new Date()}
           onElegirRango={elegirRango}
         />
       </div>
@@ -203,18 +212,21 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
         <div style={{ background: infoTurno.bg, padding: '10px 14px' }}>
           <p style={{ fontWeight: 800, color: infoTurno.color }}>{infoTurno.icono} {zona?.nombre} · {infoTurno.label}</p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            Lo que elijas para cada día se aplica a todos esos días del período. Lo que quede vacío no se toca.
+            {soloVer
+              ? '👁️ Este período ya pasó: se puede ver, pero no cambiar.'
+              : 'Lo que elijas para cada día se aplica a todos esos días del período (de hoy en adelante). Lo que quede vacío no se toca.'}
           </p>
         </div>
-        {cargando ? <div className="skeleton" style={{ height: 220 }} /> : diasDelRango.length === 0 ? (
-          <p className="text-muted" style={{ padding: 14, fontSize: 13 }}>Ese período ya pasó.</p>
-        ) : diasDelRango.map(dj => {
+        {cargando ? <div className="skeleton" style={{ height: 220 }} /> : diasDelRango.map(dj => {
           const valor = valorDe(dj)
           const opciones = opcionesDe(dj)
           const actual = actualDe(dj)
-          const idsActuales = [...new Set(asig.filter(a => a.zona_id === zonaId && a.turno === turno && fechasDe(dj).includes(a.fecha)).map(a => a.personal_id))]
-          const yaNoEsta = actual && actual !== VARIA && !persona(actual)
+          const idsActuales = [...new Set(asig.filter(a => a.zona_id === zonaId && a.turno === turno && fechasVer(dj).includes(a.fecha)).map(a => a.personal_id))]
+          const bloqueado = fechasDe(dj).length === 0          // todos esos días ya pasaron: solo se ve
+          const yaNoEsta = !bloqueado && actual && actual !== VARIA && !persona(actual)
+          const fueraDeLista = actual && actual !== VARIA && !opciones.some(p => p.id === actual)
           const cambiado = dj in elegido && elegido[dj] !== actual
+          const asignado = !!valor                              // se resalta cuando ya tiene a alguien
           return (
             <div key={dj} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderTop: '1px solid var(--border)',
@@ -222,15 +234,27 @@ export default function VistaPlan({ sesion, zonas, personal, avisos, recargarBas
             }}>
               <div style={{ width: 84, flexShrink: 0 }}>
                 <p style={{ fontWeight: 800, fontSize: 14 }}>{DIAS_LARGO[dj]}{cambiado ? ' ✏️' : ''}</p>
-                <p className="text-muted" style={{ fontSize: 11 }}>{fechasDe(dj).length} día{fechasDe(dj).length !== 1 ? 's' : ''}</p>
+                <p className="text-muted" style={{ fontSize: 11 }}>
+                  {bloqueado ? '👁️ ya pasó' : `${fechasDe(dj).length} día${fechasDe(dj).length !== 1 ? 's' : ''}`}
+                </p>
               </div>
-              <select className="input" style={{ flex: 1, minWidth: 0, borderColor: yaNoEsta ? '#fca5a5' : undefined }}
+              <select className="input" disabled={bloqueado}
+                style={{
+                  flex: 1, minWidth: 0, fontWeight: asignado ? 800 : 400,
+                  borderColor: yaNoEsta ? '#fca5a5' : asignado ? infoTurno.color : undefined,
+                  background: yaNoEsta ? '#fee2e2' : asignado ? infoTurno.bg : undefined,
+                  color: asignado ? infoTurno.color : undefined, opacity: bloqueado ? 0.8 : 1,
+                }}
                 value={valor} onChange={e => { setElegido(prev => ({ ...prev, [dj]: e.target.value })); setExito('') }}>
                 <option value="">— Sin asignar —</option>
                 {valor === VARIA && (
                   <option value={VARIA} disabled>Varía: {idsActuales.map(id => persona(id)?.nombre?.split(' ')[0] || '⚠️').join(' / ')}</option>
                 )}
-                {yaNoEsta && <option value={actual}>⚠️ {asig.find(a => a.personal_id === actual)?.personalNombre || 'Persona'} (ya no está)</option>}
+                {fueraDeLista && (
+                  <option value={actual}>
+                    {yaNoEsta ? '⚠️ ' : ''}{persona(actual)?.nombre || asig.find(a => a.personal_id === actual)?.personalNombre || 'Persona'}{yaNoEsta ? ' (ya no está)' : ''}
+                  </option>
+                )}
                 {opciones.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
               </select>
             </div>

@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react'
 import { guardarZona, eliminarZona, asignacionesDeSede } from '../../lib/sedes'
-import { lunesDeSemana, sumarDias, deIso, DIAS_CORTO } from './fechas'
+import { lunesDeSemana, sumarDias, deIso, DIAS_CORTO, SEMANA_JS } from './fechas'
+import { trabajaEnTurno } from '../../hooks/usePersonalComidas'
+
+const TURNOS = [
+  { id: 'mañana', icono: '☀️', label: 'Mañana', desde: '08:00', hasta: '12:00' },
+  { id: 'noche',  icono: '🌙', label: 'Noche',  desde: '18:00', hasta: '22:00' },
+]
+// "☀️ 08:00–12:00 · 🌙 19:00–22:00"
+export function textoHorarios(h) {
+  return TURNOS.filter(t => h?.[t.id]).map(t => `${t.icono} ${h[t.id].desde}–${h[t.id].hasta}`).join(' · ')
+}
 
 // Zonas de la sede con su lista de tareas y quién las limpia esta semana
 export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
@@ -17,6 +27,27 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
   }, [zonas])
 
   const nombreDe = id => personal.find(p => p.id === id)?.nombre
+  // Turnos que hay en esta tienda (si nadie trabaja de mañana, no se ofrece mañana)
+  const conGente = TURNOS.filter(t => personal.some(p => SEMANA_JS.some(dj => trabajaEnTurno(p, t.id, dj))))
+  const turnosTienda = conGente.length ? conGente : TURNOS
+
+  function abrir(z) {
+    setEditando(z
+      ? { id: z.id, nombre: z.nombre, tareas: [...(z.tareas || [])], horarios: { ...(z.horarios || {}) } }
+      : { id: null, nombre: '', tareas: [], horarios: {} })
+    setNuevaTarea(''); setError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  function usarTurno(t, usar) {
+    setEditando(p => {
+      const h = { ...p.horarios }
+      if (usar) h[t.id] = h[t.id] || { desde: t.desde, hasta: t.hasta }
+      else delete h[t.id]
+      return { ...p, horarios: h }
+    })
+  }
+  const setHora = (turno, campo, valor) =>
+    setEditando(p => ({ ...p, horarios: { ...p.horarios, [turno]: { ...p.horarios[turno], [campo]: valor } } }))
 
   // "Ana (Lun, Mar, Mié · mañana)"
   function quienesLimpian(zonaId) {
@@ -41,7 +72,7 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
     const tareas = nuevaTarea.trim() ? [...editando.tareas, nuevaTarea.trim()] : editando.tareas
     setGuardando(true); setError('')
     try {
-      await guardarZona(sesion.token, { id: editando.id, nombre: editando.nombre, tareas })
+      await guardarZona(sesion.token, { id: editando.id, nombre: editando.nombre, tareas, horarios: editando.horarios })
       setEditando(null); setNuevaTarea('')
       await recargarBase()
     } catch (err) { setError(err.message) } finally { setGuardando(false) }
@@ -61,7 +92,7 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
       {/* Botón flotante: nueva zona */}
       {!editando && (
         <button aria-label="Nueva zona de limpieza" title="Nueva zona de limpieza"
-          onClick={() => { setEditando({ id: null, nombre: '', tareas: [] }); setNuevaTarea(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onClick={() => abrir(null)}
           style={{
             position: 'fixed', right: 18, bottom: 22, zIndex: 95, width: 56, height: 56, borderRadius: '50%',
             border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 28, cursor: 'pointer',
@@ -94,6 +125,29 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
               <button type="button" className="btn btn-outline" onClick={agregarTarea} disabled={!nuevaTarea.trim()}>+ Agregar</button>
             </div>
           </div>
+          <div className="input-group">
+            <label className="input-label">Horario de limpieza</label>
+            {turnosTienda.map(t => {
+              const h = editando.horarios[t.id]
+              return (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 14, minWidth: 104, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!h} onChange={e => usarTurno(t, e.target.checked)} />
+                    {t.icono} {t.label}
+                  </label>
+                  {h && (
+                    <>
+                      <input type="time" className="input" style={{ width: 'auto', flex: 1, minWidth: 96 }} value={h.desde} onChange={e => setHora(t.id, 'desde', e.target.value)} />
+                      <span className="text-muted">a</span>
+                      <input type="time" className="input" style={{ width: 'auto', flex: 1, minWidth: 96 }} value={h.hasta} onChange={e => setHora(t.id, 'hasta', e.target.value)} />
+                    </>
+                  )}
+                </div>
+              )
+            })}
+            <p className="text-muted" style={{ fontSize: 12 }}>El personal puede marcar la entrada a esta zona desde la hora de inicio.</p>
+          </div>
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={guardando || !editando.nombre.trim()}>
               {guardando ? 'Guardando...' : 'Guardar'}
@@ -103,7 +157,7 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
         </form>
       )}
 
-      {zonas.length === 0 ? (
+      {!editando && (zonas.length === 0 ? (
         <p className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Todavía no hay zonas. Tocá ＋ abajo a la derecha para crear la primera.</p>
       ) : zonas.map(z => {
         const quienes = quienesLimpian(z.id)
@@ -113,10 +167,13 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
               <p style={{ fontWeight: 800, fontSize: 16 }}>🧹 {z.nombre}</p>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button className="btn btn-ghost btn-sm" title="Editar"
-                  onClick={() => { setEditando({ id: z.id, nombre: z.nombre, tareas: [...(z.tareas || [])] }); setNuevaTarea(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>✏️</button>
+                  onClick={() => abrir(z)}>✏️</button>
                 <button className="btn btn-ghost btn-sm" title="Eliminar" onClick={() => setBorrar(z)}>🗑️</button>
               </div>
             </div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary-dark)', marginBottom: 4 }}>
+              🕐 {textoHorarios(z.horarios) || 'Sin horario (se usa 8:00 mañana / 18:00 noche)'}
+            </p>
             {(z.tareas || []).length === 0
               ? <p className="text-muted" style={{ fontSize: 12 }}>Sin tareas cargadas</p>
               : (z.tareas || []).map((t, i) => <p key={i} style={{ fontSize: 14, padding: '2px 0' }}>✓ {t}</p>)}
@@ -132,7 +189,7 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
             </div>
           </div>
         )
-      })}
+      }))}
 
       {borrar && (
         <div className="modal-overlay" onClick={() => setBorrar(null)}>
