@@ -35,7 +35,8 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
   function abrir(z) {
     setEditando(z
       ? { id: z.id, nombre: z.nombre, tareas: [...(z.tareas || [])], horarios: { ...(z.horarios || {}) } }
-      : { id: null, nombre: '', tareas: [], horarios: {} })
+      // Zona nueva: ya vienen tildados los turnos de la tienda con un horario de ejemplo
+      : { id: null, nombre: '', tareas: [], horarios: Object.fromEntries(turnosTienda.map(t => [t.id, { desde: t.desde, hasta: t.hasta }])) })
     setNuevaTarea(''); setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -46,6 +47,11 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
       else delete h[t.id]
       return { ...p, horarios: h }
     })
+  }
+  // El horario es obligatorio: al menos un turno, con inicio antes que el fin
+  const horarioValido = h => {
+    const usados = Object.values(h || {})
+    return usados.length > 0 && usados.every(x => x.desde && x.hasta && x.desde < x.hasta)
   }
   const setHora = (turno, campo, valor) =>
     setEditando(p => ({ ...p, horarios: { ...p.horarios, [turno]: { ...p.horarios[turno], [campo]: valor } } }))
@@ -148,11 +154,13 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
                 </div>
               )
             })}
-            <p className="text-muted" style={{ fontSize: 12 }}>El personal puede marcar la entrada a esta zona desde la hora de inicio.</p>
+            {horarioValido(editando.horarios)
+              ? <p className="text-muted" style={{ fontSize: 12 }}>El personal puede marcar la entrada a esta zona desde la hora de inicio.</p>
+              : <p style={{ fontSize: 12, color: '#b45309', fontWeight: 700 }}>⚠️ Tildá al menos un turno y poné de qué hora a qué hora (el inicio antes que el fin).</p>}
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={guardando || !editando.nombre.trim()}>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={guardando || !editando.nombre.trim() || !horarioValido(editando.horarios)}>
               {guardando ? 'Guardando...' : 'Guardar'}
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => { setEditando(null); setNuevaTarea('') }}>Cancelar</button>
