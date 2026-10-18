@@ -101,7 +101,7 @@ export const cambiarPersona   = (token, id, personalId) =>
 export async function movimientosDeSede(sedeId) {
   const { data, error } = await supabase
     .from('limpieza_movimientos')
-    .select('id, material_id, tipo, fecha, cantidad, paquetes, unidades_por_paquete, precio_paquete, nota, creado')
+    .select('id, material_id, tipo, fecha, cantidad, paquetes, unidades_por_paquete, precio_paquete, nota, creado, editado_en, eliminado_en, cambios')
     .eq('sede_id', sedeId)
     .order('fecha', { ascending: false })
     .order('creado', { ascending: false })
@@ -112,4 +112,7 @@ export async function movimientosDeSede(sedeId) {
 //     o  { tipo: 'salida', fecha, cantidad, nota }
 export const registrarMovimiento = (token, materialId, datos) =>
   rpc('limp_sede_movimiento', { p_token: token, p_material_id: materialId, p_datos: datos })
+// Eliminar no borra: queda marcado y se ve en el Excel
 export const eliminarMovimiento = (token, id) => rpc('limp_sede_eliminar_movimiento', { p_token: token, p_id: id })
+// Editar guarda lo que tenía antes (se ve en el Excel)
+export const editarMovimiento = (token, id, datos) => rpc('limp_sede_editar_movimiento', { p_token: token, p_id: id, p_datos: datos })

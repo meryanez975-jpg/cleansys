@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { materialesDeSede, guardarMaterial, eliminarMaterial, movimientosDeSede, registrarMovimiento, eliminarMovimiento } from '../../lib/sedes'
+import { materialesDeSede, guardarMaterial, eliminarMaterial, movimientosDeSede, registrarMovimiento, eliminarMovimiento, editarMovimiento } from '../../lib/sedes'
 import { hoyIso, diasEntre, sumarDias, fechaCorta } from './fechas'
 
 // Unidades en que se cuenta cada producto: [singular, plural]
@@ -50,7 +50,8 @@ function estado(c, minimo) {
 }
 
 // Excel (.csv que Excel abre directo): inventario de hoy y todos los movimientos
-function archivoExcel(sede, productos, movs) {
+function archivoExcel(sede, productos, todos) {
+  const movs = todos.filter(m => !m.eliminado_en)   // lo eliminado no cuenta en el inventario ni en los totales
   const n = v => (v == null || isNaN(v) ? '' : Number(v).toFixed(2).replace('.', ','))
   const celda = t => `"${String(t ?? '').replace(/"/g, '""')}"`
   const filas = [[`Inventario ${sede.nombre} al ${hoyIso()}`], ['Producto', 'Unidad', 'Hay', 'Precio por unidad (Bs)', 'Se usa por día', 'Se acaba aprox.', 'Se compra cada (días)']]
@@ -58,14 +59,26 @@ function archivoExcel(sede, productos, movs) {
     const c = calcular(movs.filter(m => m.material_id === p.id))
     filas.push([p.nombre, p.unidad, n(c.hay), n(c.precioActual), n(c.porDia), c.seAcaba || '', c.cadaCuanto ?? ''])
   })
-  const hora = m => (m.creado ? new Date(m.creado).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '')
-  filas.push([], ['Movimientos'], ['Fecha', 'Hora', 'Producto', 'Tipo', 'Cantidad', 'Unidad', 'Paquetes', 'Por paquete', 'Precio paquete (Bs)', 'Total (Bs)', 'Nota'])
-  ;[...movs].sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(m => {
-    const p = productos.find(x => x.id === m.material_id)
-    filas.push([m.fecha, hora(m), p?.nombre || '', m.tipo === 'entrada' ? 'Compra' : 'Uso', n(m.cantidad), p?.unidad || '',
+  const hora = t => (t ? new Date(t).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '')
+  const cuando = t => (t ? `${new Date(t).toLocaleDateString('es-BO')} ${hora(t)}` : '')
+  const nombreDe = id => productos.find(x => x.id === id)?.nombre || '(producto eliminado)'
+  const unidadDe = id => productos.find(x => x.id === id)?.unidad || ''
+  filas.push([], ['Movimientos'], ['Fecha', 'Hora', 'Producto', 'Tipo', 'Cantidad', 'Unidad', 'Paquetes', 'Por paquete', 'Precio paquete (Bs)', 'Total (Bs)', 'Nota', 'Estado'])
+  ;[...todos].sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(m => {
+    const estado = m.eliminado_en ? `ELIMINADO el ${cuando(m.eliminado_en)}` : m.editado_en ? `Editado el ${cuando(m.editado_en)}` : 'Vigente'
+    filas.push([m.fecha, hora(m.creado), nombreDe(m.material_id), m.tipo === 'entrada' ? 'Compra' : 'Uso', n(m.cantidad), unidadDe(m.material_id),
       n(m.paquetes), n(m.unidades_por_paquete), n(m.precio_paquete),
-      m.precio_paquete != null && m.paquetes != null ? n(m.precio_paquete * m.paquetes) : '', m.nota || ''])
+      m.precio_paquete != null && m.paquetes != null ? n(m.precio_paquete * m.paquetes) : '', m.nota || '', estado])
   })
+  // Lo que tenía cada movimiento antes de editarlo
+  const conCambios = todos.filter(m => (m.cambios || []).length)
+  if (conCambios.length) {
+    filas.push([], ['Cambios (cómo estaba antes de editar)'], ['Cambiado el', 'Producto', 'Tipo', 'Fecha que tenía', 'Cantidad que tenía', 'Paquetes', 'Por paquete', 'Precio paquete (Bs)', 'Nota que tenía'])
+    conCambios.forEach(m => (m.cambios || []).forEach(c => filas.push([
+      cuando(c.cambiado_en), nombreDe(m.material_id), m.tipo === 'entrada' ? 'Compra' : 'Uso', c.fecha, n(c.cantidad),
+      n(c.paquetes), n(c.unidades_por_paquete), n(c.precio_paquete), c.nota || '',
+    ])))
+  }
   const total = movs.filter(m => m.tipo === 'entrada' && m.precio_paquete != null).reduce((s, m) => s + m.precio_paquete * m.paquetes, 0)
   const mes = hoyIso().slice(0, 7)
   const totalMes = movs.filter(m => m.tipo === 'entrada' && m.precio_paquete != null && m.fecha.startsWith(mes)).reduce((s, m) => s + m.precio_paquete * m.paquetes, 0)
@@ -89,7 +102,8 @@ function descargar(archivo) {
 }
 
 // Resumen en texto para WhatsApp (cuando el celular no deja adjuntar el archivo)
-function textoResumen(sede, productos, movs) {
+function textoResumen(sede, productos, todos) {
+  const movs = todos.filter(m => !m.eliminado_en)
   const lineas = productos.map(p => {
     const c = calcular(movs.filter(m => m.material_id === p.id))
     return `• ${p.nombre}: ${fmt(c.hay)} ${nUnidad(p.unidad, c.hay)}${c.seAcaba && c.hay > 0 ? ` (se acaba aprox. ${fechaCorta(c.seAcaba)})` : ''}`
@@ -147,7 +161,7 @@ export default function VistaInventario({ sesion }) {
 
   function avisar(txt) { setAviso(txt); setTimeout(() => setAviso(''), 2500) }
 
-  const movsDe = id => movs.filter(m => m.material_id === id)
+  const movsDe = id => movs.filter(m => m.material_id === id && !m.eliminado_en)
   const lista = productos.filter(p => p.nombre.toLowerCase().includes(buscar.trim().toLowerCase()))
 
   function abrir(p, modo = 'menu') {
@@ -177,6 +191,31 @@ export default function VistaInventario({ sesion }) {
         avisar(`✅ Se descontaron ${fmt(num(a.cantidad))} ${nUnidad(a.producto.unidad, num(a.cantidad))}`)
       }
       setAbierto(null); await cargar()
+    } catch (err) { setError(err.message) }
+  }
+
+  function abrirEdicion(m) {
+    setAbierto(x => ({
+      ...x, modo: 'editarMov', mov: m, fecha: m.fecha, nota: m.nota || '',
+      cantidad: String(Number(m.cantidad)),
+      paquetes: m.paquetes != null ? String(Number(m.paquetes)) : '1',
+      unidades_por_paquete: m.unidades_por_paquete != null ? String(Number(m.unidades_por_paquete)) : '1',
+      precio_paquete: m.precio_paquete != null ? String(Number(m.precio_paquete)) : '',
+      conPrecio: m.precio_paquete != null,
+    }))
+    setError('')
+  }
+
+  async function guardarEdicionMov(e) {
+    e.preventDefault()
+    const x = abierto
+    try {
+      await editarMovimiento(sesion.token, x.mov.id, x.mov.tipo === 'entrada'
+        ? { fecha: x.fecha, paquetes: num(x.paquetes), unidades_por_paquete: num(x.unidades_por_paquete), precio_paquete: num(x.precio_paquete), nota: x.nota }
+        : { fecha: x.fecha, cantidad: num(x.cantidad), nota: x.nota })
+      await cargar()
+      setAbierto(y => ({ ...y, modo: 'historial' }))
+      avisar('✅ Corregido (queda registrado en el Excel)')
     } catch (err) { setError(err.message) }
   }
 
@@ -422,12 +461,46 @@ export default function VistaInventario({ sesion }) {
                         <p className="text-muted">{fmt(m.paquetes)} paq. × {fmt(m.unidades_por_paquete)}</p>
                       )}
                       {m.nota && <p className="text-muted">📝 {m.nota}</p>}
+                      {m.editado_en && <p className="text-muted" style={{ fontSize: 11 }}>✏️ editado</p>}
                     </div>
-                    <button className="btn btn-ghost btn-sm" title="Borrar" onClick={() => setBorrar({ tipo: 'movimiento', item: m })}>✕</button>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      <button className="btn btn-ghost btn-sm" title="Editar" onClick={() => abrirEdicion(m)}>✏️</button>
+                      <button className="btn btn-ghost btn-sm" title="Eliminar" onClick={() => setBorrar({ tipo: 'movimiento', item: m })}>🗑️</button>
+                    </div>
                   </div>
                 ))}
+                <p className="text-muted" style={{ fontSize: 11, marginTop: 8 }}>Lo que se edita o elimina queda registrado en el Excel.</p>
                 <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => setA('modo', 'menu')}>‹ Volver</button>
               </>
+            )}
+
+            {a.modo === 'editarMov' && (
+              <form onSubmit={guardarEdicionMov}>
+                <p style={{ fontWeight: 800, marginBottom: 10 }}>✏️ Corregir {a.mov.tipo === 'entrada' ? 'compra' : 'uso'}</p>
+                <div className="input-group">
+                  <label className="input-label">Fecha</label>
+                  <input type="date" className="input" max={hoyIso()} value={a.fecha} onChange={e => setA('fecha', e.target.value)} />
+                </div>
+                {a.mov.tipo === 'entrada' ? camposCompra(a, setA, a.producto.unidad) : (
+                  <div className="input-group">
+                    <label className="input-label">¿Cuánto se usó? ({nUnidad(a.producto.unidad, 2)})</label>
+                    <Stepper valor={a.cantidad} onCambiar={v => setA('cantidad', v)} />
+                  </div>
+                )}
+                <div className="input-group">
+                  <label className="input-label">Nota — opcional</label>
+                  <input className="input" value={a.nota} onChange={e => setA('nota', e.target.value)} />
+                </div>
+                <p className="text-muted" style={{ fontSize: 11, marginBottom: 10 }}>Lo que tenía antes queda guardado en el Excel.</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={
+                    a.mov.tipo === 'entrada'
+                      ? !(num(a.paquetes) > 0 && num(a.unidades_por_paquete) > 0 && (a.precio_paquete === '' || num(a.precio_paquete) >= 0))
+                      : !(num(a.cantidad) > 0)
+                  }>💾 Guardar</button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setA('modo', 'historial')}>‹ Volver</button>
+                </div>
+              </form>
             )}
 
             {a.modo === 'editar' && (
@@ -496,7 +569,7 @@ export default function VistaInventario({ sesion }) {
               {borrar.tipo === 'producto' ? `¿Eliminar ${borrar.item.nombre} del inventario?` : '¿Borrar este movimiento?'}
             </p>
             <p className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>
-              {borrar.tipo === 'producto' ? 'Deja de aparecer en la lista.' : 'La cantidad se vuelve a calcular sin este movimiento.'}
+              {borrar.tipo === 'producto' ? 'Deja de aparecer en la lista.' : 'Deja de contar en el inventario. Queda registrado en el Excel como eliminado.'}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-danger" style={{ flex: 1 }} onClick={confirmarBorrar}>Sí, eliminar</button>
