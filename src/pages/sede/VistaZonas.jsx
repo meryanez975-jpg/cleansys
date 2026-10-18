@@ -139,17 +139,17 @@ export default function VistaZonas({ sesion, zonas, personal, recargarBase }) {
             {turnosTienda.map(t => {
               const h = editando.horarios[t.id]
               return (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 14, minWidth: 104, cursor: 'pointer' }}>
+                <div key={t.id} style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: h ? 'var(--bg)' : 'transparent' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                     <input type="checkbox" checked={!!h} onChange={e => usarTurno(t, e.target.checked)} />
                     {t.icono} {t.label}
                   </label>
                   {h && (
-                    <>
-                      <input type="time" className="input" style={{ width: 'auto', flex: 1, minWidth: 96 }} value={h.desde} onChange={e => setHora(t.id, 'desde', e.target.value)} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <input type="time" className="input" style={{ flex: 1, minWidth: 0 }} value={h.desde} onChange={e => setHora(t.id, 'desde', e.target.value)} />
                       <span className="text-muted">a</span>
-                      <input type="time" className="input" style={{ width: 'auto', flex: 1, minWidth: 96 }} value={h.hasta} onChange={e => setHora(t.id, 'hasta', e.target.value)} />
-                    </>
+                      <input type="time" className="input" style={{ flex: 1, minWidth: 0 }} value={h.hasta} onChange={e => setHora(t.id, 'hasta', e.target.value)} />
+                    </div>
                   )}
                 </div>
               )
